@@ -17,6 +17,8 @@ export function UsersWorkspace({actorId}:{actorId:string}){
  async function submit(event:FormEvent<HTMLFormElement>,revoke=false){
   event.preventDefault();if(latch.current)return;const form=event.currentTarget,data=Object.fromEntries(new FormData(form));
   const body=revoke?{currentPassword:data.currentPassword}:creating?data:{name:data.name,role:data.role,active:data.active==='true',currentPassword:data.currentPassword};
+  if(!creating&&!revoke&&detail.data&&(body as {role:string;active:boolean}).role!==detail.data.role&&!window.confirm('Change this account’s role and revoke all its sessions?'))return;
+  if(!creating&&!revoke&&detail.data&&(body as {active:boolean}).active!==detail.data.active&&!window.confirm('Change this account’s active status and revoke all its sessions?'))return;
   if(revoke&&!window.confirm('Revoke every active session for this account? The user will need to sign in again.'))return;
   // Fingerprint excludes credentials; passwords stay only in the mounted form/request.
   const fingerprint=JSON.stringify({selected,creating,revoke,name:data.name,role:data.role,active:data.active,email:data.email});

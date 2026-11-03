@@ -12,7 +12,7 @@ describe('authentication, onboarding and revocation',()=>{
  const login=(email:string,password:string)=>request(app.getHttpServer()).post('/v1/sessions').send({email,password});
  const get=(path:string,auth=token)=>request(app.getHttpServer()).get(`/v1/${path}`).set('Authorization',`Bearer ${auth}`);
  const post=(path:string,body:object,auth=token)=>request(app.getHttpServer()).post(`/v1/${path}`).set('Authorization',`Bearer ${auth}`).set('Idempotency-Key',randomUUID()).send(body);
- beforeAll(async()=>{await db.originNode.create({data:{id:originId,mode:'SHOP'}});email=`${randomUUID()}@auth.test`;const u=await db.user.create({data:{email,name:'Auth Admin',role:'ADMIN',passwordHash:passwordHash(password),membership:{create:{originId}}}});id=u.id;app=await createApp(db,originId,'SHOP');token=(await login(email,password).expect(200)).body.token;});
+ beforeAll(async()=>{await db.originNode.create({data:{id:originId,mode:'SHOP'}});email=`${randomUUID()}@auth.test`;const u=await db.user.create({data:{email,name:'Auth Admin',role:'ADMIN',passwordHash:passwordHash(password),membership:{create:{originId}}}});id=u.id;app=await createApp(db,originId,'SHOP');await app.listen(0,'127.0.0.1');token=(await login(email,password).expect(200)).body.token;});
  afterAll(async()=>{await app?.close();await db.$disconnect();});
  it('enforces first-login change on every domain path and revokes all sessions on completion',async()=>{
   const email=`${randomUUID()}@onboarding.test`,initial=randomUUID(),next=randomUUID();
@@ -47,5 +47,14 @@ describe('authentication, onboarding and revocation',()=>{
   const email=`${randomUUID()}@limit.test`;
   const results=await Promise.all(Array.from({length:12},()=>login(email,'wrong')));expect(results.every(r=>r.status===401)).toBe(true);
   expect(await db.loginAttempt.count({where:{email}})).toBe(10);
+ });
+ it('concurrent sign-in and deactivation preserve origin-first locks and leave no usable session',async()=>{
+  const email=`${randomUUID()}@deactivation.test`;
+  const u=await db.user.create({data:{email,name:'Concurrent staff',role:'PRODUCTION',passwordHash:passwordHash(password),membership:{create:{originId}}}});
+  const [signed,disabled]=await Promise.all([login(email,password),post(`admin/users/${u.id}/update`,{name:u.name,role:u.role,active:false,currentPassword:password})]);
+  expect(disabled.status).toBe(201);expect([200,401]).toContain(signed.status);
+  if(signed.status===200)await get('me',signed.body.token).expect(401);
+  expect(await db.session.count({where:{userId:u.id,revokedAt:null}})).toBe(0);
+  expect((await db.user.findUniqueOrThrow({where:{id:u.id}})).active).toBe(false);
  });
 });

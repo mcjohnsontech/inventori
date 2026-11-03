@@ -153,6 +153,9 @@ test('read failures retry safely and changed code input cancels stale results', 
   await expect(lookup.getByRole('status')).toHaveCount(0);
   // Real endpoint denial is still enforced independently of navigation.
   await navigate(page, 'Account & shop');
+  const signedOut = page.waitForResponse(response => response.url().endsWith('/api/sessions/logout') && response.request().method() === 'POST');
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+  expect((await signedOut).status()).toBe(200);
+  await expect(page.getByRole('heading', { name: 'Sign in to your shop', exact: true })).toBeVisible();
   expect((await page.request.get('/api/admin/shop')).status()).toBe(401);
 });

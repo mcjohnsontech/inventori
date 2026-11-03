@@ -25,6 +25,10 @@ export class CatalogueService {
       await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${'login:'+email},0))::text`;
       const attempts=await tx.loginAttempt.count({where:{email,createdAt:{gt:new Date(Date.now()-15*60_000)},succeeded:false}});
       if(attempts>=10)return null;
+      // Session's origin FK also locks OriginNode. Acquire it before User, matching
+      // account/catalogue/receiving commands and avoiding an origin/user lock cycle.
+      const origin=await tx.$queryRaw<{id:string}[]>`SELECT id FROM "OriginNode" WHERE id=${this.originId}::uuid FOR KEY SHARE`;
+      if(!origin[0])return null;
       const found=await tx.user.findUnique({where:{email}});
       if(found)await tx.$queryRaw`SELECT id FROM "User" WHERE id=${found.id}::uuid FOR SHARE`;
       const user=found?await tx.user.findUnique({where:{id:found.id},include:{membership:true}}):null;
@@ -34,7 +38,7 @@ export class CatalogueService {
       const token=`${randomUUID()}.${randomUUID()}`;
       await tx.session.create({data:{tokenHash:digest(token),userId:user.id,originId:this.originId,expiresAt:new Date(Date.now()+8*60*60_000)}});
       return {token,user:{id:user.id,name:user.name,role:user.role,mustChangePassword:user.mustChangePassword}};
-    });
+    },{timeout:15000,maxWait:10000});
     if(!result)throw new UnauthorizedException('Invalid credentials or sign-in temporarily limited');
     return result;
   }
@@ -59,13 +63,12 @@ export class CatalogueService {
 
   async catalogue(user: User): Promise<import('@dayari/contracts').Catalogue> {
     requireCapability(user,'CATALOGUE_READ');
-    const [products, suppliers, skus, locations, sourcings] = await this.db.$transaction([
-      this.db.product.findMany({ where: { originId: this.originId }, orderBy: { createdAt: 'desc' }, include: { publicIdentity: true, variants: true, attributes: { include: { values: true } } } }),
-      this.db.supplier.findMany({ where: { originId: this.originId }, orderBy: { name: 'asc' }, include: { sources: { include: { skuPrefix: true } } } }),
-      this.db.supplierVariantSku.findMany({ where: { originId: this.originId }, orderBy: { fullCode: 'asc' }, include: { variant: { include: { product: true } }, sourcing: { include: { source: { include: { supplier: true } } } } } }),
-      this.db.locationRegistry.findMany({ orderBy: { name: 'asc' } }),
-      this.db.productSourcing.findMany({ where: { originId: this.originId }, select: { sourceId: true, productId: true, baseCode: true } }),
-    ]);
+    return this.db.$transaction(async tx => {
+      const products=await tx.product.findMany({where:{originId:this.originId},orderBy:{createdAt:'desc'},include:{publicIdentity:true,variants:true,attributes:{include:{values:true}}}});
+      const suppliers=await tx.supplier.findMany({where:{originId:this.originId},orderBy:{name:'asc'},include:{sources:{include:{skuPrefix:true}}}});
+      const skus=await tx.supplierVariantSku.findMany({where:{originId:this.originId},orderBy:{fullCode:'asc'},include:{variant:{include:{product:true}},sourcing:{include:{source:{include:{supplier:true}}}}}});
+      const locations=await tx.locationRegistry.findMany({orderBy:{name:'asc'}});
+      const sourcings=await tx.productSourcing.findMany({where:{originId:this.originId},select:{sourceId:true,productId:true,baseCode:true}});
     // Return only the shared catalogue contract, never Prisma evidence/command metadata.
     return {
       products: products.map(product => ({ id: product.id, name: product.name, description: product.description, productCode: product.publicIdentity?.code ?? null, variants: product.variants.map(variant => ({ id: variant.id, name: variant.name, combinationKey: variant.combinationKey })), attributes: product.attributes.map(attribute => ({ id: attribute.id, name: attribute.name, values: attribute.values.map(value => ({ id: value.id, label: value.label })) })) })),
@@ -73,6 +76,7 @@ export class CatalogueService {
       skus: skus.map(sku => ({ id: sku.id, fullCode: sku.fullCode, variantId: sku.variantId, suffix: sku.suffix, variant: { name: sku.variant.name, product: { name: sku.variant.product.name } }, sourcing: { source: { id: sku.sourcing.source.id, name: sku.sourcing.source.name, supplier: { name: sku.sourcing.source.supplier.name } } } })),
       locations: locations.map(location => ({ id: location.id, name: location.name, code: location.code })), sourcings,
     };
+    },{isolationLevel:Prisma.TransactionIsolationLevel.RepeatableRead,timeout:15000,maxWait:10000});
   }
 
   async create(user: User, type: string, keyInput: unknown, input: unknown) {
@@ -89,15 +93,15 @@ export class CatalogueService {
         // First lock serializes this origin's commits and keeps the sync cursor contiguous.
         const nodes = await tx.$queryRaw<{ mode: string }[]>`SELECT "mode" FROM "OriginNode" WHERE "id" = ${this.originId}::uuid FOR UPDATE`;
         if (nodes[0]?.mode !== 'SHOP') throw new ForbiddenException('Shop origin is not provisioned');
+        // Recheck active role under lock; a previously authenticated request cannot bypass deactivation.
+        await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${user.id}::uuid FOR SHARE`;
+        const current = await tx.user.findUnique({ where: { id: user.id } });
+        if (!current?.active || current.authVersion!==user.authVersion || current.mustChangePassword || current.role !== 'ADMIN') throw new ForbiddenException();
         const prior = await tx.commandResult.findUnique({ where: { originId_actorId_commandType_key: { originId: this.originId, actorId: user.id, commandType: type, key } } });
         if (prior) {
           if (prior.requestHash !== requestHash) throw new ConflictException('Idempotency key reused with different input');
           return prior.response;
         }
-        // Recheck active role under lock; a previously authenticated request cannot bypass deactivation.
-        await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${user.id}::uuid FOR SHARE`;
-        const current = await tx.user.findUnique({ where: { id: user.id } });
-        if (!current?.active || current.authVersion!==user.authVersion || current.mustChangePassword || current.role !== 'ADMIN') throw new ForbiddenException();
         const commandId = randomUUID();
         const result = await this.insert(tx, type, data, commandId);
         const node = await tx.originNode.update({ where: { id: this.originId }, data: { nextSequence: { increment: 1 } } });

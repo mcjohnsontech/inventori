@@ -13,7 +13,7 @@ test('Production discovers usable lots and opens contextual exact identity looku
  const response=await page.request.get('/api/availability');expect(response.status()).toBe(200);const stock=await response.json();
  await expect(page.getByText('Production issuing is not enabled',{exact:false})).toBeVisible();
  expect(stock.total).toBeGreaterThan(0);const lot=accepted.lines[0];await page.getByRole('searchbox',{name:'Search usable stock'}).fill(lot.lotCode);await expect(page.getByText(product.skus[0].fullCode,{exact:true})).toBeVisible();await page.getByRole('button',{name:`Look up ${lot.lotCode}`,exact:true}).click();await expect(page.getByLabel('Product or Lot Code')).toHaveValue(lot.lotCode);await page.getByRole('button',{name:'Find code',exact:true}).click();await expect(page.getByRole('status',{name:'Code lookup result'})).toContainText(product.skus[0].fullCode);await page.getByRole('button',{name:'Usable stock',exact:true}).click();
- await page.getByRole('searchbox',{name:'Search usable stock'}).fill('');
+ await page.getByRole('searchbox',{name:'Search usable stock'}).fill('');await expect(page.getByRole('status',{name:'Loading workspace'})).toHaveCount(0);await expect(page.getByText('matching usable lots',{exact:false})).toBeVisible();
  for(const width of [320,390,768,1024,1440]){await page.setViewportSize({width,height:900});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:`test-results/production-${width}.png`});}
  await expect(page.getByText(/damaged/i)).toHaveCount(0);
  expect((await page.request.get('/api/label-print-jobs')).status()).toBe(403);

@@ -9,7 +9,8 @@ test('Admin can provision shop staff, inspect sessions and preserve directory fi
  const email=`browser-${Date.now()}@staff.test`,initialPassword=crypto.randomUUID(),newPassword=crypto.randomUUID();
  await page.getByLabel('Full name').fill('Browser Staff');await page.getByLabel('Email address',{exact:true}).fill(email);
  await page.getByLabel('Initial password',{exact:true}).fill(initialPassword);await page.getByLabel('Your current password',{exact:true}).fill(process.env.E2E_PASSWORD!);
- await page.getByRole('button',{name:'Create account',exact:true}).click();
+ const created=page.waitForResponse(response=>response.url().endsWith('/api/admin/users')&&response.request().method()==='POST');
+ await page.getByRole('button',{name:'Create account',exact:true}).click();expect((await created).status()).toBe(201);
  await expect(page.getByRole('status')).toContainText('Account saved');
  await page.getByRole('searchbox',{name:'Search staff'}).fill(email);
  await page.getByRole('button').filter({hasText:email}).click();

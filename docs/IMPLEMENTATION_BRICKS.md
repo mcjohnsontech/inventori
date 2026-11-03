@@ -1,5 +1,9 @@
 # Dayari Inventory — Implementation Bricks
 
+## Phase B — complete application systems, isolated verification
+
+Admin prerequisite milestones were verified published at b7172d3 before Phase B. Owner approved local SHOP staff administration, explicit shop membership and supervised compulsory-password-change onboarding. Milestones1–7 are committed/pushed on feat/complete-application-systems; final QA passed25 unit/62 integration/15 browser tests, typecheck/build and48 preservation checks. Final publication is recorded in the report. See complete-application-implementation-report.md for actual results and publication evidence. New account migrations009/010 are isolated-test only; operational account upgrade/enrollment remains gated. Earlier local migrations007/008 were separately authorized; this phase does not repeat or extend that authorization. Bounded Production usable discovery is authorized by Phase B; full Phase3 search/hierarchy, StockUnit/DYI:2, issuing, recovery, closing, cloud transport and deployment remain future gates.
+
 ## Phase1 human identities — authorized isolated implementation
 
 Finalized section17 explicitly authorized by owner; code/model/API/UI/backfill tests implemented. New migrations007/008 exercised only on isolated test database, no operational migration/backfill/deployment. Read phase-1-implementation-report.md for actual tests/evidence. Phase2 StockUnit/serialized receiving/DYI:2, later search/print-cart/verification and Brick6 issues remain unauthorized. Stop for Phase1 review.

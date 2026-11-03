@@ -1,4 +1,5 @@
 'use client';
+import { notifyAuthFailure } from '../../lib/api';
 import { useEffect, useRef, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { nextSupplierCode, type Catalogue, type ProductSetupInput, type SupplierSetupInput } from '@dayari/contracts';
@@ -12,7 +13,8 @@ async function saveSetup(type: string, body: unknown) {
   const key = prior?.fingerprint === fingerprint ? prior.key : crypto.randomUUID();
   sessionStorage.setItem(storageKey, JSON.stringify({ fingerprint, key }));
   const response = await fetch(`/api/catalogue/${type}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': key }, body: fingerprint });
-  const result = await response.json();
+  notifyAuthFailure(response);
+ const result = await response.json();
   if (!response.ok) {
     const message = result.message ?? result.issues?.map((issue: { message: string }) => issue.message).join('. ');
     throw new Error(typeof message === 'string' ? message : 'Check the entered details and try again.');

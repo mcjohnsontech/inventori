@@ -1,4 +1,5 @@
 'use client';
+import { notifyAuthFailure } from '../lib/api';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { publicCodeSchema, type PublicIdentityLookup } from '@dayari/contracts';
 import { Button } from './ui/button';
@@ -17,7 +18,7 @@ export function IdentityLookup({initialCode=''}:{initialCode?:string}) {
     working.current=true;setBusy(true);const ticket=++revision.current;const controller=new AbortController();request.current=controller;
     try{
       const response=await fetch(`/api/inventory/${kind==='PRODUCT'?'products':'lots'}/by-code/${parsed.data}`,{cache:'no-store',signal:controller.signal});
-      const data=await response.json();if(!response.ok)throw new Error(response.status===404?'Code not found in this shop. Check the printed code and shop location.':response.status===503?'Shop service unavailable. Reconnect and retry.':'Code lookup unavailable. Check your session and try again.');
+      notifyAuthFailure(response);const data=await response.json();if(!response.ok)throw new Error(response.status===404?'Code not found in this shop. Check the printed code and shop location.':response.status===503?'Shop service unavailable. Reconnect and retry.':'Code lookup unavailable. Check your session and try again.');
       if(ticket===revision.current)setResult(data);
     }catch(e){if(ticket===revision.current&&!controller.signal.aborted)setError((e as Error).message);}finally{if(ticket===revision.current){working.current=false;setBusy(false);}}
   }

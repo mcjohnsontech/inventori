@@ -1,7 +1,9 @@
 import { database } from '../../apps/api/src/database.js';
 import { passwordHash } from '../../apps/api/src/security.js';
 export default async function setup() {
-  const db = database(process.env.TEST_DATABASE_URL);
+  const url=process.env.TEST_DATABASE_URL;
+  if(!url||!new URL(url).pathname.endsWith('_test')||!['localhost','127.0.0.1'].includes(new URL(url).hostname))throw new Error('Browser fixtures require an explicit isolated local *_test database');
+  const db = database(url);
   try {
     await db.originNode.upsert({ where: { id: process.env.E2E_NODE_ID! }, create: { id: process.env.E2E_NODE_ID!, mode: 'SHOP' }, update: {} });
     await db.user.upsert({ where: { email: 'e2e-admin@dayari.test' }, create: { email: 'e2e-admin@dayari.test', name: 'Test Admin', role: 'ADMIN', passwordHash: passwordHash(process.env.E2E_PASSWORD!), membership:{create:{originId:process.env.E2E_NODE_ID!}} }, update: { active: true, passwordHash: passwordHash(process.env.E2E_PASSWORD!) } });

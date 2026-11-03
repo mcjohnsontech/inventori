@@ -1,7 +1,7 @@
 import { requireCapability } from './permissions.js';
 import { accountProof } from './account-proof.js';
 import { createHmac, randomUUID } from 'node:crypto';
-import { BadRequestException, ConflictException, ForbiddenException, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Prisma, type PrismaClient, type User } from '@prisma/client';
 import { idempotencyKeySchema, staffCreate, staffQuery, staffUpdate, sessionRevoke, passwordChange, type StaffSummary } from '@dayari/contracts';
 import { canonical, digest, passwordHash, verifyPassword } from './security.js';
@@ -49,7 +49,7 @@ export class AccountsService {
    await tx.outboxEvent.create({data:{originId:this.originId,originSequence:node.nextSequence,eventType:commandType,aggregateId:user.id,commandId,actorId:user.id,payload,payloadHash:digest(canonical(payload))}});
    await tx.commandResult.create({data:{id:commandId,originId:this.originId,actorId:user.id,commandType,key,requestHash:createHmac('sha256',user.passwordHash).update(data.newPassword).digest('hex'),response}});
    return response;
-  });
+  },{timeout:15000,maxWait:10000});
  }
  async command(user:User,type:'create'|'update'|'revoke',idInput:unknown,keyInput:unknown,input:unknown){
   this.admin(user);if(this.mode!=='SHOP')throw new ForbiddenException('Account writes belong to the shop');
@@ -82,6 +82,6 @@ export class AccountsService {
    await tx.auditEvent.create({data:{originId:this.originId,actorId:user.id,actorRole:actor.role,commandId,action:commandType,subjectId:subject.id,snapshot:evidence}});
    await tx.outboxEvent.create({data:{originId:this.originId,originSequence:node.nextSequence,eventType:commandType,aggregateId:subject.id,commandId,actorId:user.id,payload:evidence,payloadHash:digest(canonical(evidence))}});
    await tx.commandResult.create({data:{id:commandId,originId:this.originId,actorId:user.id,commandType,key,requestHash,response}});return response;
-  });}catch(error){if(error instanceof Prisma.PrismaClientKnownRequestError&&error.code==='P2002')throw new ConflictException('An account with this email already exists');throw error;}
+  },{timeout:15000,maxWait:10000});}catch(error){if(error instanceof Prisma.PrismaClientKnownRequestError&&error.code==='P2002')throw new ConflictException('An account with this email already exists');throw error;}
  }
 }

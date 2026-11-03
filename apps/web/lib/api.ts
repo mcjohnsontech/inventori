@@ -1,12 +1,13 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
 
+export function notifyAuthFailure(response:Response){if(response.status===401)window.dispatchEvent(new Event('dayari:session-expired'));}
 export class ApiError extends Error {constructor(message:string,readonly status:number){super(message);}}
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`/api/${path}`, { ...init, headers: { 'Content-Type': 'application/json', ...init?.headers } });
   const body = await response.json();
   if (!response.ok) {
-    if(response.status===401&&path!=='sessions'&&path!=='me')window.dispatchEvent(new Event('dayari:session-expired'));
+    if(path!=='sessions'&&path!=='me')notifyAuthFailure(response);
     const detail = typeof body.message === 'string' ? body.message : body.issues?.map((issue: { message: string }) => issue.message).join('. ');
     throw new ApiError(response.status === 401 && path !== 'sessions' ? 'Your session has expired. Sign out and sign in again.' : detail || 'The shop service could not complete this request. Please retry.',response.status);
   }

@@ -52,4 +52,24 @@ describe('shop staff administration',()=>{
   await db.$executeRawUnsafe('CREATE TRIGGER accounts_test_failure BEFORE INSERT ON "OutboxEvent" FOR EACH ROW EXECUTE FUNCTION accounts_test_fail()');
   try{await post('admin/users',{name:'Rollback',email,role:'PRODUCTION',initialPassword,currentPassword:password}).expect(500);expect(await db.user.findUnique({where:{email}})).toBeNull();expect((await db.originNode.findUniqueOrThrow({where:{id:originId}})).nextSequence).toBe(sequence);}finally{await db.$executeRawUnsafe('DROP TRIGGER accounts_test_failure ON "OutboxEvent"');await db.$executeRawUnsafe('DROP FUNCTION accounts_test_fail()');}
  });
+ it('bounds filters and denies foreign account mutations without revealing the account',async()=>{
+  const u=await db.user.create({data:{email:`${randomUUID()}@foreign.test`,name:'Foreign staff',role:'PRODUCTION',passwordHash:passwordHash(password),membership:{create:{originId:foreign}}}});
+  await post(`admin/users/${u.id}/update`,{name:'Changed',role:'ADMIN',active:true,currentPassword:password}).expect(404);
+  await post(`admin/users/${u.id}/revoke`,{currentPassword:password}).expect(404);
+  await get('admin/users?originId='+foreign).expect(400);await get('admin/users?page=0').expect(400);
+  const filtered=(await get('admin/users?role=PRODUCTION&active=true&q=staff').expect(200)).body;
+  expect(filtered.users.every((u:{role:string;active:boolean})=>u.role==='PRODUCTION'&&u.active)).toBe(true);
+  expect((await get('admin/users?page=100000').expect(200)).body.users).toEqual([]);
+ });
+ it('concurrent Admin demotions cannot remove the last active shop Admin',async()=>{
+  const origin=randomUUID();await db.originNode.create({data:{id:origin,mode:'SHOP'}});const local=await createApp(db,origin,'SHOP');
+  try{
+   const actors:{id:string;token:string}[]=[];
+   for(let i=0;i<2;i++){const u=await db.user.create({data:{email:`${randomUUID()}@admins.test`,name:'Concurrent Admin',role:'ADMIN',passwordHash:passwordHash(password),membership:{create:{originId:origin}}}});const login=await request(local.getHttpServer()).post('/v1/sessions').send({email:u.email,password}).expect(200);actors.push({id:u.id,token:login.body.token});}
+   const results=await Promise.all(actors.map((a,i)=>request(local.getHttpServer()).post(`/v1/admin/users/${actors[1-i]!.id}/update`).set('Authorization','Bearer '+a.token).set('Idempotency-Key',randomUUID()).send({name:'Concurrent Admin',role:'MANAGER',active:true,currentPassword:password})));
+   expect(results.filter(r=>r.status===201)).toHaveLength(1);expect(results.some(r=>[401,403].includes(r.status))).toBe(true);
+   expect(await db.user.count({where:{membership:{originId:origin},role:'ADMIN',active:true}})).toBe(1);
+   expect(await db.auditEvent.count({where:{originId:origin}})).toBe(1);expect((await db.originNode.findUniqueOrThrow({where:{id:origin}})).nextSequence).toBe(1n);
+  }finally{await local.close();}
+ });
 });

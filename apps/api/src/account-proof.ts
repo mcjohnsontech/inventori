@@ -10,6 +10,6 @@ export async function accountProof(db:PrismaClient,user:User,password:string){
   if(failures>=10)return false;
   const valid=verifyPassword(password,user.passwordHash);
   await tx.loginAttempt.create({data:{email:key,succeeded:valid}});return valid;
- });
+ },{timeout:15000,maxWait:10000});
  if(!accepted)throw new ForbiddenException('Current password was not accepted or confirmation is temporarily limited');
 }

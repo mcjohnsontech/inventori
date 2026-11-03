@@ -1,4 +1,5 @@
  'use client';
+import { notifyAuthFailure } from '../../lib/api';
 import { useEffect, useRef, useState } from 'react';
 import { lagosDate, receiptSchema, type AcceptedReceipt, type OperationalStock, type ReceivingOptions } from '@dayari/contracts';
 import { LabelWorkspace } from '../labels/label-workspace';
@@ -10,6 +11,7 @@ import { WizardShell } from '../catalogue/wizard-shell';
 
 async function api(path: string, init?: RequestInit) {
  const response = await fetch(`/api/${path}`, init);
+ notifyAuthFailure(response);
  const result = await response.json();
  if (!response.ok) throw new Error(typeof result.message === 'string' ? result.message : 'Check the receiving details and try again.');
  return result;
