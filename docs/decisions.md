@@ -1,5 +1,9 @@
 # Decisions and approval register
 
+## Phase B account policies — approved 3 November 2026
+
+Owner explicitly approved the three targeted account questions: SHOP Admin manages staff assigned to that shop, existing three roles only, transactional/audited commands, no cloud account writes; block self-demotion/self-deactivation and removal of last active Admin. Supervised Admin-supplied strong initial password requires first-login change; password/role/status changes revoke all sessions. Admin reset/email/SMS recovery remains deferred. Explicit membership isolates accounts; unmapped accounts gain no automatic access. Additive migration and enrollment exercised only on isolated fixtures; operational account mapping/migration remains separately gated. This resolves O5/B09 only for the local account-management scope; stock approvals, cloud revocation/sync and recovery authority remain open. See complete-application-implementation-plan.md and application-permissions.md.
+
 ## Local schema upgrade authorization —3 November2026
 
 Owner explicitly approved migrations007/008 to resolve the running local app/database mismatch. Applied together with the API paused, verified all30 existing tables unchanged, empty identity sidecars/no backfill and consistent ledger, then restarted API and verified authenticated local routes200. This supersedes the prior operational-migration restriction for this local schema upgrade only. No production deployment/backfill/Phase2 authorization. See local-phase-1-upgrade.md.
