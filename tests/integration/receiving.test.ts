@@ -46,6 +46,22 @@ describe('immutable receiving ledger (FR-01/03/12/14/17/19/23/24)', () => {
   expect(balances.lots.find((x:any)=>x.skuId===brown)).toMatchObject({usable:'20',damaged:'0'});
   expect(balances.lots.find((x:any)=>x.skuId===pen)).toMatchObject({usable:'12',damaged:'1'});
  });
+ it('returns bounded lot provenance only to operational roles in the current origin', async () => {
+  const id = accepted.lines[0].lotId;
+  await request(app.getHttpServer()).get(`/v1/stock/lots/${id}`).expect(401);
+  for (const token of [admin, manager]) {
+   const result = (await read(`stock/lots/${id}`, token).expect(200)).body;
+   expect(result.receiptId).toBe(accepted.id);
+   expect(result.movements.map((row:any) => [row.toState, row.quantity]).sort()).toEqual([['D','2'],['U','30']]);
+   expect(JSON.stringify(result)).not.toMatch(/invoice|damageReason|snapshot|password|actorId|commandId/);
+  }
+  await read(`stock/lots/${id}`, production).expect(403);
+  await read(`stock/lots/${randomUUID()}`).expect(404);
+  await read('stock/lots/not-a-uuid').expect(400);
+  const foreign = randomUUID(); await db.originNode.create({data:{id:foreign,mode:'SHOP'}});
+  const foreignApp = await createApp(db, foreign, 'SHOP');
+  try { await request(foreignApp.getHttpServer()).get(`/v1/stock/lots/${id}`).set('Authorization',`Bearer ${admin}`).expect(404); } finally { await foreignApp.close(); }
+ });
  it('keeps repeat deliveries and other supplier stock distinct with correct product/SKU aggregates',async()=>{
   const next=(await post('receipts',receipt([{skuId:red,usableQuantity:5,damagedQuantity:0,damageReason:''}])).expect(201)).body;
   const other=(await post('receipts',{sourceId:otherSource,deliveredOn:'2019-02-01',lines:[{skuId:otherRed,usableQuantity:10,damagedQuantity:0}]}).expect(201)).body;

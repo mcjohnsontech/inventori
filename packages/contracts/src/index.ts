@@ -99,3 +99,6 @@ export type OperationalStock = { asOf: string; lots: { lotId: string; lotCode?: 
 export * from './labels.js';
 
 export * from './public-identities.js';
+
+// Bounded operational provenance: no security/audit snapshots or valuation fields.
+export type LotEvidence = { lotId: string; receiptId: string; deliveredOn: string; acceptedAt: string; originSequence: string; movements: { id: string; fromState: string; toState: string; quantity: string }[] };

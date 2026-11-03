@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Prisma, type PrismaClient, type User } from '@prisma/client';
 import { z, type ZodType } from 'zod';
-import { batchCode, idempotencyKeySchema, lagosDate, receiptSchema, type AcceptedReceipt, type OperationalStock } from '@dayari/contracts';
+import { batchCode, idempotencyKeySchema, lagosDate, receiptSchema, type AcceptedReceipt, type LotEvidence, type OperationalStock } from '@dayari/contracts';
 import { canonical, digest } from './security.js';
 
 type Reader = Prisma.TransactionClient;
@@ -48,6 +48,20 @@ export class ReceivingService {
     return { id, batch: { id: batch.id, originId: batch.originId, publicCode: batch.publicCode, deliveredOn: batch.deliveredOn.toISOString().slice(0, 10), acceptedAt: batch.acceptedAt.toISOString(), numberedOn: batch.numberedOn.toISOString().slice(0, 10), invoiceReference: batch.invoiceReference, supplierName: (batch.snapshot as { supplierName: string }).supplierName, sourceName: (batch.snapshot as { sourceName: string }).sourceName }, originSequence: transaction.originSequence.toString(), lines: lines.map(line => ({ lotCode: lotIdentities.find(i => i.lotId === line.lotId)?.code ?? null, productCode: productIdentities.find(i => i.productId === (line.snapshot as {productId:string}).productId)?.code ?? null, id: line.id, skuId: line.skuId, lotId: line.lotId, usableQuantity: line.usableQuantity.toString(), damagedQuantity: line.damagedQuantity.toString(), totalQuantity: line.totalQuantity.toString(), damageReason: line.damageReason, fullCode: (line.snapshot as { fullCode: string }).fullCode, productId: (line.snapshot as { productId: string }).productId, productName: (line.snapshot as { productName: string }).productName, variantName: (line.snapshot as { variantName: string }).variantName })), totals: { usable: sum('usableQuantity'), damaged: sum('damagedQuantity'), delivered: sum('totalQuantity') } };
   }
   async get(user: User, id: string) { this.allow(user); return this.read(this.db, parse(idempotencyKeySchema, id)); }
+  async lotEvidence(user: User, input: string): Promise<LotEvidence> {
+    this.allow(user);
+    const id = parse(idempotencyKeySchema, input);
+    return this.db.$transaction(async tx => {
+      const lot = await tx.stockLot.findUnique({ where: { id } });
+      if (!lot || lot.originId !== this.originId) throw new NotFoundException('Stock lot not found');
+      const line = await tx.receiptLine.findUniqueOrThrow({ where: { lotId: id } });
+      const receipt = await tx.receipt.findUniqueOrThrow({ where: { id: line.receiptId } });
+      const batch = await tx.deliveryBatch.findUniqueOrThrow({ where: { id: lot.batchId } });
+      const transaction = await tx.stockTransaction.findUniqueOrThrow({ where: { id: receipt.transactionId } });
+      const movements = await tx.stockMovement.findMany({ where: { lotId: id, transactionId: transaction.id }, orderBy: { toState: 'asc' } });
+      return { lotId: id, receiptId: receipt.id, deliveredOn: batch.deliveredOn.toISOString().slice(0, 10), acceptedAt: transaction.recordedAt.toISOString(), originSequence: transaction.originSequence.toString(), movements: movements.map(movement => ({ id: movement.id, fromState: movement.fromState, toState: movement.toState, quantity: movement.quantity.toString() })) };
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
+  }
   async stock(user: User, query: unknown): Promise<OperationalStock> {
     this.allow(user);
     const uuid = z.uuid();

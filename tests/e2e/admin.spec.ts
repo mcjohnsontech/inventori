@@ -15,6 +15,15 @@ test('workspace navigation is usable across shop screen sizes', async ({ page })
   await expect(page.getByText('Registered products', { exact: true })).toBeVisible();
   await page.screenshot({ path: 'test-results/admin-dashboard-1440.png' });
   await page.getByRole('button', { name: 'Catalogue', exact: true }).click();
+  await page.getByRole('button', { name: 'Suppliers & sources', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Suppliers & sources', exact: true })).toBeVisible();
+  await page.getByLabel('Search suppliers', { exact: true }).fill('no-such-supplier-xyz');
+  await expect(page.getByRole('heading', { name: 'No matching suppliers' })).toBeVisible();
+  await page.getByRole('button', { name: 'Inventory', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Inventory', exact: true })).toBeVisible();
+  await page.getByLabel('Search inventory', { exact: true }).fill('no-such-stock-xyz');
+  await expect(page.getByRole('heading', { name: 'No stock matches this view' })).toBeVisible();
+  await page.getByRole('button', { name: 'Catalogue', exact: true }).click();
   for (const width of [1440, 1024, 768, 390, 320]) {
     await page.setViewportSize({ width, height: 900 });
     if (width < 1024) await page.getByRole('button', { name: 'Open navigation' }).click();

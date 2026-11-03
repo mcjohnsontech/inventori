@@ -32,6 +32,7 @@ class ApiController {
   @Get('receiving/options') async receivingOptions(@Headers('authorization') auth?: string) { return this.receiving.options(await this.service.actor(this.token(auth))); }
   @Get('receipts') async receipts(@Headers('authorization') auth?: string) { return this.receiving.list(await this.service.actor(this.token(auth))); }
   @Get('receipts/:id') async receipt(@Param('id') id: string, @Headers('authorization') auth?: string) { return this.receiving.get(await this.service.actor(this.token(auth)), id); }
+  @Get('stock/lots/:id') async lotEvidence(@Param('id') id: string, @Headers('authorization') auth?: string) { return this.receiving.lotEvidence(await this.service.actor(this.token(auth)), id); }
   @Get('stock') async stock(@Query() query: unknown, @Headers('authorization') auth?: string) { return this.receiving.stock(await this.service.actor(this.token(auth)), query); }
   @Post('receipts') async receive(@Headers('authorization') auth: string | undefined, @Headers('idempotency-key') key: string | undefined, @Body() body: unknown) { return this.receiving.create(await this.service.actor(this.token(auth)), key, body); }
   @Post('qr/resolve') @HttpCode(200) async resolveQr(@Headers('authorization') auth:string|undefined,@Body() body:unknown){return this.labels.resolve(await this.service.actor(this.token(auth)),body);}
