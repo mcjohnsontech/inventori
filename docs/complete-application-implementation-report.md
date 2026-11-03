@@ -1,6 +1,6 @@
 # Phase B implementation report
 
-Status: implementation verified; final publication is recorded below. No operational migrations, enrollment, deployment or operational stock mutations performed.
+Status: completed and published for owner review. No operational migrations, enrollment, deployment or operational stock mutations performed.
 
 ## Milestone 1 — audit
 
@@ -142,7 +142,7 @@ Final complete browser run: **15/15 passed**. Final production build: **passed**
 
 ## GitHub milestone publication
 
-All milestones use branch `feat/complete-application-systems`. M1–M7 pushes were verified at completion; M8 publication is filled after its completion commit is pushed.
+All eight completion commits were pushed on `feat/complete-application-systems`, with remote SHAs verified at each milestone. No merge or deployment was performed.
 
 <!-- BEGIN APPLICATION MILESTONES -->
 | Milestone | Commit message | SHA | Branch | GitHub commit | Checks | Push |
@@ -154,7 +154,7 @@ All milestones use branch `feat/complete-application-systems`. M1–M7 pushes we
 | 5. Inventory Manager | `feat(manager): complete manager workspace` | `1c8a09d` | `feat/complete-application-systems` | [View](https://github.com/mcjohnsontech/inventori/commit/1c8a09d48738ad570368102a52d1765b40d4743a) | Manager/receiving2 browser; final viewport1; typecheck/build | Verified |
 | 6. Production | `feat(production): complete production workspace` | `8224593` | `feat/complete-application-systems` | [View](https://github.com/mcjohnsontech/inventori/commit/8224593316f2e0e9397ac9c1ab3189a554cece20) | 24 unit;2 integration;3 browser + final1; typecheck/build | Verified |
 | 7. Shared pages/reporting | `feat(app): complete shared pages and reporting` | `55e711f` | `feat/complete-application-systems` | [View](https://github.com/mcjohnsontech/inventori/commit/55e711f3737cb80dd4f967d436d08026afba0ea6) | Shared browser1; typecheck/build | Verified |
-| 8. Final QA | `test(app): verify complete application and security` | `Pending` | `feat/complete-application-systems` | Pending | 25 unit;62 integration;15 browser; typecheck/build;48 preservation | Publication pending |
+| 8. Final QA | `test(app): verify complete application and security` | `aa2d804` | `feat/complete-application-systems` | [View](https://github.com/mcjohnsontech/inventori/commit/aa2d804df3fcec32e2c81ec32eddaeaed5a52c11) | 25 unit;62 integration;15 browser; typecheck/build;48 preservation | Verified |
 <!-- END APPLICATION MILESTONES -->
 
 ## Files changed
@@ -247,3 +247,5 @@ Repository-relative paths for the complete Phase B change set (generated Next en
 - `tests/unit/availability.test.ts`
 - `tests/unit/permissions.test.ts`
 - `tests/unit/schema-readiness.test.ts`
+
+Final QA completion commit: `aa2d804df3fcec32e2c81ec32eddaeaed5a52c11`. This documentation-only publication attestation records its already verified push; it changes no application or test code.
