@@ -15,7 +15,7 @@ const variants = {
   secondary:
     'border border-black/15 bg-white text-ink hover:border-black/25 hover:bg-surface-muted focus-visible:outline-brand',
   ghost: 'text-grey-2 hover:bg-surface-muted hover:text-ink focus-visible:outline-brand',
-  danger: 'bg-danger text-white hover:bg-[#a5301f] focus-visible:outline-danger',
+  danger: 'bg-danger text-white hover:bg-danger-dark focus-visible:outline-danger',
 };
 
 const sizes = {
