@@ -1,6 +1,6 @@
 # Admin experience implementation plan
 
-Status: audit complete; implementation pending. Scope: existing authorized capabilities only.
+Status: all seven implementation stages completed and verified; publication evidence is recorded in admin-experience-implementation-report.md. Scope: existing authorized capabilities only.
 
 ## Audit and capability inventory
 

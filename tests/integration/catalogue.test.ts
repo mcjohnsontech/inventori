@@ -55,6 +55,7 @@ describe('catalogue vertical slice against PostgreSQL (FR-01,17–19,23–24)', 
     try {
       const response = await request(foreignApp.getHttpServer()).post('/v1/catalogue/products').set('Authorization', `Bearer ${token}`).set('Idempotency-Key', randomUUID()).send({ name: `Foreign ${foreignOrigin}` }).expect(201);
       const local = await request(app.getHttpServer()).get('/v1/catalogue').set('Authorization', `Bearer ${token}`).expect(200);
+      expect(JSON.stringify(local.body)).not.toMatch(/"commandId"|"actorId"|"publicIdentity"|"passwordHash"/);
       expect(local.body.products.some((product: {id:string}) => product.id === response.body.id)).toBe(false);
     } finally { await foreignApp.close(); }
   });

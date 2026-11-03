@@ -115,3 +115,16 @@ button, input, select, textarea { font-family: inherit; }
 .settings-list { display: grid; gap: 20px; }
 .settings-list dt { font-size: 11px; color: #7a8771; margin-bottom: 7px; }
 .settings-list dd { font-size: 13px; font-weight: 600; }
+
+.page, dialog, .surface, .stock-card { overflow-wrap: anywhere; }
+@media (max-width: 480px) { input, select, textarea { font-size: 16px; } .search-field svg { top: 15px; } .search-field input { font-size: 14px; } }
+
+.page-actions > button { white-space: nowrap; }
+.responsive-table table { min-width: 540px; }
+
+.wizard-footer { flex-wrap: wrap; }
+.wizard-footer > button { white-space: nowrap; }
+.wizard-footer > button:last-child { margin-left: auto; }
+@media (max-width: 639px) { .wizard-dialog { width: 100%; max-width: 100%; min-height: 100dvh; max-height: 100dvh; border-radius: 0; } }
+
+@media (max-width: 639px) { .stock-filter.is-collapsed { display: none; } }

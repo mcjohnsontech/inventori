@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { Search, PackageOpen } from 'lucide-react';
 import { Button } from './button';
 export function PageHeader({ eyebrow, title, description, actions }: { eyebrow?: string; title: string; description: string; actions?: ReactNode }) {
-  return <div className="page-header"><div>{eyebrow && <p className="eyebrow">{eyebrow}</p>}<h1>{title}</h1><p className="page-description">{description}</p></div>{actions && <div className="page-actions">{actions}</div>}</div>;
+  return <div className="page-header"><div>{eyebrow && <p className="eyebrow">{eyebrow}</p>}<h1 tabIndex={-1} className="outline-none">{title}</h1><p className="page-description">{description}</p></div>{actions && <div className="page-actions">{actions}</div>}</div>;
 }
 export function SearchField({ value, onChange, label = 'Search', placeholder = 'Search by name or code…' }: { value: string; onChange: (value: string) => void; label?: string; placeholder?: string }) {
   return <label className="search-field"><span className="sr-only">{label}</span><Search size={16} aria-hidden="true" /><input type="search" value={value} onChange={event => onChange(event.target.value)} placeholder={placeholder} /></label>;

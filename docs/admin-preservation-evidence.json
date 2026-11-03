@@ -1,0 +1,108 @@
+{
+  "baseline": "cc95abe113a4b96f9b763d7f475625644b030f2e",
+  "evidence": "Source comparison only; no operational database fingerprint claim",
+  "checks": [
+    {
+      "file": "prisma/schema.prisma",
+      "unchanged": true,
+      "sha256": "40ad6a35da31716c5258b6af6a72222af2d2c024d35a1cbf5c10917a5ce34523"
+    },
+    {
+      "file": "package.json",
+      "unchanged": true,
+      "sha256": "2b70456d9928d06c288b1bd29aff53832893177e60a8f8f844e55dc343e177ae"
+    },
+    {
+      "file": "package-lock.json",
+      "unchanged": true,
+      "sha256": "e1b97fc65e5c080ec5495b5553cd84929100970d9894c11560857e166d6326ce"
+    },
+    {
+      "file": "apps/api/src/labels.service.ts",
+      "unchanged": true,
+      "sha256": "0d48e871ca237c3160d0d0c64e136fbef76326276b2776ccd290fee19e4fb2e6"
+    },
+    {
+      "file": "apps/api/src/security.ts",
+      "unchanged": true,
+      "sha256": "b58b6751ef651f0ac72d8c5f552060138565d77844e6f7208dd43d59724aaa95"
+    },
+    {
+      "file": "apps/api/src/public-code.ts",
+      "unchanged": true,
+      "sha256": "911e9adf9a074d562890720cbf25b47969c0f22111b06a1a641db529661cda17"
+    },
+    {
+      "file": "prisma/migrations/202611020001_catalogue_foundation/migration.sql",
+      "unchanged": true,
+      "sha256": "4e0795c6670c9f4288b43fbb44477f264dc05675b13e6ec33c4c016791688a35"
+    },
+    {
+      "file": "prisma/migrations/202611020002_supplier_code_identity/migration.sql",
+      "unchanged": true,
+      "sha256": "b653e4e877125bf707a2388dc046989034ecaf8c52c80fce82f238068c8da0dd"
+    },
+    {
+      "file": "prisma/migrations/202611020003_progressive_catalogue/migration.sql",
+      "unchanged": true,
+      "sha256": "184961c7a4478d87b33cfa50e6c9d1f0c24f1d86950b3d62a16c3f58e7fc15aa"
+    },
+    {
+      "file": "prisma/migrations/202611020004_receiving_ledger/migration.sql",
+      "unchanged": true,
+      "sha256": "f8ea087ff693573a3b56e41bf6c632d2df6a9255020237b00400747fee893bca"
+    },
+    {
+      "file": "prisma/migrations/202611030005_qr_labels/migration.sql",
+      "unchanged": true,
+      "sha256": "bbb394ff4a89a5c0ad8cabd05b3b0bb21d547f01a300bc499ed659d5800311bc"
+    },
+    {
+      "file": "prisma/migrations/202611030006_label_evidence_guards/migration.sql",
+      "unchanged": true,
+      "sha256": "a39ee419650247444cdd3b60682d00d2d2a4077cdf9175ec08cc6eaaa85ebd74"
+    },
+    {
+      "file": "prisma/migrations/202611030007_public_identities/migration.sql",
+      "unchanged": true,
+      "sha256": "1f0899609c872a783632063a8649d6ca0d2c7e7a0c72127c29ba1b46524731ef"
+    },
+    {
+      "file": "prisma/migrations/202611030008_public_identity_guard_record/migration.sql",
+      "unchanged": true,
+      "sha256": "0074124d028e5f8415aa1ecaa463ff95d48d58ccb1e157c2427dfa27bbee084f"
+    },
+    {
+      "file": "apps/api/src/receiving.service.ts",
+      "region": "create command and following helpers",
+      "unchanged": true,
+      "sha256": "9e4a7ad0e4092fe4baaaeb5bd805456da19249902fa3bc4fe0f139675d97aa4b"
+    },
+    {
+      "file": "apps/api/src/catalogue.service.ts",
+      "region": "create command and following helpers",
+      "unchanged": true,
+      "sha256": "4c995926ab7a2d777d8488c86d38394c1df2907c3f58649ba32df12f8f18416a"
+    },
+    {
+      "file": "apps/api/src/label-pdf.ts",
+      "unchanged": true,
+      "sha256": "69d37a0a2485e468c3baa8c68482b49d722a8c0613e0da9e81a9f80889478fb2"
+    },
+    {
+      "file": "apps/api/src/catalogue-setup.ts",
+      "unchanged": true,
+      "sha256": "fd11f8d277beca64e6af4bca72cd81d5b13da033456f113eb622d70e0368255e"
+    },
+    {
+      "file": "apps/api/src/public-identities.service.ts",
+      "unchanged": true,
+      "sha256": "b766898ed0850e494a908a4fd7758f746288a72122123058bf7b3f7d6340996c"
+    },
+    {
+      "file": "apps/api/src/product-code.ts",
+      "unchanged": true,
+      "sha256": "704cd786c7d048bad342921ad35cf609656da014b267f68528611d5c61ea018d"
+    }
+  ]
+}

@@ -128,3 +128,18 @@ FR-01/03/12: immutable batches/receipts, multi-product/variant usable+damaged in
 ## Brick 5B software verification scope
 
 FR-02/20: local genuine QR, accepted-quantity per-item PDF labels, exact origin/lot lookup and read-only manual fallback implemented. FR-14: Admin/Manager label administration, minimal Production usable-availability lookup, receiving/print denial enforced server-side. FR-23: immutable snapshots and reprints preserve SKU/batch/lot identity. AT06/20: planned tests include final-PDF independent decoding, reprints, malformed/unknown versions and stock-row isolation; actual executed results are in qr-label-implementation-report.md. Physical printer/scanner/media acceptance remains OPEN; do not mark production QR reliability complete. FR-04/05/21 production issues and cloud synchronization remain unimplemented.
+
+
+## Admin experience refinement — existing-capability integration
+
+| Owner brief / existing requirement | Implementation | Acceptance evidence |
+| --- | --- | --- |
+| Coherent Admin navigation / role separation | Shared responsive shell, view/detail fragments, existing server role guards | admin.spec.ts; admin-journeys.spec.ts; catalogue/receiving/label integration denial cases |
+| Shared parent / configurable variants / immutable SKU | Catalogue detail, source relationships, existing progressive creation/extension entry points | progressive.spec.ts; admin-journeys.spec.ts; catalogue integration; preservation evidence |
+| Receiving, ledger correctness and replay | Focused wizard, shared validation, preserved retry key, accepted history and projections | receiving.spec.ts; receiving integration and SQL invariants |
+| Exact public identity and lot provenance | Product/Lot Code display, stock filters and bounded stock/lots/:id read | public-identities.spec.ts; receiving provenance auth/origin tests |
+| Existing QR/label semantics | DYI:1 lookup, camera/HID/manual, immutable A4 PDF/reprint evidence | labels.spec.ts; labels integration; unchanged PDF/service fingerprints |
+| Errors, responsiveness and accessibility | Retry/cancellation, empty/loading/error states, native dialogs, skip/focus/mobile navigation | admin responsive tests across 320/390/768/1024/1440; screenshots |
+| Honest supported administration | Read-only account and Admin-only minimal shop info | catalogue integration admin/shop allowlist; admin.spec.ts |
+
+Actual final results and limitations are recorded in admin-experience-implementation-report.md. This adds no StockUnit, DYI:2, production mutation, closing or cloud transport.

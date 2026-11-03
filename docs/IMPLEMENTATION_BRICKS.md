@@ -67,3 +67,8 @@ Catalogue and variant extension are complete. Owner approved ledger plus receivi
 ## Brick 5B status — 3 November 2026
 
 Owner authorized local implementation of QR identity, A4 PDFs, print evidence/reprints and limited Production lookup. Software implementation and automated verification are recorded in qr-label-implementation-report.md. Physical A4 printer/media/device acceptance has NOT been performed; Brick5B is not production-ready. No thermal adapter, production issue/deduction, recovery, closing or cloud transport is included. Stop for review and physical trials before the next inventory workflow.
+
+
+## Admin experience cross-cutting milestone — 3 November 2026
+
+Owner authorized a complete UX/integration refinement around implemented catalogue, receiving/ledger, lot QR/PDF and Phase1 identities, with seven separately published Git milestones. Implementation adds responsive operational workspaces and safe bounded reads; existing mutation services/schema remain unchanged. See admin-experience-implementation-report.md for exact status, tests, files and publication evidence. This is not Phase2 authorization and does not complete physical printer acceptance, unit serialization, production workflows, closing or sync. Stop for owner review after the seventh completion commit.

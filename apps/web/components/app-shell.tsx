@@ -37,7 +37,7 @@ export function AppShell({ workspace, available, onNavigate, user, onLogout, bus
         <div className="shop-context"><span className="status-dot" />Local shop workspace<p>Connected through your shop service</p></div>
         <nav aria-label="Workspace" className="workspace-nav">{available.filter(key => user.role !== 'PRODUCTION' || key === 'qr' || key === 'settings').map(key => {
           const item = destinations[key]; const Icon = item.icon;
-          return <button key={key} aria-current={workspace === key ? 'page' : undefined} onClick={() => onNavigate(key)}><Icon size={18} aria-hidden="true" /><span>{item.label}</span></button>;
+          return <button key={key} aria-current={workspace === key ? 'page' : undefined} onClick={() => { setOpen(false); onNavigate(key); }}><Icon size={18} aria-hidden="true" /><span>{item.label}</span></button>;
         })}</nav>
         <div className="sidebar-footer"><p className="text-xs leading-5 text-stone-500">Stock changes only through accepted shop transactions.</p><div className="account-summary"><span className="avatar">{user.name.slice(0, 1)}</span><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{user.name}</p><p className="text-xs text-stone-500">{user.role === 'ADMIN' ? 'Administrator' : user.role === 'MANAGER' ? 'Inventory Manager' : 'Production Staff'}</p></div><button className="icon-button" aria-label="Sign out" onClick={onLogout} disabled={busy}><LogOut size={18} /></button></div></div>
       </div>

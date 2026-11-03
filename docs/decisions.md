@@ -150,3 +150,12 @@ Owner/project lead: approve or amend C01–C10 interpretation, P01–P06, stock 
 CONFIRMED user authorization: close the populated variant-set extension gap for Admins, retaining existing identities/SKUs and established suffix rules, with validation, atomicity, audit and idempotency. Implemented through explicit extension mode on product-setups. It adds combinations using all existing attributes; it does not rename variants, change the attribute structure or convert allocated STD products to options. Duplicate combinations are rejected; existing variants remain selectable in the ordinary sourcing flow. New SKU allocation affects only the selected supplier location; other suppliers can explicitly source the shared variants later.
 
 PROPOSED only: `receiving-ledger-design.md` describes seven additive tables, origin-lock transaction rules, receipt completeness guards and reconciled projections. No stock schema or receiving application was implemented. Task 3 requires explicit owner approval. B02 (batch/source/product scope), O3 (damaged intake), O6 (task-scoped Manager/Admin receiving visibility), public batch code/date rules and B06 foundation constraints remain gated there. Hardware, closing and offline Admin approval decisions remain deferred; no resolution is inferred from preparing the design.
+
+
+## Admin experience authorization and implementation — 3 November 2026
+
+**CONFIRMED by owner:** improve all existing Admin workflows, integrate supported read paths, preserve identity/ledger/idempotency/permissions, verify isolated fixtures, and publish seven separate milestone commits. No operational migration/backfill, deployment, new inventory mutation or future traceability phase is authorized.
+
+**Engineering implementation within that scope:** nine responsive workspaces; UUID-context fragment navigation; real counts without interchangeable-stock grand totals; bounded provenance read for existing Admin/Manager operational access; minimal Admin-only shop configuration; origin-filtered catalogue reads; explicit latest-100 receipt/print history limitations. No supplier/product deletion/rename, user/role administration or unrestricted audit capability is inferred.
+
+**OPEN / unchanged gates:** hardware/media physical acceptance, archival pagination/scale benchmarks, new administrative commands and later unit/production/sync phases remain separate decisions/authorizations. This refinement does not approve them.

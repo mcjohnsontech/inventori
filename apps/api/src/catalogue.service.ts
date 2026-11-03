@@ -48,7 +48,7 @@ export class CatalogueService {
     return { originId: this.originId, authority: this.mode, timeZone: 'Africa/Lagos', cloudSync: 'not-configured', observedAt: new Date().toISOString() };
   }
 
-  async catalogue(user: User) {
+  async catalogue(user: User): Promise<import('@dayari/contracts').Catalogue> {
     if (user.role === 'PRODUCTION') throw new ForbiddenException();
     const [products, suppliers, skus, locations, sourcings] = await this.db.$transaction([
       this.db.product.findMany({ where: { originId: this.originId }, orderBy: { createdAt: 'desc' }, include: { publicIdentity: true, variants: true, attributes: { include: { values: true } } } }),
@@ -57,7 +57,13 @@ export class CatalogueService {
       this.db.locationRegistry.findMany({ orderBy: { name: 'asc' } }),
       this.db.productSourcing.findMany({ where: { originId: this.originId }, select: { sourceId: true, productId: true, baseCode: true } }),
     ]);
-    return { products: products.map(p => ({ ...p, productCode: p.publicIdentity?.code ?? null })), suppliers, skus, locations, sourcings };
+    // Return only the shared catalogue contract, never Prisma evidence/command metadata.
+    return {
+      products: products.map(product => ({ id: product.id, name: product.name, description: product.description, productCode: product.publicIdentity?.code ?? null, variants: product.variants.map(variant => ({ id: variant.id, name: variant.name, combinationKey: variant.combinationKey })), attributes: product.attributes.map(attribute => ({ id: attribute.id, name: attribute.name, values: attribute.values.map(value => ({ id: value.id, label: value.label })) })) })),
+      suppliers: suppliers.map(supplier => ({ id: supplier.id, name: supplier.name, code: supplier.code, sources: supplier.sources.map(source => ({ id: source.id, name: source.name, code: source.code, skuPrefix: source.skuPrefix ? { id: source.skuPrefix.id, code: source.skuPrefix.code, registryId: source.skuPrefix.registryId } : null })) })),
+      skus: skus.map(sku => ({ id: sku.id, fullCode: sku.fullCode, variantId: sku.variantId, suffix: sku.suffix, variant: { name: sku.variant.name, product: { name: sku.variant.product.name } }, sourcing: { source: { id: sku.sourcing.source.id, name: sku.sourcing.source.name, supplier: { name: sku.sourcing.source.supplier.name } } } })),
+      locations: locations.map(location => ({ id: location.id, name: location.name, code: location.code })), sourcings,
+    };
   }
 
   async create(user: User, type: string, keyInput: unknown, input: unknown) {

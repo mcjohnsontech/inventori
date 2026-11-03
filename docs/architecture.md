@@ -110,3 +110,10 @@ ReceivingService is a separate domain service alongside CatalogueService, reusin
 ## Brick 5B local QR/label boundary
 
 LabelsService adds strict origin/StockLot read-only resolution and task-scoped manual lookup. Production receives minimal identity/usable availability only; label administration stays Admin/Manager. Immutable print manifests/lines/events reuse origin-locked command/audit/outbox transactions without any StockTransaction/Movement/Balance writes. PDFKit/qrcode render locally outside locks; versioned profile and renderer/font hashes preserve reconstruction. Next proxy serves authenticated binary PDFs. ZXing/native camera and focused HID input perform lookup only. No thermal, production deduction or cloud transport. See qr-label-implementation-report.md.
+
+
+## Admin experience refinement — 3 November 2026
+
+The owner-authorized Admin experience composes existing domain commands into nine client workspaces: overview, catalogue/details, suppliers/sources, inventory/lots, receiving, receipt history, QR lookup, lot-label printing and account/shop. A shared shell, view fragments with optional UUID context, UI state components and cancellable read hook preserve the existing Next.js/same-origin architecture. Fragments are view state, never authorization.
+
+Two additive reads expose existing data: stock/lots/:id provides bounded Admin/Manager receipt/movement provenance under repeatable read and current-origin validation; admin/shop provides minimal configuration to Admin only. Catalogue queries are narrowed to the configured origin, with the shared location registry retained. No mutation, schema, ledger, identity or role expansion. Production stays on minimal lookup/account views. Overview avoids unlike-product quantity totals; exact lot/SKU projections remain authoritative. See admin-experience-implementation-report.md and admin-preservation-evidence.json.

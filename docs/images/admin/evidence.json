@@ -1,0 +1,147 @@
+{
+  "syntheticFixturesOnly": true,
+  "browser": "Chrome via Playwright",
+  "testedWidths": [
+    320,
+    390,
+    768,
+    1024,
+    1440
+  ],
+  "workspaceScreenshotsCaptured": 45,
+  "visualReview": "All five contact sheets plus individual product/mobile receipt/inventory/dialog views inspected",
+  "curatedImages": [
+    {
+      "file": "overview-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "7c93f38e015b714de22e75776212f51d964b3e6bf5f9bdd9d8ba7ef88411c043"
+    },
+    {
+      "file": "overview-320.png",
+      "width": 320,
+      "height": 900,
+      "sha256": "bf2edd1fabed9527a9f9aa54354432c1f7b9c4fe8ffd3a1f549b59b90ee2508c"
+    },
+    {
+      "file": "catalogue-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "e6ba6181974442288b2fcf8eddf5f8abb9fca2d34277e16c8b8d29c82fb4b2a3"
+    },
+    {
+      "file": "catalogue-320.png",
+      "width": 320,
+      "height": 900,
+      "sha256": "b9c176ed009941dbe4765d6f722b7433776dd1f998cc1323a5a619e74fc0b6bc"
+    },
+    {
+      "file": "suppliers-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "3026c2b77ce6440fdbb32ffce91f0f56ddbff7700514623a874af8e534dd1288"
+    },
+    {
+      "file": "suppliers-320.png",
+      "width": 320,
+      "height": 900,
+      "sha256": "a293f1b4cb6d91d1489802dbec6811d224d68b1cf55a6c3774eb7414707d2df0"
+    },
+    {
+      "file": "inventory-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "88a6f9e91067bdc3d302658cfe60a8875438915d3f6d5ebbfb9c404cb52b53d0"
+    },
+    {
+      "file": "inventory-320.png",
+      "width": 320,
+      "height": 900,
+      "sha256": "34240f6f72470881d7185875e9d6f70d9e7b5a739de2f424c922fce322c3e35d"
+    },
+    {
+      "file": "receiving-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "3b486f8166ac7b811f1a49c6e3d40e18c5fc3793f9090cb045130458a9d47585"
+    },
+    {
+      "file": "receiving-320.png",
+      "width": 320,
+      "height": 900,
+      "sha256": "571f28d2214b7686e29a20802ac05e0ebc68cd016e41d0b3637239fec7734cf6"
+    },
+    {
+      "file": "receipts-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "5629cdf6909432b0026e56dfec8ef3be6d5c5ff186b9d781c3bdb7fb8ed4487c"
+    },
+    {
+      "file": "receipts-320.png",
+      "width": 320,
+      "height": 900,
+      "sha256": "26c8fef3844407af321e23dbbc42303772f4fcc7fcbf70ff8234c6465c5ec21f"
+    },
+    {
+      "file": "qr-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "cb4bb03ddddf58fa8818c3ff58b9eb57c79265f719d0521950bb6b95f5546870"
+    },
+    {
+      "file": "qr-320.png",
+      "width": 320,
+      "height": 900,
+      "sha256": "3308fce2064e2707d6a254d6606b952b2e4aa6fcecfe5ca680ef7ebb71cc0237"
+    },
+    {
+      "file": "labels-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "b927ff119ef9d2dde1ced05a41db2723ae0377813d9026d8622c194b67aa1987"
+    },
+    {
+      "file": "labels-320.png",
+      "width": 320,
+      "height": 900,
+      "sha256": "d63c249fd3e522fca20eb1a7a0257538eb7e663ba1ffca19e3b538f226516fbd"
+    },
+    {
+      "file": "settings-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "bb9af659bd7ebab023150491509a6e15baaaa114b49dcfb28a861f4f6be33d77"
+    },
+    {
+      "file": "settings-320.png",
+      "width": 320,
+      "height": 900,
+      "sha256": "27a7bb8323dcb4f80d4f2d682c750379c47e5a4b87623ddfc85e84dae1ca3aaa"
+    },
+    {
+      "file": "product-detail-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "5bb5d966eb9ef91bc98e20ec8554413cd8f5401fa34f365aa370b61827912058"
+    },
+    {
+      "file": "product-detail-320.png",
+      "width": 320,
+      "height": 900,
+      "sha256": "4c8b18772ad186d9a27e2fa70e2328fefb1256a9855007a1fc8dc2c0011a2128"
+    },
+    {
+      "file": "variant-selection-320.png",
+      "width": 320,
+      "height": 900,
+      "sha256": "2cfec7bd5f155b0cd05874161fbf156cdd56637a3fee1f610897e09a8be6e471"
+    },
+    {
+      "file": "variant-review-320.png",
+      "width": 320,
+      "height": 900,
+      "sha256": "a127a63e40d5e75359f283d6fec86c4f2ffb1893ca60a29271b110e6ca3eb128"
+    }
+  ]
+}
