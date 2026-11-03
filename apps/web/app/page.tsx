@@ -33,20 +33,20 @@ export default function Page() {
     const restore = () => {
       if (location.hash !== acceptedHash.current && !mayNavigate()) { history.replaceState(null, '', `${location.pathname}${acceptedHash.current}`); return; }
       acceptedHash.current = location.hash;
-      const [key = '', detail = ''] = location.hash.slice(1).split('/');
+      const [key = '', detail = '', lotDetail = ''] = location.hash.slice(1).split('/');
       setMissing(Boolean(key)&&!['help','reports','availability','users','dashboard','catalogue','suppliers','inventory','receiving','receipts','labels','qr','settings'].includes(key));
       if (['help','reports','availability', 'users', 'dashboard', 'catalogue', 'suppliers', 'inventory', 'receiving', 'receipts', 'labels', 'qr', 'settings'].includes(key)) {
         const id = /^[0-9a-f-]{36}$/i.test(detail) ? detail : '';
         setWorkspace(key as Workspace);if(key==='qr')setQrCode(/^[PL][A-Z0-9]{5}$/.test(detail)?detail:'');
         if (key === 'labels')setLabelJob(id);
         if (key === 'catalogue') setCatalogueDetail(id);
-        if (key === 'inventory') setStockProduct(id);
+        if (key === 'inventory') {setStockProduct(id);setStockLot(/^[0-9a-f-]{36}$/i.test(lotDetail)?lotDetail:'');}
         if (key === 'receipts') setReceiptContext(id);
       }
     };
     restore(); window.addEventListener('hashchange', restore); return () => window.removeEventListener('hashchange', restore);
   }, []);
-  function navigate(next: Workspace, id = '') { if (!mayNavigate()) return; const hash = `#${next}${id ? `/${id}` : ''}`; acceptedHash.current = hash; location.hash = hash; setWorkspace(next);setMissing(false);if(next==='labels')setLabelJob(id);if(next==='qr')setQrCode(id); setNotice(''); if (next === 'catalogue') setCatalogueDetail(id); if (next === 'inventory') setStockProduct(id); if (next === 'receipts') setReceiptContext(id); }
+  function navigate(next: Workspace, id = '', lotId = '') { if (!mayNavigate()) return; const hash = `#${next}${id ? `/${id}` : ''}${next==='inventory'&&id&&lotId?`/${lotId}`:''}`; acceptedHash.current = hash; location.hash = hash; setWorkspace(next);setMissing(false);if(next==='labels')setLabelJob(id);if(next==='qr')setQrCode(id); setNotice(''); if (next === 'catalogue') setCatalogueDetail(id); if (next === 'inventory') {setStockProduct(id);setStockLot(lotId);} if (next === 'receipts') setReceiptContext(id); }
   const [user, setUser] = useState<Actor | null>(null);
   const [catalogue, setCatalogue] = useState<Catalogue>({ products: [], suppliers: [], skus: [], locations: [], sourcings: [] });
   const [loading, setLoading] = useState(true);
@@ -57,6 +57,7 @@ export default function Page() {
   const [supplierContext, setSupplierContext] = useState('');
   const [productContext, setProductContext] = useState('');
   const [stockProduct, setStockProduct] = useState('');
+  const [stockLot,setStockLot]=useState('');
   const [receiptContext, setReceiptContext] = useState('');
   const [catalogueDetail, setCatalogueDetail] = useState('');
   const [catalogueReady, setCatalogueReady] = useState(false);
@@ -72,7 +73,7 @@ export default function Page() {
   async function logout() {
     if(!mayNavigate())return;
     setBusy(true);
-    try { await api('sessions/logout', { method: 'POST', body: '{}' }); sessionStorage.removeItem('dayari_pending_catalogue'); sessionStorage.removeItem('dayari_pending_supplier-setups'); sessionStorage.removeItem('dayari_pending_product-setups'); for(const key of Object.keys(sessionStorage))if(key.startsWith('dayari_label_'))sessionStorage.removeItem(key); setWorkspace('dashboard');setMissing(false);setLabelJob(''); history.replaceState(null, '', location.pathname); sessionStorage.removeItem('dayari_pending_receipt'); setUser(null); setCatalogueReady(false); setCatalogueDetail(''); setStockProduct(''); setReceiptContext(''); setCatalogue({ products: [], suppliers: [], skus: [], locations: [], sourcings: [] }); setFlow(null); setError(''); setNotice(''); } catch (failure) { setError((failure as Error).message); } finally { setBusy(false); }
+    try { await api('sessions/logout', { method: 'POST', body: '{}' }); sessionStorage.removeItem('dayari_pending_catalogue'); sessionStorage.removeItem('dayari_pending_supplier-setups'); sessionStorage.removeItem('dayari_pending_product-setups'); for(const key of Object.keys(sessionStorage))if(key.startsWith('dayari_label_'))sessionStorage.removeItem(key); setWorkspace('dashboard');setMissing(false);setLabelJob(''); history.replaceState(null, '', location.pathname); sessionStorage.removeItem('dayari_pending_receipt'); setUser(null); setCatalogueReady(false); setCatalogueDetail(''); setStockProduct('');setStockLot(''); setReceiptContext(''); setCatalogue({ products: [], suppliers: [], skus: [], locations: [], sourcings: [] }); setFlow(null); setError(''); setNotice(''); } catch (failure) { setError((failure as Error).message); } finally { setBusy(false); }
   }
   function openSupplier(id = '') { setSupplierContext(id); setError(''); setNotice(''); setFlow('supplier'); }
   function openProduct(id = '') { setProductContext(id); setError(''); setNotice(''); setFlow('product'); }
@@ -91,10 +92,10 @@ export default function Page() {
       case 'availability':return <ProductionWorkspace onScan={()=>navigate('qr')} onCode={code=>navigate('qr',code)}/>;
       case 'users':return <UsersWorkspace actorId={actor.id}/>;
       case 'settings':return <SettingsWorkspace user={actor} onPasswordChanged={passwordChanged}/>;
-      case 'dashboard':return <Dashboard catalogue={catalogue} role={actor.role as 'ADMIN'|'MANAGER'} name={actor.name} navigate={navigate} onReceipt={id=>navigate('receipts',id)}/>;
+      case 'dashboard':return <Dashboard catalogue={catalogue} role={actor.role as 'ADMIN'|'MANAGER'} name={actor.name} navigate={navigate} onInventory={(id,lotId)=>navigate('inventory',id,lotId)} onReceipt={id=>navigate('receipts',id)}/>;
       case 'qr':return <QrWorkspace initialCode={qrCode}/>;
       case 'labels':return <LabelWorkspace initialJobId={labelJob}/>;
-      case 'inventory':return <InventoryWorkspace catalogue={catalogue} initialProductId={stockProduct} onProductDetail={id=>navigate('catalogue',id)} onProductFilter={id=>navigate('inventory',id)} onReceipt={id=>navigate('receipts',id)}/>;
+      case 'inventory':return <InventoryWorkspace catalogue={catalogue} initialProductId={stockProduct} initialLotId={stockLot} onProductDetail={id=>navigate('catalogue',id)} onProductFilter={id=>navigate('inventory',id)} onReceipt={id=>navigate('receipts',id)}/>;
       case 'suppliers':return <SuppliersWorkspace catalogue={catalogue} role={actor.role} onSupplier={openSupplier} onProduct={openProduct}/>;
       case 'receipts':return <ReceiptsWorkspace initialReceiptId={receiptContext} onSelect={id=>navigate('receipts',id)} onStock={id=>navigate('inventory',id)}/>;
       case 'receiving':return <ReceivingWorkspace onHistory={()=>navigate('receipts')} onInventory={id=>navigate('inventory',id)}/>;
