@@ -105,7 +105,7 @@ export class ReceivingService {
           const nodes = await tx.$queryRaw<{ mode: string }[]>`SELECT mode FROM "OriginNode" WHERE id=${this.originId}::uuid FOR UPDATE`;
           if (nodes[0]?.mode !== 'SHOP') throw new ForbiddenException('Shop origin is not provisioned');
           await tx.$queryRaw`SELECT id FROM "User" WHERE id=${user.id}::uuid FOR SHARE`;
-          const actor = await tx.user.findUniqueOrThrow({ where: { id: user.id } }); this.allow(actor);
+          const actor = await tx.user.findUniqueOrThrow({ where: { id: user.id } }); this.allow(actor); if(actor.authVersion!==user.authVersion||actor.mustChangePassword)throw new ForbiddenException('Session security state changed');
           const prior = await tx.commandResult.findUnique({ where: { originId_actorId_commandType_key: { originId: this.originId, actorId: user.id, commandType, key } } });
           if (prior) { if (prior.requestHash !== requestHash) throw new ConflictException('Idempotency key reused with different receipt'); return prior.response; }
           const [clock] = await tx.$queryRaw<{ now: Date }[]>`SELECT clock_timestamp() AS now`;

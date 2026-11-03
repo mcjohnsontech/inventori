@@ -20,16 +20,22 @@ export class CatalogueService {
   async login(input: unknown) {
     const data = parse(loginSchema, input);
     const email = data.email.toLowerCase();
-    const attempts = await this.db.loginAttempt.count({ where: { email, createdAt: { gt: new Date(Date.now() - 15 * 60_000) }, succeeded: false } });
-    if (attempts >= 10) throw new UnauthorizedException('Too many attempts. Try again later.');
-    const user = await this.db.user.findUnique({ where: { email } });
-    const member = user ? await this.db.shopMembership.findUnique({where:{userId:user.id}}) : null;
-    const valid = verifyPassword(data.password, user?.passwordHash ?? dummyHash) && user?.active && member?.originId === this.originId;
-    await this.db.loginAttempt.create({ data: { email, succeeded: Boolean(valid) } });
-    if (!valid || !user) throw new UnauthorizedException('Invalid credentials');
-    const token = `${randomUUID()}.${randomUUID()}`;
-    await this.db.session.create({ data: { tokenHash: digest(token), userId: user.id, originId:this.originId, expiresAt: new Date(Date.now() + 8 * 60 * 60_000) } });
-    return { token, user: { id: user.id, name: user.name, role: user.role, mustChangePassword:user.mustChangePassword } };
+    const result = await this.db.$transaction(async tx => {
+      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${'login:'+email},0))::text`;
+      const attempts=await tx.loginAttempt.count({where:{email,createdAt:{gt:new Date(Date.now()-15*60_000)},succeeded:false}});
+      if(attempts>=10)return null;
+      const found=await tx.user.findUnique({where:{email}});
+      if(found)await tx.$queryRaw`SELECT id FROM "User" WHERE id=${found.id}::uuid FOR SHARE`;
+      const user=found?await tx.user.findUnique({where:{id:found.id},include:{membership:true}}):null;
+      const valid=verifyPassword(data.password,user?.passwordHash??dummyHash)&&user?.active&&user.membership?.originId===this.originId;
+      await tx.loginAttempt.create({data:{email,succeeded:Boolean(valid)}});
+      if(!valid||!user)return null;
+      const token=`${randomUUID()}.${randomUUID()}`;
+      await tx.session.create({data:{tokenHash:digest(token),userId:user.id,originId:this.originId,expiresAt:new Date(Date.now()+8*60*60_000)}});
+      return {token,user:{id:user.id,name:user.name,role:user.role,mustChangePassword:user.mustChangePassword}};
+    });
+    if(!result)throw new UnauthorizedException('Invalid credentials or sign-in temporarily limited');
+    return result;
   }
 
   async actor(token: string | undefined, allowPasswordChange = false): Promise<User> {
@@ -90,7 +96,7 @@ export class CatalogueService {
         // Recheck active role under lock; a previously authenticated request cannot bypass deactivation.
         await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${user.id}::uuid FOR SHARE`;
         const current = await tx.user.findUnique({ where: { id: user.id } });
-        if (!current?.active || current.role !== 'ADMIN') throw new ForbiddenException();
+        if (!current?.active || current.authVersion!==user.authVersion || current.mustChangePassword || current.role !== 'ADMIN') throw new ForbiddenException();
         const commandId = randomUUID();
         const result = await this.insert(tx, type, data, commandId);
         const node = await tx.originNode.update({ where: { id: this.originId }, data: { nextSequence: { increment: 1 } } });

@@ -19,3 +19,13 @@ Migration `202611030009_shop_accounts`: adds immutable explicit membership, null
 Executed: typecheck passed; full production build passed; unit suite 22/22; new account integration 5/5; full integration initially 47 passed/2 fixture errors, corrected and reran affected catalogue/accounts 19/19. Forced outbox rollback deliberately logs an expected server error. Browser account creation/detail/filter flow passed 1/1 after correcting initial-password accessible labeling. Existing pg query deprecation and NO_COLOR warnings remain. All milestone diffs reviewed; no ledger/receiving quantities/QR/PDF renderer changes. Authentication completion follows in M3; newly provisioned staff are restricted until first-change support is completed there.
 
 Published M1: `1845436d37864b6bdd4e227859cb19ecad508f2e` on `feat/complete-application-systems`; remote SHA verified.
+
+## Milestone 3 — authentication and account security
+
+Compulsory first-login change is now functional end to end. Added own safe profile/session summaries, current-password change with confirmation and strong passphrase validation, generic credential denial, persistent concurrent login/proof rate limits, forced session revocation and expiry UI. Origin/user locks serialize acceptance; a new authentication generation fences already-authenticated commands waiting behind revocation in catalogue, receiving, printing and account services. Password changes are audited atomically without credentials in evidence. A successful change ends all sessions; a lost-response operator must sign in with the new password and inspect the account rather than replay a revoked credential. Reused accepted password-change keys conflict safely. No reset delivery/recovery trust mechanism added.
+
+Additive migration `202611030010_account_generation` applied only to `dayari_test`; adds nonnegative authVersion, with no operational migration or membership enrollment. Existing 001–009 SQL remains unchanged.
+
+Executed: account/auth integration 9/9; unit 22/22; final typecheck and production build passed; extended browser provisioning → mandatory change → sign-in 1/1. Initial advisory-lock result failed Prisma void deserialization and was corrected with text casting; initial build caught a Windows encoding error, corrected before final successful build. Test-only concurrent Supertest requests emit listener warnings; existing pg/NO_COLOR warnings persist. No stock schema or ledger quantity changes.
+
+Published M2: `54a01295937ebfc93c687ef0b9b1a11e6edf7d3c`; remote SHA verified.

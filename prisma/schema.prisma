@@ -24,6 +24,7 @@ model User {
   passwordHash String
   active       Boolean @default(true)
   mustChangePassword Boolean @default(false)
+  authVersion Int @default(0)
   createdAt    DateTime @default(now()) @db.Timestamptz(6)
   sessions     Session[]
   audits       AuditEvent[]

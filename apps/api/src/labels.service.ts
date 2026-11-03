@@ -49,7 +49,7 @@ export class LabelsService {
   this.printRole(user);if(this.mode!=='SHOP')throw new ForbiddenException('Print metadata writes belong to the shop');const key=parse(idempotencyKeySchema,keyInput),requestHash=digest(canonical(input));
   for(let attempt=0;;attempt++)try{return await this.db.$transaction(async tx=>{
    const nodes=await tx.$queryRaw<{mode:string}[]>`SELECT mode FROM "OriginNode" WHERE id=${this.originId}::uuid FOR UPDATE`;if(nodes[0]?.mode!=='SHOP')throw new ForbiddenException();
-   await tx.$queryRaw`SELECT id FROM "User" WHERE id=${user.id}::uuid FOR SHARE`;const actor=await tx.user.findUniqueOrThrow({where:{id:user.id}});this.printRole(actor);
+   await tx.$queryRaw`SELECT id FROM "User" WHERE id=${user.id}::uuid FOR SHARE`;const actor=await tx.user.findUniqueOrThrow({where:{id:user.id}});this.printRole(actor);if(actor.authVersion!==user.authVersion||actor.mustChangePassword)throw new ForbiddenException('Session security state changed');
    const prior=await tx.commandResult.findUnique({where:{originId_actorId_commandType_key:{originId:this.originId,actorId:user.id,commandType:type,key}}});if(prior){if(prior.requestHash!==requestHash)throw new ConflictException('Idempotency key reused with different label request');return prior.response;}
    const commandId=randomUUID(),response=json(await work(tx,commandId));const node=await tx.originNode.update({where:{id:this.originId},data:{nextSequence:{increment:1}}});const subjectId=(response as {id:string}).id;const payload=json({subject:response,actorId:user.id,actorRole:actor.role,commandId});
    await tx.auditEvent.create({data:{originId:this.originId,actorId:user.id,actorRole:actor.role,commandId,action:type,subjectId,snapshot:payload}});

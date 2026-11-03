@@ -6,9 +6,9 @@ test('Admin can provision shop staff, inspect sessions and preserve directory fi
  await page.getByRole('navigation',{name:'Workspace'}).getByRole('button',{name:'Users & access'}).click();
  await expect(page.getByRole('heading',{name:'Users & access'})).toBeVisible();
  await page.getByRole('button',{name:'Create staff account'}).click();
- const email=`browser-${Date.now()}@staff.test`;
+ const email=`browser-${Date.now()}@staff.test`,initialPassword=crypto.randomUUID(),newPassword=crypto.randomUUID();
  await page.getByLabel('Full name').fill('Browser Staff');await page.getByLabel('Email address',{exact:true}).fill(email);
- await page.getByLabel('Initial password',{exact:true}).fill(crypto.randomUUID());await page.getByLabel('Your current password',{exact:true}).fill(process.env.E2E_PASSWORD!);
+ await page.getByLabel('Initial password',{exact:true}).fill(initialPassword);await page.getByLabel('Your current password',{exact:true}).fill(process.env.E2E_PASSWORD!);
  await page.getByRole('button',{name:'Create account',exact:true}).click();
  await expect(page.getByRole('status')).toContainText('Account saved');
  await page.getByRole('searchbox',{name:'Search staff'}).fill(email);
@@ -17,4 +17,13 @@ test('Admin can provision shop staff, inspect sessions and preserve directory fi
  await expect(page.getByText('First password change pending.',{exact:false})).toBeVisible();
  await page.getByRole('button',{name:'Back to staff directory'}).click();
  await expect(page.getByRole('searchbox',{name:'Search staff'})).toHaveValue(email);
+ await page.getByRole('button',{name:'Sign out',exact:true}).click();
+ await page.getByLabel('Email address').fill(email);await page.getByLabel('Password',{exact:true}).fill(initialPassword);await page.getByRole('button',{name:'Sign in',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Set your own password'})).toBeVisible();
+ await expect(page.getByRole('navigation',{name:'Workspace'})).toHaveCount(0);
+ await page.getByLabel('Current password',{exact:true}).fill(initialPassword);await page.getByLabel('New password',{exact:true}).fill(newPassword);await page.getByLabel('Confirm new password',{exact:true}).fill(newPassword);
+ await page.getByRole('button',{name:'Update password and sign out'}).click();
+ await expect(page.getByRole('heading',{name:'Sign in to your shop'})).toBeVisible();
+ await page.getByLabel('Email address').fill(email);await page.getByLabel('Password',{exact:true}).fill(newPassword);await page.getByRole('button',{name:'Sign in',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'QR lookup',exact:true})).toBeVisible();
 });

@@ -5,6 +5,7 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`/api/${path}`, { ...init, headers: { 'Content-Type': 'application/json', ...init?.headers } });
   const body = await response.json();
   if (!response.ok) {
+    if(response.status===401&&path!=='sessions'&&path!=='me')window.dispatchEvent(new Event('dayari:session-expired'));
     const detail = typeof body.message === 'string' ? body.message : body.issues?.map((issue: { message: string }) => issue.message).join('. ');
     throw new Error(response.status === 401 && path !== 'sessions' ? 'Your session has expired. Sign out and sign in again.' : detail || 'The shop service could not complete this request. Please retry.');
   }

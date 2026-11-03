@@ -13,6 +13,8 @@ import { CatalogueService } from './catalogue.service.js';
 @Controller('v1')
 class ApiController {
   constructor(@Inject(AccountsService) private readonly accounts: AccountsService, @Inject(CatalogueService) private readonly service: CatalogueService, @Inject(ReceivingService) private readonly receiving: ReceivingService, @Inject(LabelsService) private readonly labels: LabelsService, @Inject(PublicIdentitiesService) private readonly identities: PublicIdentitiesService) {}
+  @Get('account') async account(@Headers('authorization') auth?:string){return this.accounts.own(await this.service.actor(this.token(auth)));}
+  @Post('account/password') async password(@Body() body:unknown,@Headers('idempotency-key') key:string|undefined,@Headers('authorization') auth?:string){return this.accounts.changePassword(await this.service.actor(this.token(auth),true),key,body);}
   @Get('admin/users') async users(@Query() query:unknown,@Headers('authorization') auth?:string){return this.accounts.list(await this.service.actor(this.token(auth)),query);}
   @Get('admin/users/:id') async userDetail(@Param('id') id:string,@Headers('authorization') auth?:string){return this.accounts.detail(await this.service.actor(this.token(auth)),id);}
   @Post('admin/users') async createUser(@Body() body:unknown,@Headers('idempotency-key') key:string|undefined,@Headers('authorization') auth?:string){return this.accounts.command(await this.service.actor(this.token(auth)),'create',null,key,body);}
