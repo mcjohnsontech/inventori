@@ -174,7 +174,7 @@ export function SuppliersWorkspace({
                       size="compact"
                       onClick={() => onSupplier(supplier.id)}
                     >
-                      Set up location
+                      Set up location for {supplier.name}
                     </Button>
                     <Button variant="secondary" size="compact" onClick={() => onProduct()}>
                       Source a product

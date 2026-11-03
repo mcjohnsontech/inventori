@@ -71,7 +71,7 @@ test('progressive setup retains drafts and reuses products across supplier prefi
   await page.screenshot({ path: 'test-results/product-setup-review-mobile.png', fullPage: false });
   expect((await dialog.boundingBox())!.width).toBeLessThanOrEqual(390);
   await page.keyboard.press('Tab');
-  expect(await page.evaluate(() => Boolean(document.activeElement?.closest('dialog')))).toBe(true);
+  expect(await page.evaluate(() => Boolean(document.activeElement?.closest('dialog,[role="dialog"]')))).toBe(true);
   const saved = await saveProduct();
   expect(saved.sourcing.baseCode.slice(first.prefix.code.length)).toMatch(/^\d{5}$/);
   expect(saved.skus).toHaveLength(2);

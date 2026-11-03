@@ -297,7 +297,7 @@ export function CatalogueWorkspace({
           </span>
           {role === 'ADMIN' ? (
             <LinkButton className="mt-1.5" onClick={() => onSupplier(row.id)}>
-              Set up location
+              Set up location for {row.name}
             </LinkButton>
           ) : null}
         </>
