@@ -2,6 +2,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { ArrowRight, BookOpen, Box, Check, Layers3, LogOut, MapPin, Package, Plus, Search, ShieldCheck, Tag, Truck } from 'lucide-react';
 import type { Catalogue, Role } from '@dayari/contracts';
+import { AppShell, type Workspace } from '../components/app-shell';
 import { IdentityLookup } from '../components/identity-lookup';
 import { QrWorkspace } from '../components/labels/qr-workspace';
 import { LabelWorkspace } from '../components/labels/label-workspace';
@@ -17,7 +18,12 @@ async function api(path: string, init?: RequestInit) {
   return data;
 }
 export default function Page() {
-  const [workspace, setWorkspace] = useState<'catalogue' | 'receiving' | 'labels' | 'qr'>('catalogue');
+  const [workspace, setWorkspace] = useState<Workspace>('catalogue');
+  useEffect(() => {
+    const restore = () => { const key = location.hash.slice(1); if (['catalogue', 'receiving', 'labels', 'qr'].includes(key)) setWorkspace(key as Workspace); };
+    restore(); window.addEventListener('hashchange', restore); return () => window.removeEventListener('hashchange', restore);
+  }, []);
+  function navigate(next: Workspace) { location.hash = next; setWorkspace(next); }
   const [user, setUser] = useState<Actor | null>(null);
   const [catalogue, setCatalogue] = useState<Catalogue>({ products: [], suppliers: [], skus: [], locations: [], sourcings: [] });
   const [loading, setLoading] = useState(true);
@@ -59,9 +65,7 @@ export default function Page() {
   const products = catalogue.products.filter(item => item.name.toLowerCase().includes(search.toLowerCase()));
   const suppliers = catalogue.suppliers.filter(item => `${item.name} ${item.code}`.toLowerCase().includes(search.toLowerCase()));
   const skus = catalogue.skus.filter(item => `${item.fullCode} ${item.variant.product.name} ${item.sourcing.source.supplier.name}`.toLowerCase().includes(search.toLowerCase()));
-  return <div className="min-h-screen lg:grid lg:grid-cols-[232px_1fr]">
-    <aside className="flex flex-col border-r border-stone-200 bg-[#f0f1e9] p-6 lg:min-h-screen"><div className="flex items-center gap-2 text-2xl font-semibold tracking-tight"><Layers3 size={25} className="text-emerald-900" />dayari<span className="mt-1 size-1.5 rounded-full bg-emerald-700" /></div><div className="mt-9 rounded-xl border border-stone-200 bg-white/70 p-3"><p className="text-xs font-semibold">Shop workspace</p><p className="mt-1 text-[11px] text-stone-500">Catalogue · Local service</p></div><p className="mb-3 mt-8 text-[10px] font-semibold uppercase tracking-[.16em] text-stone-500">Workspace</p><nav className="space-y-2"><button onClick={() => setWorkspace('catalogue')} className={`flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-semibold text-emerald-950 ${workspace === 'catalogue' ? 'bg-[#dce4d6]' : 'hover:bg-white/60'}`}><BookOpen size={17} />Catalogue</button>{user.role !== 'PRODUCTION' && <button onClick={() => setWorkspace('receiving')} className={`flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-semibold text-emerald-950 ${workspace === 'receiving' ? 'bg-[#dce4d6]' : 'hover:bg-white/60'}`}><Truck size={17} />Receiving & stock</button>}{user.role !== 'PRODUCTION' && <button onClick={()=>setWorkspace('labels')} className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-semibold text-emerald-950 hover:bg-white/60">Labels & printing</button>}<button onClick={()=>setWorkspace('qr')} className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-semibold text-emerald-950 hover:bg-white/60">QR lookup</button></nav><div className="mt-6 rounded-xl border border-stone-200 p-3 text-xs leading-5 text-stone-500"><p className="font-semibold text-stone-700">Build your foundation</p><p className="mt-1">Register products and supplier sources before receiving stock.</p></div><div className="mt-auto pt-10"><div className="flex items-center gap-3"><span className="grid size-9 place-items-center rounded-full bg-[#dce4d6] text-sm font-semibold">{user.name.slice(0, 1)}</span><div><p className="max-w-32 truncate text-xs font-semibold">{user.name}</p><p className="mt-1 text-[11px] capitalize text-stone-500">{user.role.toLowerCase()}</p></div><button aria-label="Sign out" onClick={logout} disabled={busy} className="ml-auto text-stone-500"><LogOut size={16} /></button></div></div></aside>
-    <main className="min-w-0"><header className="flex h-20 items-center justify-between border-b border-stone-200 bg-white/60 px-6 lg:px-10"><p className="text-xs text-stone-500">Workspace <span className="mx-3 text-stone-300">/</span><span className="text-stone-800">{{catalogue:'Catalogue',receiving:'Receiving & stock',labels:'Labels & printing',qr:'QR lookup'}[workspace]}</span></p><span className="rounded-full border border-stone-200 bg-white px-3 py-1.5 text-[11px] text-stone-500">Cloud sync not configured</span></header>
+  return <AppShell workspace={workspace} available={['catalogue', 'receiving', 'labels', 'qr']} onNavigate={navigate} user={user} onLogout={logout} busy={busy}>
       {workspace === 'qr' ? <QrWorkspace /> : workspace === 'labels' && user.role !== 'PRODUCTION' ? <LabelWorkspace /> : workspace === 'receiving' && user.role !== 'PRODUCTION' ? <ReceivingWorkspace /> : <div className="mx-auto max-w-7xl p-6 lg:p-10"><div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-[10px] font-semibold uppercase tracking-[.18em] text-emerald-800">Your inventory foundation</p><h1 className="mt-3 text-3xl font-semibold tracking-tight">Product catalogue</h1><p className="mt-3 text-sm text-stone-500">Shared products. Clear variants. Traceable suppliers.</p></div>{user.role === 'ADMIN' && <div className="flex gap-3"><Button variant="outline" onClick={() => openSupplier()}><Truck size={16} />Add supplier</Button><Button onClick={openProduct}><Plus size={16} />Add product</Button></div>}</div>
       {user.role === 'PRODUCTION' ? <div className="mt-8 rounded-xl border border-stone-200 bg-white p-8"><ShieldCheck className="text-emerald-800" /><h2 className="mt-4 font-semibold">Your account is for production</h2><p className="mt-2 text-sm text-stone-500">Catalogue administration is available to Admin and Inventory Manager accounts. Use QR lookup to identify stock and view usable availability. Production issuing will be available in a later slice.</p></div> : <>
         <div className="my-8 grid gap-4 sm:grid-cols-3">{[{ title: 'Parent products', count: catalogue.products.length, icon: Package, detail: 'Shared across suppliers' }, { title: 'Suppliers', count: catalogue.suppliers.length, icon: Truck, detail: 'With distinct source identities' }, { title: 'Variant SKUs', count: catalogue.skus.length, icon: Tag, detail: 'Supplier-specific stock identifiers' }].map(card => <div key={card.title} className="rounded-xl border border-stone-200 bg-white p-5"><div className="flex items-center justify-between text-xs text-stone-500">{card.title}<card.icon size={17} className="text-emerald-800" /></div><p className="mt-3 text-3xl font-semibold">{card.count}</p><p className="mt-2 text-[11px] text-stone-400">{card.detail}</p></div>)}</div>
@@ -72,8 +76,7 @@ export default function Page() {
         <p className="mt-5 text-[11px] leading-5 text-stone-400">Catalogue entries identify products and sources. They do not add inventory quantities.</p>
       </>}
       </div>}
-    </main>
     {flow === 'supplier' && user.role === 'ADMIN' && <SupplierWizard catalogue={catalogue} initialSupplierId={supplierContext} onClose={() => setFlow(null)} onSaved={saved} />}
     {flow === 'product' && user.role === 'ADMIN' && <ProductWizard catalogue={catalogue} onClose={() => setFlow(null)} onSaved={saved} onConfigureSupplier={openSupplier} />}
-  </div>;
+  </AppShell>;
 }
