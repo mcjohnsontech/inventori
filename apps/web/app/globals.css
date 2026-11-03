@@ -29,8 +29,14 @@ input[type=checkbox] { accent-color: #075b43; }
 .workspace-nav button { display: flex; gap: 11px; align-items: center; border-radius: 8px; padding: 11px 12px; color: #53624c; text-align: left; font-size: 13px; font-weight: 600; }
 .workspace-nav button:hover { background: #e2e8da; }
 .workspace-nav button[aria-current=page] { color: #164b38; background: #d9e4d0; box-shadow: inset 3px 0 #24654a; }
-.sidebar-content { display: flex; flex-direction: column; flex: 1; }
+.sidebar-content { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 .sidebar-footer { margin-top: auto; padding-top: 28px; }
+@media (max-width: 767px) { .manager-routine ol:not(.is-open) { display: none; } }
+@media (min-width: 1024px) {
+  .sidebar-content { overflow: hidden; }
+  .workspace-nav { overflow-y: auto; min-height: 0; flex: 1; align-content: start; }
+  .sidebar-footer, .shop-context { flex-shrink: 0; }
+}
 .account-summary { display: flex; gap: 9px; align-items: center; border-top: 1px solid #dbe2d3; padding-top: 17px; margin-top: 20px; }
 .avatar { display: grid; place-items: center; width: 34px; height: 34px; flex-shrink: 0; border-radius: 50%; background: #dbe5d2; color: #174a37; font-weight: 700; }
 .icon-button { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 8px; flex-shrink: 0; }

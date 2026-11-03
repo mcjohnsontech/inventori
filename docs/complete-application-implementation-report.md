@@ -37,3 +37,11 @@ Added shared fixed role/capability allowlists and server requireCapability check
 Executed: final typecheck; unit 23/23; full PostgreSQL suite 56/56 (8 files, including catalogue/receiving/QR/printing/public identities/account/auth/RBAC); role/cookie/CSRF browser 1/1; production build passed. Direct negative tests cover sensitive GET/POST routes, guessed IDs/filters, Admin-only commands, inactive accounts and exact own-profile keys. No migration in M4.
 
 Published M3: `d50e73bfecc889ba19ea3c1db87123b60861ae1d`; remote SHA verified.
+
+## Milestone 5 — Inventory Manager workspace
+
+Manager landing now prioritizes receiving, accepted deliveries, lot availability, QR identification and label preparation, with a three-step receiving routine. Catalogue/supplier empty states direct Managers to Admin for missing entries rather than suggesting inaccessible registration. Existing receiving, stock, receipt, code lookup and label interfaces remain shared with their enforced operational permissions. No new API or migration. A real browser regression exposed a footer below the viewport after adding navigation; desktop navigation now scrolls independently and keeps account controls reachable.
+
+Published M4: `26608360da98b972140726daa2b3346ac0e3ca33`; remote SHA verified. M5 final test results follow after rerun.
+
+M5 final checks passed: typecheck and production build; Manager+receiving browser 2/2 after navigation fix, then final Manager viewport browser 1/1 after collapsible-guide refinement. Five widths assert no horizontal overflow. Desktop and final 320px screenshots visually reviewed and retained at `docs/images/application/manager-{1440,320}.png`. Existing receiving browser proves multi-product/damage quantities, draft Back/discard, lost-response same-key retry, receipt history and exact lot provenance. No new backend mutation or permissions.
