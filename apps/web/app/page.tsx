@@ -9,7 +9,6 @@ import { LoginPage } from '../components/login-page';
 import { WorkspaceRouter } from '../components/workspace-router';
 import { ProductWizard, SupplierWizard } from '../components/catalogue/setup-wizards';
 import {
-  Button,
   DetailSkeleton,
   ErrorNotice,
   Page,
@@ -30,7 +29,7 @@ const UUID = /^[0-9a-f-]{36}$/i;
 
 const PRODUCTION_WORKSPACES: Workspace[] = ['qr', 'settings'];
 
-export default function Page_() {
+export default function DayariInventory() {
   const [workspace, setWorkspace] = useState<Workspace>('dashboard');
   const [user, setUser] = useState<Actor | null>(null);
   const [catalogue, setCatalogue] = useState<Catalogue>(EMPTY_CATALOGUE);

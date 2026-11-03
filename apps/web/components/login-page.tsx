@@ -1,6 +1,6 @@
 'use client';
 import { ArrowRight01Icon, Layers01Icon, PackageIcon, SecurityCheckIcon } from '@hugeicons/core-free-icons';
-import { useState, type FormEvent } from 'react';
+import type { FormEvent } from 'react';
 
 import { Button, ErrorNotice, Field, Icon, Input, PasswordInput } from './ui';
 
