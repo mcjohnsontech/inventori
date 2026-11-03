@@ -25,6 +25,7 @@ class ApiController {
     const actor = await this.service.actor(this.token(authorization));
     return { id: actor.id, name: actor.name, role: actor.role };
   }
+  @Get('admin/shop') async shop(@Headers('authorization') authorization?: string) { return this.service.shopInfo(await this.service.actor(this.token(authorization))); }
   @Get('catalogue') async catalogue(@Headers('authorization') authorization?: string) { return this.service.catalogue(await this.service.actor(this.token(authorization))); }
   @Post('catalogue/:type') async create(@Headers('authorization') authorization: string | undefined, @Headers('idempotency-key') key: string | undefined, @Param('type') type: string, @Body() body: unknown) {
     return this.service.create(await this.service.actor(this.token(authorization)), type, key, body);

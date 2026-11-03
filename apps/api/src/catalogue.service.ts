@@ -43,6 +43,11 @@ export class CatalogueService {
     return { ok: true };
   }
 
+  shopInfo(user: User) {
+    if (!user.active || user.role !== 'ADMIN') throw new ForbiddenException('Shop configuration is available to Admin');
+    return { originId: this.originId, authority: this.mode, timeZone: 'Africa/Lagos', cloudSync: 'not-configured', observedAt: new Date().toISOString() };
+  }
+
   async catalogue(user: User) {
     if (user.role === 'PRODUCTION') throw new ForbiddenException();
     const [products, suppliers, skus, locations, sourcings] = await this.db.$transaction([

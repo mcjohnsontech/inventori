@@ -24,6 +24,11 @@ test('workspace navigation is usable across shop screen sizes', async ({ page })
   await page.getByLabel('Search inventory', { exact: true }).fill('no-such-stock-xyz');
   await expect(page.getByRole('heading', { name: 'No stock matches this view' })).toBeVisible();
   await page.getByRole('button', { name: 'Catalogue', exact: true }).click();
+  await page.getByRole('button', { name: 'Account & shop', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Account & shop', exact: true })).toBeVisible();
+  await expect(page.getByText('Africa/Lagos', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Create user' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Catalogue', exact: true }).click();
   for (const width of [1440, 1024, 768, 390, 320]) {
     await page.setViewportSize({ width, height: 900 });
     if (width < 1024) await page.getByRole('button', { name: 'Open navigation' }).click();

@@ -4,6 +4,8 @@ import { ArrowRight, Box, Layers3, ShieldCheck } from 'lucide-react';
 import type { Catalogue, Role } from '@dayari/contracts';
 import { InventoryWorkspace } from '../components/inventory-workspace';
 import { SuppliersWorkspace } from '../components/suppliers-workspace';
+import { SettingsWorkspace } from '../components/settings-workspace';
+import { api } from '../lib/api';
 import { ReceiptsWorkspace } from '../components/receiving/receipts-workspace';
 import { Dashboard } from '../components/dashboard';
 import { CatalogueWorkspace } from '../components/catalogue/catalogue-workspace';
@@ -15,16 +17,10 @@ import { ProductWizard, SupplierWizard } from '../components/catalogue/setup-wiz
 import { Button } from '../components/ui/button';
 
 type Actor = { id: string; name: string; role: Role };
-async function api(path: string, init?: RequestInit) {
-  const response = await fetch(`/api/${path}`, { ...init, headers: { 'Content-Type': 'application/json', ...init?.headers } });
-  const data = await response.json();
-  if (!response.ok) throw new Error(typeof data.message === 'string' ? data.message : 'Please check the details and try again.');
-  return data;
-}
 export default function Page() {
   const [workspace, setWorkspace] = useState<Workspace>('dashboard');
   useEffect(() => {
-    const restore = () => { const key = location.hash.slice(1); if (['dashboard', 'catalogue', 'suppliers', 'inventory', 'receiving', 'receipts', 'labels', 'qr'].includes(key)) setWorkspace(key as Workspace); };
+    const restore = () => { const key = location.hash.slice(1); if (['dashboard', 'catalogue', 'suppliers', 'inventory', 'receiving', 'receipts', 'labels', 'qr', 'settings'].includes(key)) setWorkspace(key as Workspace); };
     restore(); window.addEventListener('hashchange', restore); return () => window.removeEventListener('hashchange', restore);
   }, []);
   function navigate(next: Workspace) { location.hash = next; setWorkspace(next); }
@@ -39,12 +35,12 @@ export default function Page() {
   const [productContext, setProductContext] = useState('');
   const [stockProduct, setStockProduct] = useState('');
   const [receiptContext, setReceiptContext] = useState('');
-  async function load(actor: Actor) { if (actor.role !== 'PRODUCTION') setCatalogue(await api('catalogue')); }
-  useEffect(() => { api('me').then(async actor => { setUser(actor); if (actor.role === 'PRODUCTION') setWorkspace('qr'); try { await load(actor); } catch (failure) { setError((failure as Error).message); } }).catch(() => {}).finally(() => setLoading(false)); }, []);
+  async function load(actor: Actor) { if (actor.role !== 'PRODUCTION') setCatalogue(await api<Catalogue>('catalogue')); }
+  useEffect(() => { api<Actor>('me').then(async actor => { setUser(actor); if (actor.role === 'PRODUCTION') setWorkspace('qr'); try { await load(actor); } catch (failure) { setError((failure as Error).message); } }).catch(() => {}).finally(() => setLoading(false)); }, []);
   async function login(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true); setError('');
     const data = Object.fromEntries(new FormData(event.currentTarget));
-    try { const result = await api('sessions', { method: 'POST', body: JSON.stringify(data) }); setUser(result.user); if (result.user.role === 'PRODUCTION') navigate('qr'); await load(result.user); } catch (failure) { setError((failure as Error).message); } finally { setBusy(false); }
+    try { const result = await api<{user: Actor}>('sessions', { method: 'POST', body: JSON.stringify(data) }); setUser(result.user); if (result.user.role === 'PRODUCTION') navigate('qr'); await load(result.user); } catch (failure) { setError((failure as Error).message); } finally { setBusy(false); }
   }
   async function logout() {
     setBusy(true);
@@ -67,10 +63,10 @@ export default function Page() {
       <form onSubmit={login} className="mt-8 space-y-5"><label>Email address<input name="email" type="email" autoComplete="username" required placeholder="you@dayari.com" /></label><label>Password<input name="password" type="password" autoComplete="current-password" required maxLength={256} /></label>{error && <p role="alert" className="text-sm text-red-700">{error}</p>}<Button className="w-full" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}<ArrowRight size={16} /></Button></form><p className="mt-8 text-xs leading-5 text-stone-500">Need access? Ask your administrator to set up your account.</p></div></section>
   </main>;
 
-  return <AppShell workspace={workspace} available={['dashboard', 'catalogue', 'suppliers', 'inventory', 'receiving', 'receipts', 'labels', 'qr']} onNavigate={navigate} user={user} onLogout={logout} busy={busy}>
+  return <AppShell workspace={workspace} available={['dashboard', 'catalogue', 'suppliers', 'inventory', 'receiving', 'receipts', 'labels', 'qr', 'settings']} onNavigate={navigate} user={user} onLogout={logout} busy={busy}>
     {notice && <p role="status" className="mx-5 mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">{notice}</p>}
     {error && <div role="alert" className="mx-5 mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-800">{error}<Button variant="outline" size="small" className="ml-3" onClick={() => load(user).then(() => setError('')).catch(failure => setError(failure.message))}>Reload catalogue</Button></div>}
-    {user.role === 'PRODUCTION' ? <QrWorkspace /> : workspace === 'dashboard' ? <Dashboard catalogue={catalogue} name={user.name} navigate={navigate} onReceipt={id => { setReceiptContext(id); navigate('receipts'); }} /> : workspace === 'qr' ? <QrWorkspace /> : workspace === 'labels' ? <LabelWorkspace /> : workspace === 'inventory' ? <InventoryWorkspace catalogue={catalogue} initialProductId={stockProduct} onReceipt={id => { setReceiptContext(id); navigate('receipts'); }} /> : workspace === 'suppliers' ? <SuppliersWorkspace catalogue={catalogue} role={user.role} onSupplier={openSupplier} onProduct={openProduct} /> : workspace === 'receipts' ? <ReceiptsWorkspace initialReceiptId={receiptContext} onStock={id => { setStockProduct(id); navigate('inventory'); }} /> : workspace === 'receiving' ? <ReceivingWorkspace onHistory={() => { setReceiptContext(''); navigate('receipts'); }} onInventory={id => { setStockProduct(id); navigate('inventory'); }} /> : <CatalogueWorkspace catalogue={catalogue} role={user.role} onProduct={openProduct} onSupplier={openSupplier} onStock={id => { setStockProduct(id); navigate('inventory'); }} />}
+    {workspace === 'settings' ? <SettingsWorkspace user={user} /> : user.role === 'PRODUCTION' ? <QrWorkspace /> : workspace === 'dashboard' ? <Dashboard catalogue={catalogue} name={user.name} navigate={navigate} onReceipt={id => { setReceiptContext(id); navigate('receipts'); }} /> : workspace === 'qr' ? <QrWorkspace /> : workspace === 'labels' ? <LabelWorkspace /> : workspace === 'inventory' ? <InventoryWorkspace catalogue={catalogue} initialProductId={stockProduct} onReceipt={id => { setReceiptContext(id); navigate('receipts'); }} /> : workspace === 'suppliers' ? <SuppliersWorkspace catalogue={catalogue} role={user.role} onSupplier={openSupplier} onProduct={openProduct} /> : workspace === 'receipts' ? <ReceiptsWorkspace initialReceiptId={receiptContext} onStock={id => { setStockProduct(id); navigate('inventory'); }} /> : workspace === 'receiving' ? <ReceivingWorkspace onHistory={() => { setReceiptContext(''); navigate('receipts'); }} onInventory={id => { setStockProduct(id); navigate('inventory'); }} /> : <CatalogueWorkspace catalogue={catalogue} role={user.role} onProduct={openProduct} onSupplier={openSupplier} onStock={id => { setStockProduct(id); navigate('inventory'); }} />}
     {flow === 'supplier' && user.role === 'ADMIN' && <SupplierWizard catalogue={catalogue} initialSupplierId={supplierContext} onClose={() => setFlow(null)} onSaved={saved} />}
     {flow === 'product' && user.role === 'ADMIN' && <ProductWizard catalogue={catalogue} initialProductId={productContext} onClose={() => setFlow(null)} onSaved={saved} onConfigureSupplier={openSupplier} />}
   </AppShell>;

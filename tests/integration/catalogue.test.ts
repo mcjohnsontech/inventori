@@ -41,6 +41,13 @@ describe('catalogue vertical slice against PostgreSQL (FR-01,17–19,23–24)', 
     await create('products', { name: 'Forbidden' }, randomUUID(), manager).expect(403);
     await create('products', { name: 'Forbidden' }, randomUUID(), production).expect(403);
   });
+  it('returns minimal read-only shop configuration only to Admin', async () => {
+    await request(app.getHttpServer()).get('/v1/admin/shop').expect(401);
+    for (const restricted of [manager, production]) await request(app.getHttpServer()).get('/v1/admin/shop').set('Authorization', `Bearer ${restricted}`).expect(403);
+    const result = await request(app.getHttpServer()).get('/v1/admin/shop').set('Authorization', `Bearer ${token}`).expect(200);
+    expect(result.body).toMatchObject({ originId, authority: 'SHOP', timeZone: 'Africa/Lagos', cloudSync: 'not-configured' });
+    expect(Object.keys(result.body).sort()).toEqual(['originId','authority','timeZone','cloudSync','observedAt'].sort());
+  });
   it('scopes catalogue reads to the configured shop origin', async () => {
     const foreignOrigin = randomUUID();
     await db.originNode.create({ data: { id: foreignOrigin, mode: 'SHOP' } });
