@@ -1,6 +1,6 @@
 # Admin experience implementation report
 
-Scope: the owner's complete Admin experience authorization, 3 November 2026. Implementation and verification are complete. This report accompanies the seventh completion milestone; its exact publication SHA is recorded after the verified push.
+Scope: the owner's complete Admin experience authorization, 3 November 2026. Implementation and verification are complete. All seven required milestones are committed and pushed on admin-experience. The verified completion SHAs are recorded below; a documentation-only follow-up records publication evidence without changing application source.
 
 ## Audit and delivered application
 
@@ -72,6 +72,8 @@ Stock stays server-derived. Existing immutable UUIDs, P/L codes, supplier prefix
 | Final browser suite and visual review | Eight scenarios passed; supplemental evidence/recovery rerun: two passed; all five viewport contact sheets reviewed |
 | Preservation checks | 20 passed |
 
+Local review availability after completion: `http://127.0.0.1:3000/` and API `/v1/health` on port4000 both returned200. This was a read-only availability check, not a production deployment or operational stock test.
+
 Commands: `npm run typecheck`, `npm run build`, `node scripts/run-vitest.mjs run`, `node scripts/run-vitest.mjs run --config vitest.integration.config.ts`, and Chrome `npm exec playwright test` (targeted files during milestones, full suite at completion). No lint command is configured; no lint pass is claimed.
 
 Coverage retains creation/first combinations/extension, source reuse, immutable identities, multi-product usable/damaged receiving, failed transaction rollback, concurrency/idempotency/lost-response replay, role denial, origin scoping, database constraints, public identity collision/backfill rehearsals, historical QR and PDF/reprint evidence. Added checks cover bounded provenance/shop disclosure, new navigation/history/detail links, read retries and stale lookup cancellation.
@@ -86,17 +88,17 @@ Captured 45 workspace screenshots at 320/390/768/1024/1440px and four product/di
 
 The local directory initially had no Git metadata; the owner's existing GitHub repository was empty. Existing source was preserved as separate baseline commit `cc95abe`, then each required milestone was committed and pushed to **admin-experience**. No main/production branch, merge, force push or history rewrite.
 
-| Milestone | Completion commit | Checks before push | Publication |
-| --- | --- | --- | --- |
-| 1 Audit and planning | `773e60c` | Unit/typecheck/build | Verified |
-| 2 Design/navigation | `6bb26a2` | Typecheck/build/Chrome | Verified |
-| 3 Dashboard/catalogue | `eeeb1bb` | Typecheck/build/integration/Chrome | Verified |
-| 4 Suppliers/inventory | `80ad94e` | Typecheck/build/integration/Chrome | Verified |
-| 5 Receiving/receipts | `42a28ab` | Typecheck/build/Chrome | Verified |
-| 6 QR/labels/administration | `1d0d75e` | Typecheck/build/integration/Chrome | Verified |
-| 7 Final verification | Completion commit accompanying this report | 20 unit / 44 integration / eight browser; typecheck/build; visual and preservation checks | Recorded after final push |
+| Milestone | Commit message | SHA / GitHub | Branch | Checks | Push |
+| --- | --- | --- | --- | --- | --- |
+| 1 Audit and planning | `docs(admin): complete admin experience audit and implementation plan` | [773e60cc9f833c5636e5dbd4bf608d5a138223ba](https://github.com/mcjohnsontech/inventori/commit/773e60cc9f833c5636e5dbd4bf608d5a138223ba) | admin-experience | 20 unit; typecheck/build | Verified |
+| 2 Design/navigation | `feat(admin): implement design system and application navigation` | [6bb26a26f9624d3be8327397f9a2debbc25c3d7f](https://github.com/mcjohnsontech/inventori/commit/6bb26a26f9624d3be8327397f9a2debbc25c3d7f) | admin-experience | Typecheck/build; responsive Chrome | Verified |
+| 3 Dashboard/catalogue | `feat(admin): build dashboard and product management` | [eeeb1bbaffb08d5d105c1b96b67e630152514ae4](https://github.com/mcjohnsontech/inventori/commit/eeeb1bbaffb08d5d105c1b96b67e630152514ae4) | admin-experience | Typecheck/build; 42 integration; six Chrome | Verified |
+| 4 Suppliers/inventory | `feat(admin): implement supplier and inventory workspaces` | [80ad94e8b1197263cd1fcbe184ee455c9ed0572b](https://github.com/mcjohnsontech/inventori/commit/80ad94e8b1197263cd1fcbe184ee455c9ed0572b) | admin-experience | Typecheck/build; 13 integration; responsive Chrome | Verified |
+| 5 Receiving/receipts | `feat(admin): improve receiving and receipt management` | [42a28abb3c5edca934b8b2d334730164f9bb03b6](https://github.com/mcjohnsontech/inventori/commit/42a28abb3c5edca934b8b2d334730164f9bb03b6) | admin-experience | Typecheck/build; four Chrome scenarios | Verified |
+| 6 QR/labels/administration | `feat(admin): complete QR labels and administration workflows` | [1d0d75e047aa75595efec62f671c588fc083cbda](https://github.com/mcjohnsontech/inventori/commit/1d0d75e047aa75595efec62f671c588fc083cbda) | admin-experience | Typecheck/build; 23 integration; three Chrome | Verified |
+| 7 Final verification | `test(admin): finalize end-to-end verification and UX refinements` | [49cdb1bd069d1667acf4ff8507a1de25c0e3b7fe](https://github.com/mcjohnsontech/inventori/commit/49cdb1bd069d1667acf4ff8507a1de25c0e3b7fe) | admin-experience | 20 unit; 44 integration; eight Chrome + two supplemental; typecheck/build; visual/preservation | Verified |
 
-Exact messages, full SHAs and GitHub commit links accompany the completion response. The final completion commit cannot contain its own SHA; identify it by `test(admin): finalize end-to-end verification and UX refinements` in branch history.
+Every push was checked against the remote branch SHA before continuing. A separate baseline commit preserves the previously unversioned implementation. No force-push, protected-branch push, merge or production deployment.
 
 ## Limitations and approval gates
 
