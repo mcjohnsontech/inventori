@@ -134,3 +134,34 @@ button, input, select, textarea { font-family: inherit; }
 @media (max-width: 639px) { .wizard-dialog { width: 100%; max-width: 100%; min-height: 100dvh; max-height: 100dvh; border-radius: 0; } }
 
 @media (max-width: 639px) { .stock-filter.is-collapsed { display: none; } }
+
+/* Compact role-aware navigation: content scrolls with the page on short screens. */
+.app-sidebar { padding: 18px 12px; }
+.brand { font-size: 26px; margin: 0 4px 12px; }
+.sidebar-collapse { position: absolute; right: 8px; top: 57px; width: 28px; height: 28px; }
+.workspace-nav { gap: 8px; overflow: visible; flex: 0 0 auto; }
+.nav-group-title { font-size: 9px; color: #76816e; letter-spacing: .09em; text-transform: uppercase; margin: 10px 10px 4px; }
+.workspace-nav button { width: 100%; min-height: 36px; padding: 7px 10px; font-size: 12px; gap: 9px; }
+.workspace-nav button svg { flex-shrink: 0; }
+.sidebar-footer { padding-top: 12px; }
+.account-summary { margin-top: 8px; padding-top: 12px; }
+@media (min-width: 1024px) {
+ .sidebar-content { overflow: visible; padding-top: 12px; }
+ .app-sidebar { min-height: 100dvh; height: auto; align-self: start; }
+ .nav-collapsed { grid-template-columns: 76px minmax(0,1fr); }
+ .nav-collapsed .brand > span, .nav-collapsed .nav-group-title, .nav-collapsed .workspace-nav button span, .nav-collapsed .account-summary > div, .nav-collapsed .account-summary .avatar { display: none; }
+ .nav-collapsed .brand { justify-content: center; }
+ .nav-collapsed .workspace-nav button { justify-content: center; min-height: 40px; }
+ .nav-collapsed .sidebar-collapse { position: static; margin: 0 auto; }
+ .nav-collapsed .nav-group { margin-top: 8px; }
+ .nav-collapsed .account-summary { justify-content: center; }
+}
+@media (min-width: 1024px) and (max-height: 780px) { .app-sidebar { position: static; } }
+@media (max-width: 1023px) {
+ .sidebar-collapse { display: none; }
+ .brand { margin: 0; }
+ .sidebar-content.is-open { padding-top: 12px; }
+ .workspace-nav { grid-template-columns: repeat(2,minmax(0,1fr)); align-items: start; }
+ .workspace-nav button { min-height: 44px; }
+ .sidebar-footer { padding-top: 4px; }
+}

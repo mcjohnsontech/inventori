@@ -1,13 +1,13 @@
 'use client';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { BookOpen, Layers3, LogOut, Menu, QrCode, Printer, Truck, X, LayoutDashboard, Boxes, Building2, ReceiptText, Settings, ShieldCheck } from 'lucide-react';
+import { BookOpen, Layers3, LogOut, Menu, QrCode, Printer, Truck, X, LayoutDashboard, Boxes, Building2, ReceiptText, Settings, ShieldCheck, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { can, type Role, type Capability } from '@dayari/contracts';
 
 export const destinations = {
   help: {label:'Help & guide',icon:BookOpen},
   reports: {label:'Reports & history',icon:ReceiptText},
   availability: {label:'Usable stock',icon:Boxes},
-  users: { label: 'Users & access', icon: ShieldCheck },
+  users: { label: 'Users & access', icon: ShieldCheck, PanelLeftClose, PanelLeftOpen },
   dashboard: { label: 'Overview', icon: LayoutDashboard },
   catalogue: { label: 'Catalogue', icon: BookOpen },
   suppliers: { label: 'Suppliers & sources', icon: Building2 },
@@ -26,6 +26,7 @@ export function AppShell({ workspace, available, onNavigate, user, onLogout, bus
   user: { name: string; role: Role }; onLogout: () => void; busy: boolean; children: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const menu = useRef<HTMLButtonElement>(null);
   useEffect(() => { setOpen(false); }, [workspace]);
   useEffect(() => {
@@ -34,18 +35,22 @@ export function AppShell({ workspace, available, onNavigate, user, onLogout, bus
     window.addEventListener('keydown', close);
     return () => window.removeEventListener('keydown', close);
   }, [open]);
-  return <div className="app-shell">
+  return <div className={`app-shell ${collapsed ? 'nav-collapsed' : ''}`}>
     <a href="#workspace-content" className="skip-link" onClick={event=>{event.preventDefault();document.getElementById('workspace-content')?.focus();}}>Skip to content</a>
     <aside className="app-sidebar">
       <div className="brand"><Layers3 size={27} aria-hidden="true" /><span>dayari<span className="brand-dot">.</span></span><span className="brand-caption">INVENTORY</span></div>
+      <button className="sidebar-collapse icon-button" aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} aria-expanded={!collapsed} onClick={() => setCollapsed(!collapsed)}>{collapsed ? <PanelLeftOpen size={18}/> : <PanelLeftClose size={18}/>}</button>
       <button ref={menu} className="mobile-menu icon-button" aria-label={open ? 'Close navigation' : 'Open navigation'} aria-expanded={open} aria-controls="workspace-navigation" onClick={() => setOpen(!open)}>{open ? <X size={22} /> : <Menu size={22} />}</button>
       <div id="workspace-navigation" className={`sidebar-content ${open ? 'is-open' : ''}`}>
-        <div className="shop-context"><span className="status-dot" />Local shop workspace<p>Connected through your shop service</p></div>
-        <nav aria-label="Workspace" className="workspace-nav">{available.filter(key => workspaceAllowed(user.role,key)).map(key => {
-          const item = destinations[key]; const Icon = item.icon;
-          return <button key={key} aria-current={workspace === key ? 'page' : undefined} onClick={() => { setOpen(false); onNavigate(key); }}><Icon size={18} aria-hidden="true" /><span>{item.label}</span></button>;
+        <nav aria-label="Workspace" className="workspace-nav">{[
+          {name:'Stock & operations',keys:['dashboard','availability','inventory','receiving','receipts']},
+          {name:'Catalogue',keys:['catalogue','suppliers']},
+          {name:'Tools & reports',keys:['labels','qr','reports']},
+          {name:'Workspace',keys:['users','settings','help']},
+        ].map(group => {const keys=group.keys.filter(key=>available.includes(key as Workspace)&&workspaceAllowed(user.role,key as Workspace)) as Workspace[];
+          return keys.length ? <div className="nav-group" key={group.name}><p className="nav-group-title">{group.name}</p>{keys.map(key=>{const item=destinations[key];const Icon=item.icon;return <button key={key} title={item.label} aria-label={item.label} aria-current={workspace===key?'page':undefined} onClick={()=>{setOpen(false);onNavigate(key);}}><Icon size={18} aria-hidden="true"/><span>{item.label}</span></button>;})}</div> : null;
         })}</nav>
-        <div className="sidebar-footer"><p className="text-xs leading-5 text-stone-500">Stock changes only through accepted shop transactions.</p><div className="account-summary"><span className="avatar">{user.name.slice(0, 1)}</span><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{user.name}</p><p className="text-xs text-stone-500">{user.role === 'ADMIN' ? 'Administrator' : user.role === 'MANAGER' ? 'Inventory Manager' : 'Production Staff'}</p></div><button className="icon-button" aria-label="Sign out" onClick={onLogout} disabled={busy}><LogOut size={18} /></button></div></div>
+        <div className="sidebar-footer"><div className="account-summary"><span className="avatar">{user.name.slice(0, 1)}</span><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{user.name}</p><p className="text-xs text-stone-500">{user.role === 'ADMIN' ? 'Administrator' : user.role === 'MANAGER' ? 'Inventory Manager' : 'Production Staff'}</p></div><button className="icon-button" aria-label="Sign out" onClick={onLogout} disabled={busy}><LogOut size={18} /></button></div></div>
       </div>
     </aside>
     <main id="workspace-content" tabIndex={-1} className="workspace-content"><header className="workspace-bar"><p><span className="hidden sm:inline text-stone-400">Shop workspace <span className="mx-2">/</span></span>{destinations[workspace].label}</p><span className="connection-badge"><span className="status-dot" />Local authority<span className="hidden md:inline"> · Cloud sync not configured</span></span></header>{children}</main>
