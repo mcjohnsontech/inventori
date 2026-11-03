@@ -1,6 +1,6 @@
 # Inventory experience — Slices 1–3
 
-Status: Slices1–3 implemented and verified; final publication in progress. Owner authorized Slices 1–3 only; unit serialization, V2 QR, printing changes, invitations and operational migrations are excluded.
+Status: Slices1–3 complete, verified, committed and pushed for owner review. Owner authorized Slices 1–3 only; unit serialization, V2 QR, printing changes, invitations and operational migrations are excluded.
 
 ## Slice 1 — compact navigation
 
@@ -71,3 +71,55 @@ Representative screens: [inventory desktop](images/inventory-slices/inventory-14
 ## Database and API changes
 
 **None.** No new migrations, endpoints, shared domain contracts, dependencies, ledger transitions or operational data changes. The proposed six-character unit constraint/contract is documentation for the separately gated future model only.
+
+
+## GitHub milestone publication
+
+Branch: `feat/complete-application-systems`. Each push succeeded and remote branch SHA matched its completion commit immediately afterward. No force push, merge or deployment.
+
+| Milestone | Commit message | SHA / GitHub URL | Checks before push | Status |
+| --- | --- | --- | --- | --- |
+| Slice1 | feat(nav): implement compact role-aware navigation | [41297947d400a21f142ad24dd40192ae00b751ba](https://github.com/mcjohnsontech/inventori/commit/41297947d400a21f142ad24dd40192ae00b751ba) | Typecheck, build,3 navigation/access browser tests | Pushed/verified |
+| Slice2 | feat(inventory): build inventory sheet and details drawer | [15283d5189b037fcaa0064cc041c69625b5575c1](https://github.com/mcjohnsontech/inventori/commit/15283d5189b037fcaa0064cc041c69625b5575c1) | Typecheck, build, inventory scenario and receiving/identity regressions | Pushed/verified |
+| Slice3 | feat(stock): redesign stock overview | [fc0106a5cc606b8a5c55b8a98c70234e802b5310](https://github.com/mcjohnsontech/inventori/commit/fc0106a5cc606b8a5c55b8a98c70234e802b5310) |27 unit,62 integration, typecheck/build, full browser17/18 followed by corrected Admin2/2; all18 cases have passing coverage | Pushed/verified |
+
+The supplemental documentation commit publishes this completed report, corrected unit architecture and invitation design. It introduces no application change.
+
+## Files changed
+
+- `apps/web/app/globals.css`
+- `apps/web/app/page.tsx`
+- `apps/web/components/app-shell.tsx`
+- `apps/web/components/dashboard.tsx`
+- `apps/web/components/inventory-workspace.tsx`
+- `apps/web/components/ui/details-drawer.tsx`
+- `apps/web/lib/stock-overview.ts`
+- `docs/IMPLEMENTATION_BRICKS.md`
+- `docs/architecture.md`
+- `docs/data-model.md`
+- `docs/decisions.md`
+- `docs/images/inventory-slices/README.md`
+- `docs/images/inventory-slices/drawer-1440.png`
+- `docs/images/inventory-slices/drawer-320.png`
+- `docs/images/inventory-slices/evidence.json`
+- `docs/images/inventory-slices/inventory-1440.png`
+- `docs/images/inventory-slices/inventory-320.png`
+- `docs/images/inventory-slices/navigation-admin-1440.png`
+- `docs/images/inventory-slices/navigation-manager-1440.png`
+- `docs/images/inventory-slices/navigation-production-1440.png`
+- `docs/images/inventory-slices/overview-1440.png`
+- `docs/images/inventory-slices/overview-320.png`
+- `docs/inventory-experience-slices-1-3-report.md`
+- `docs/inventory-sheet-and-unit-tracking-implementation-plan.md`
+- `docs/requirements-traceability.md`
+- `docs/six-character-unit-code-design.md`
+- `docs/staff-invitation-design.md`
+- `docs/unit-traceability-and-label-ux-design.md`
+- `tests/e2e/admin-journeys.spec.ts`
+- `tests/e2e/admin.spec.ts`
+- `tests/e2e/compact-navigation.spec.ts`
+- `tests/e2e/inventory-sheet.spec.ts`
+- `tests/e2e/public-identities.spec.ts`
+- `tests/e2e/receiving.spec.ts`
+- `tests/e2e/stock-overview.spec.ts`
+- `tests/unit/stock-overview.test.ts`

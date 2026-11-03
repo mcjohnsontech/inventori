@@ -1,5 +1,10 @@
 # Architecture and API boundaries
 
+## Owner correction — six-character unit identities and inventory UX
+
+Slices1–3 authorize compact role-aware navigation, inventory-sheet/drawer and stock-focused overview only. Existing service/ledger/QR/print/account mutation authority is unchanged. Future StockUnit human codes are exactly six random readable characters without a fixed U prefix, origin-scoped unique and immutable; UUID remains primary and DYI:2 encodes UUID. Earlier U+7 is superseded. See [six-character-unit-code-design.md](six-character-unit-code-design.md) for database/contract/search/label/collision rules. No unit implementation/cutover is authorized. Secure staff email invitations are approved future direction only; [staff-invitation-design.md](staff-invitation-design.md) describes separately gated trust and delivery boundaries. Current password policy remains unchanged.
+
+
 ## Phase B — shop account boundary
 
 The owner approved SHOP-local staff administration, supervised initial passwords with compulsory change, and explicit isolated membership. User UUIDs remain global historical actors, but one immutable ShopMembership assigns an account to one origin. Sessions carry that origin and require matching active membership. Existing accounts/sessions are preserved without implicit enrollment; null-origin historical sessions fail authentication. New migrations009/010 are isolated-test only until separate operational authorization.

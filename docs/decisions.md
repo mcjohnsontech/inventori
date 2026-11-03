@@ -1,5 +1,22 @@
 # Decisions and approval register
 
+## Approved Slices1–3 and six-character unit correction — 3 November2026
+
+Owner authorizes implementation/verification and separate commit/push for compact navigation, inventory sheet/details drawer and stock-focused overview only. No operational migration/stock mutation, serialization, DYI:2, print redesign or invitation implementation. Existing roles, UUIDs, SKU/P/L codes, ledger, receipts and DYI:1 remain unchanged.
+
+Owner corrects individual Unit Codes to exactly six readable alphanumeric characters, origin-scoped immutable uniqueness, no fixed U prefix, UUID primary authority. This supersedes previous U+7/eight-character proposals; see six-character-unit-code-design.md for constraints/capacity/collisions/contracts/search/label tests. Unit implementation/activation and historical enrollment remain gated.
+
+Secure email invitations with employee-set password are approved future direction, not authorized implementation. Single-use token, expiry/revocation, private delivery, origin scoping/audit/security requirements are recorded in staff-invitation-design.md; provider/URL, expiry/reissue/existing-account policies remain open. No password minimum is changed in this task.
+
+
+## Inventory-sheet and exact-unit UX review — 3 November 2026
+
+**CONFIRMED requested direction, documentation-only assignment:** owner requests compact navigation without ordinary sidebar scrolling, rectangular inventory rows with modal/drawer details, product/variant quantity overview and stock attention, inline individual QR-label/cart previews with native printing, email after staff creation, a six-character password minimum instead of 16, and an independent identity for each physical item. Supplier-specific SKU provenance remains required. No implementation is authorized by this review request.
+
+Implementation proposal and targeted gates R01–R07: [inventory-sheet-and-unit-tracking-implementation-plan.md](inventory-sheet-and-unit-tracking-implementation-plan.md). Existing A01–A08 unit architecture is reused, not reported implemented. StockUnit/DYI:2, serialized cutover, new print evidence, email activation/delivery, threshold configuration and operational onboarding remain gated. Email mechanism/provider/reachable URL, password-policy role/temporary scope, reorder threshold semantics, capacity/oversized deliveries and legacy/native print eligibility require concrete review. No stock issuing, damage recovery, closing or cloud transport is authorized.
+
+**Subsequent local account upgrade already separately approved/executed:** owner authorized migrations009/010 and enrollment of existing active Admin admin@dayari.test at origin11111111-1111-4111-8111-111111111111. Private consistent data/schema backup captured before upgrade; all32 original data-table datasets compared unchanged afterward (migration metadata excepted), approved membership inserted and API health/auth proxy verified. Password hash preserved. This supersedes the isolated-only restriction for those specific local changes only; no general account enrollment, historical identity/unit backfill or production deployment approval. Private evidence remains under ignored .local/phase-b-upgrade.
+
 ## Phase B account policies — approved 3 November 2026
 
 Owner explicitly approved the three targeted account questions: SHOP Admin manages staff assigned to that shop, existing three roles only, transactional/audited commands, no cloud account writes; block self-demotion/self-deactivation and removal of last active Admin. Supervised Admin-supplied strong initial password requires first-login change; password/role/status changes revoke all sessions. Admin reset/email/SMS recovery remains deferred. Explicit membership isolates accounts; unmapped accounts gain no automatic access. Additive migration and enrollment exercised only on isolated fixtures; operational account mapping/migration remains separately gated. This resolves O5/B09 only for the local account-management scope; stock approvals, cloud revocation/sync and recovery authority remain open. See complete-application-implementation-plan.md and application-permissions.md.

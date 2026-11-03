@@ -1,5 +1,10 @@
 # Proposed database design and ERD
 
+## Future unit-code constraint correction — design only
+
+The owner now requires exactly six random readable alphanumeric Unit Code characters, no fixed U prefix: UNIQUE(originId,unitCode), CHECK against ^[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{6}$, immutable retained mapping and UUID PK. Capacity887,503,681 per origin. StockUnit is not implemented. See six-character-unit-code-design.md for allocator/exhaustion, exact typed lookup and QR compatibility. No schema or migration is changed in Slices1–3.
+
+
 ## Phase1 implemented additive identities
 
 Migrations202611030007_public_identities and202611030008_public_identity_guard_record add ProductPublicIdentity(productId PK/FK) and LotPublicIdentity(lotId PK/FK), origin/code unique, policyVersion, deferred command FK, assignedAt and SQL provenance/immutable/new-subject completeness guards. Historical subjects are not backfilled by DDL. No original ledger row/model is rewritten; no StockUnit table exists. Subject mapping is mandatory only for new inserts after trigger installation. Tests/migrations exercised on isolated dayari_test only; operational schema remains unchanged.

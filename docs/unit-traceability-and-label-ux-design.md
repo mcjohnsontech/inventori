@@ -1,6 +1,8 @@
 # Product identification, unit traceability, search and label UX
 
-Phase 1 explicitly authorized by owner,3 November2026; isolated implementation report available
+Phase 1 implemented; six-character Unit Code correction recorded 3 November 2026. Future unit implementation remains separately gated.
+
+The owner correction supersedes all earlier U+7/eight-character unit proposals. See [six-character-unit-code-design.md](six-character-unit-code-design.md) for capacity, lookup, constraints, contracts and acceptance requirements. Product/Lot formats and DYI:1 are unchanged.
 
 Historical clarification review below was documentation-only. The owner subsequently explicitly authorized Phase1 section17, including isolated migration/tests only; see phase-1-implementation-report.md. No operational migration/backfill/deployment or Phase2 continuation is authorized. CONFIRMED BASELINE means existing behavior; APPROVED DESIGN means the owner-approved direction or rule, not implemented functionality; PROVISIONAL means a benchmark/policy proposal still requiring evidence; OPEN identifies a remaining decision. Earlier PROPOSED wording is governed by the revised checklist in section 15. No application, Prisma, migration, stock-data, dependency or deployment change is authorized now.
 
@@ -49,21 +51,21 @@ flowchart TD
 
 Four requested code-bearing levels (product, SKU, lot, unit), with Variant a separate essential identity. Derive unit product/variant/source/batch through its lot/SKU; no independently editable duplicate relationships or code parsing.
 
-PROPOSED alphabet: 23456789ABCDEFGHJKMNPQRSTUVWXYZ (31 characters, excludes0/1/I/L/O). Fixed type prefixes preserve the examples; L is a deliberate prefix exception, never a random body character.
+PROPOSED alphabet: 23456789ABCDEFGHJKMNPQRSTUVWXYZ (31 characters, excludes0/1/I/L/O). Product/Lot type prefixes remain unchanged; L is a deliberate prefix exception, never a random body character. Unit Codes have no fixed U prefix: all six positions use the readable alphabet.
 
 | Kind | Proposed format | Capacity per origin/kind |
 | --- | --- | --- |
 | Product | P +5 random characters, exactly6; P7K2M9 |31^5 =28,629,151 |
 | Lot | L +5, proposed6; L8M4Q2 |28,629,151 |
-| Unit | U +7, exactly8; U7K9M2Q4 |31^7 =27,512,614,111 |
+| Unit | 6 random characters, exactly6; A7K2M9 |31^6 =887,503,681 |
 
-APPROVED DESIGN A01 retains P+5/L+5/U+7 and the previously proposed alphabet/lengths. The all-random alternative is no longer the recommendation. No checksum is included; valid typing mistakes can identify another record, so show identity confirmation.
+APPROVED DESIGN A01 retains P+5/L+5/six-character Unit Codes with the retained alphabet; Unit length follows the owner's six-character correction. Product/Lot unprefixed alternatives remain rejected; the corrected Unit Code now uses six fully random characters. No checksum is included; valid typing mistakes can identify another record, so show identity confirmation.
 
 Uniqueness is (originId,kind,code), not globally guaranteed bare code. UUID stays authoritative. Independent disconnected origins may allocate the same string. Current shop defaults to its origin; future federated reads return authorized exact matches with a shop chooser, carrying UUID context invisibly. Staff never type an origin UUID. Replication preserves code/UUID provenance rather than renumbering. Same-origin restored duplicate writers are a fencing/integrity failure, not an allocation collision. No automatic shared-product merging across origins.
 
 Backend under origin command transaction: unbiased CSPRNG candidate → INSERT with database UNIQUE and ON CONFLICT DO NOTHING → repeat bounded32 attempts/identity → explicit allocation-busy error/full rollback. Do not catch a uniqueness error and continue an aborted transaction. No browser allocation, code recycling or hash-truncation guarantee. Retain immutable typed mappings even after retirement; monitor namespace occupancy and require a versioned decision before exhaustion/expansion. Idempotent replay returns the saved identity/code.
 
-Collision illustration:10,000 independent draws into31^5 give about1.746 expected colliding pairs before uniqueness retries; into31^7 about0.001817. This is namespace arithmetic, not an accepted failure rate. Database constraints/retries prevent committed same-namespace duplicates.
+Collision illustration:10,000 independent draws into31^5 give about1.746 expected colliding pairs before uniqueness retries; into31^6 about0.05633. This is namespace arithmetic, not an accepted failure rate. Database constraints/retries prevent committed same-namespace duplicates.
 
 ## 4. Additive model proposal
 
@@ -75,7 +77,7 @@ This is a schema sketch, not a migration. UUIDs, RESTRICT FKs, server timestampt
 | LotPublicIdentity | lotId PK/FK, originId, code, policyVersion, commandId, assignedAt; same guards; no StockLot UPDATE |
 | SerializationCutover | UUID, originId, policyVersion, activating command, recordedAt and committed watermark; immutable activation evidence |
 | LotSerialization | lotId PK/FK, NATIVE/LEGACY policy and cutover reference; immutable sidecar. Coverage derived, not editable complete flag |
-| StockUnit | UUID PK, lotId, originId, unitCode, immutable initialCondition USABLE/DAMAGED, registrationKind RECEIPT/LEGACY_BASELINE, registrationCommandId, recordedAt; UNIQUE(originId,unitCode), UNIQUE(id,lotId). Receipt provenance derives via ReceiptLine.lotId |
+| StockUnit | UUID PK, lotId, originId, unitCode CHECK readable alphabet/exactly6, immutable initialCondition USABLE/DAMAGED, registrationKind RECEIPT/LEGACY_BASELINE, registrationCommandId, recordedAt; UNIQUE(originId,unitCode), UNIQUE(id,lotId). Receipt provenance derives via ReceiptLine.lotId |
 | UnitEvent | UUID, unitId/lotId composite FK, per-unit ordinal, kind, from/to accounting states where applicable, actor/role/command, recordedAt and optional occurredAt, typed enrollmentId or movementId; UNIQUE(unitId,ordinal), append-only |
 | UnitState | unitId PK, lotId composite FK, accountingState, condition, custody, version, lastEventId; rebuildable projection, no direct setter; no printing flags |
 | UnitEnrollment | UUID, lot/origin, actor/command, cutoff sequence, captured balances, observed/assigned U/D counts, reason/evidence, recordedAt; immutable accepted baseline assignment |
@@ -227,7 +229,7 @@ Inventory selection · two thirds     Print cart · one third, sticky
 [Product / variant / supplier]       32 unique unit labels
 [Lot L8M4Q2 · batch ...]              30 usable · 2 damaged intake
 [Initial labels | Reprints]          Initial / explicit reprint group
-[ ] U7K9M2Q4 [View label]             Profile [70×35 A4 trial v2]
+[ ] A7K2M9 [View label]             Profile [70×35 A4 trial v2]
 [ ] U8... Usable                     Expected sheets / warnings
 [ ] U9... DAMAGED INTAKE              [Review & Print Labels]
 [Add selected] [Add first50]          [Download PDF fallback]
@@ -296,7 +298,7 @@ Common validation: strict Zod objects; max query120 characters/10 tokens; page d
 Example UnitSummary (placeholders illustrate fields, not literal accepted UUIDs):
 
 ```json
-{"kind":"UNIT","payloadVersion":2,"unitId":"<UUID>","unitCode":"U7K9M2Q4",
+{"kind":"UNIT","payloadVersion":2,"unitId":"<UUID>","unitCode":"A7K2M9",
  "productId":"<UUID>","productCode":"P7K2M9","productName":"A5 Maple Leatherbound Notebook",
  "variantId":"<UUID>","attributes":[{"attributeId":"<UUID>","valueId":"<UUID>","label":"Red"}],
  "fullSku":"CHILG03849-RED","lotId":"<UUID>","lotCode":"L8M4Q2",
@@ -367,7 +369,7 @@ Main risks: single-origin lock contention/storage growth, dual ledger/unit drift
 
 Owner clarification outcome (this review): architectural direction accepted; approvals below concern design, not implementation. This checklist supersedes the original unchecked proposals without implying tests or migrations occurred.
 
-- [x] **A01 APPROVED DESIGN:** retain P+5, L+5 and U+7; origin-qualified identities/lookups, database collision protection, documented capacity, immutable codes/no renumbering across independent shops. Section3 governs the namespace.
+- [x] **A01 APPROVED DESIGN:** retain P+5, L+5 and six-character Unit Codes; origin-qualified identities/lookups, database collision protection, documented capacity, immutable codes/no renumbering across independent shops. Section3 governs the namespace.
 - [x] **A02 APPROVED DESIGN / PROOF REQUIRED:** immutable mappings, serialized receiving and DYI:2 units beside unchanged DYI:1 lots. Section6.1 defines mandatory database enforcement and old-writer bypass tests before cutover.
 - [x] **A03 APPROVED DESIGN:** role-specific search DTOs; Production only operational identities/nonsensitive source labels/usable availability, no sensitive supplier, invoice, damage history/totals, audit or print-administration data. Full search remains Phase3.
 - [ ] **A04 PROVISIONAL / BENCHMARK GATE:**10,000 units,100 lines and500-row chunks are candidate operational settings, not verified limits or throughput promises. Section6.2 covers workload/recovery evidence and oversized legitimate deliveries before activation.

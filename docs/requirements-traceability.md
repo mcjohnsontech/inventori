@@ -1,5 +1,18 @@
 # Requirements traceability
 
+## Inventory experience authorization and unit-code correction — 3 November2026
+
+| Requirement | Scope / evidence |
+| --- | --- |
+| Compact grouped role navigation, preserve all destinations | Slice1; compact-navigation/access browser tests |
+| Inventory sheet, Product/Lot identity, exact U/D quantities, modal detail/context | Slice2; inventory-sheet/receiving/public-identities browser tests |
+| Stock-first per-variant overview, lot/batch drilldown, no incompatible grand totals | Slice3; stock-overview unit/browser and existing receiving/RBAC regressions |
+| Exactly six readable permanent unit characters, secure collision handling, exact origin-safe manual lookup and unique unit QR | Approved design correction only; six-character-unit-code-design.md; no Phase2 implementation |
+| Secure single-use email invitation and employee-set password | Approved direction only; staff-invitation-design.md; no endpoints, account policy or schema changes |
+
+Test names describe planned/executed coverage; actual results are recorded only in inventory-experience-slices-1-3-report.md.
+
+
 ## Phase B — current application coverage
 
 | Source | Delivered boundary | Evidence |
