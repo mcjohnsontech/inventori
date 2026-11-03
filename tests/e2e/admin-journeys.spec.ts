@@ -91,7 +91,7 @@ test('Admin product extension, deep links and complete responsive workspaces use
       if (key === 'inventory') {
         await expect(page.getByRole('combobox', { name: 'Product', exact: true })).toHaveCount(width < 640 ? 0 : 1);
         await page.getByLabel('Search inventory', { exact: true }).fill(receipt.lines[0].lotCode);
-        await expect(page.getByRole('button').filter({ hasText: receipt.lines[0].lotCode }).filter({ hasText: 'Inspect lot provenance' })).toBeVisible();
+        await expect(page.getByRole('row').filter({ hasText: receipt.lines[0].lotCode })).toBeVisible();
       }
       if (key === 'receiving') await expect(page.getByText('Ready to receive', { exact: true })).toBeVisible();
       if (key === 'receipts') {

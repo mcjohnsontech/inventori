@@ -165,3 +165,29 @@ button, input, select, textarea { font-family: inherit; }
  .workspace-nav button { min-height: 44px; }
  .sidebar-footer { padding-top: 4px; }
 }
+/* Inventory sheet and native modal drawer. */
+.inventory-sheet table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 12px; }
+.inventory-sheet th, .inventory-sheet td { padding: 13px 16px; overflow-wrap: anywhere; vertical-align: middle; }
+.inventory-sheet th { font-size: 9px; background: #fafbf7; }
+.inventory-sheet th:first-child { width: 23%; }
+.inventory-sheet th:nth-child(2) { width: 25%; }
+.inventory-sheet tbody tr:hover { background: #fafcf6; }
+.quantity-cell { text-align: right; font-variant-numeric: tabular-nums; }
+.sheet-secondary { display: block; margin-top: 4px; color: #75816c; font-size: 10px; line-height: 1.5; }
+.sheet-action { text-align: right; }
+.details-drawer { position: fixed; inset: 0 0 0 auto; margin: 0; padding: 0; width: min(520px,100vw); height: 100dvh; max-height: 100dvh; max-width: 100vw; border: 0; border-left: 1px solid #dfe5d7; background: #fffefa; color: inherit; box-shadow: -12px 0 60px #153e3120; overflow-y: auto; }
+.details-drawer::backdrop { background: #172b2466; }
+.drawer-heading { position: sticky; top: 0; background: #fffefa; border-bottom: 1px solid #dfe5d7; padding: 22px; display: flex; align-items: start; justify-content: space-between; gap: 12px; z-index: 1; }
+.drawer-heading h2 { font-size: 21px; font-weight: 600; }
+.drawer-body { padding: 0 6px 20px; }
+@media (max-width: 767px) {
+ .inventory-sheet table, .inventory-sheet tbody { display: block; }
+ .inventory-sheet thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+ .inventory-sheet tr { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; padding: 14px 16px; border-bottom: 1px solid #e7ebdf; }
+ .inventory-sheet td { display: block; padding: 5px 0; border: 0; text-align: left; }
+ .inventory-sheet td:first-child, .inventory-sheet td:nth-child(2), .inventory-sheet td[data-label='Lot / batch'], .inventory-sheet .sheet-action { grid-column: 1/-1; }
+ .inventory-sheet td[data-label='Usable']::before, .inventory-sheet td[data-label='Damaged']::before { content: attr(data-label) ' '; font-size: 11px; color: #75816c; }
+ .inventory-sheet .sheet-action { text-align: right; }
+ .details-drawer { width: 100vw; }
+ .drawer-heading { padding: 20px; }
+}

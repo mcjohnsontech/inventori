@@ -39,10 +39,10 @@ test('Manager receives a multi-product delivery, retries a lost response and see
  await expect(page.getByRole('region',{name:'Accepted receipt',exact:true})).toContainText(skus[0].fullCode);
  await page.getByRole('button',{name:'Inspect stock lots',exact:true}).first().click();
  await expect(page.getByRole('heading',{name:'Inventory',exact:true})).toBeVisible();
- await page.getByRole('button').filter({hasText:accepted.lines[0].lotCode}).filter({hasText:'Inspect lot provenance'}).click();
+ await page.getByRole('row').filter({hasText:accepted.lines[0].lotCode}).getByRole('button',{name:/Details/}).click();
  const provenance=page.getByRole('region',{name:'Lot provenance',exact:true});
  await expect(provenance).toContainText('External arrival → Usable');
- await provenance.getByRole('button',{name:'View accepted receipt',exact:true}).click();
+ const receiptResponse=page.waitForResponse(r=>r.url().endsWith(`/api/receipts/${accepted.id}`)&&r.request().method()==='GET');await provenance.getByRole('button',{name:'View accepted receipt',exact:true}).click();expect((await receiptResponse).status()).toBe(200);
  await expect(page.getByRole('region',{name:'Accepted receipt',exact:true})).toContainText(accepted.batch.publicCode);
  await page.getByRole('button',{name:'Sign out'}).click();await login('e2e-production@dayari.test');await expect(page.getByRole('button',{name:'Receiving',exact:true})).toHaveCount(0);expect((await page.request.get('/api/receiving/options')).status()).toBe(403);expect((await page.request.get('/api/stock')).status()).toBe(403);
 });
