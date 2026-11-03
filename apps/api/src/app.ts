@@ -1,0 +1,63 @@
+import { PublicIdentitiesService } from './public-identities.service.js';
+import 'reflect-metadata';
+import { Body, Controller, Get, Headers, HttpCode, Inject, Module, Param, Post, Query, Res } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
+import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
+import type { PrismaClient } from '@prisma/client';
+import type { FastifyReply } from 'fastify';
+import { LabelsService } from './labels.service.js';
+import { ReceivingService } from './receiving.service.js';
+import { CatalogueService } from './catalogue.service.js';
+
+@Controller('v1')
+class ApiController {
+  constructor(@Inject(CatalogueService) private readonly service: CatalogueService, @Inject(ReceivingService) private readonly receiving: ReceivingService, @Inject(LabelsService) private readonly labels: LabelsService, @Inject(PublicIdentitiesService) private readonly identities: PublicIdentitiesService) {}
+  @Get('inventory/products/by-code/:code') async productCode(@Param('code') code:string,@Query() query:unknown,@Headers('authorization') auth?:string){return this.identities.lookup(await this.service.actor(this.token(auth)),'PRODUCT',code,query);}
+  @Get('inventory/lots/by-code/:code') async lotCode(@Param('code') code:string,@Query() query:unknown,@Headers('authorization') auth?:string){return this.identities.lookup(await this.service.actor(this.token(auth)),'LOT',code,query);}
+  @Get('health') health() { return { status: 'ok', service: 'dayari-api', authority: this.service.mode, cloudSync: 'not-configured' }; }
+  @Post('sessions') @HttpCode(200) login(@Body() body: unknown) { return this.service.login(body); }
+  @Post('sessions/logout') @HttpCode(200) async logout(@Headers('authorization') authorization?: string) {
+    const token = this.token(authorization);
+    await this.service.actor(token);
+    return this.service.logout(token!);
+  }
+  @Get('me') async me(@Headers('authorization') authorization?: string) {
+    const actor = await this.service.actor(this.token(authorization));
+    return { id: actor.id, name: actor.name, role: actor.role };
+  }
+  @Get('catalogue') async catalogue(@Headers('authorization') authorization?: string) { return this.service.catalogue(await this.service.actor(this.token(authorization))); }
+  @Post('catalogue/:type') async create(@Headers('authorization') authorization: string | undefined, @Headers('idempotency-key') key: string | undefined, @Param('type') type: string, @Body() body: unknown) {
+    return this.service.create(await this.service.actor(this.token(authorization)), type, key, body);
+  }
+  @Get('receiving/options') async receivingOptions(@Headers('authorization') auth?: string) { return this.receiving.options(await this.service.actor(this.token(auth))); }
+  @Get('receipts') async receipts(@Headers('authorization') auth?: string) { return this.receiving.list(await this.service.actor(this.token(auth))); }
+  @Get('receipts/:id') async receipt(@Param('id') id: string, @Headers('authorization') auth?: string) { return this.receiving.get(await this.service.actor(this.token(auth)), id); }
+  @Get('stock') async stock(@Query() query: unknown, @Headers('authorization') auth?: string) { return this.receiving.stock(await this.service.actor(this.token(auth)), query); }
+  @Post('receipts') async receive(@Headers('authorization') auth: string | undefined, @Headers('idempotency-key') key: string | undefined, @Body() body: unknown) { return this.receiving.create(await this.service.actor(this.token(auth)), key, body); }
+  @Post('qr/resolve') @HttpCode(200) async resolveQr(@Headers('authorization') auth:string|undefined,@Body() body:unknown){return this.labels.resolve(await this.service.actor(this.token(auth)),body);}
+  @Get('qr/manual-sources') async manualSources(@Headers('authorization') auth?:string){return this.labels.manualSources(await this.service.actor(this.token(auth)));}
+  @Post('qr/manual') @HttpCode(200) async manualQr(@Headers('authorization') auth:string|undefined,@Body() body:unknown){return this.labels.manual(await this.service.actor(this.token(auth)),body);}
+  @Get('receipts/:id/label-plan') async labelPlan(@Headers('authorization') auth:string|undefined,@Param('id') id:string){return this.labels.plan(await this.service.actor(this.token(auth)),id);}
+  @Get('label-print-jobs') async labelJobs(@Headers('authorization') auth?:string){return this.labels.list(await this.service.actor(this.token(auth)));}
+  @Post('label-print-jobs') async newLabelJob(@Headers('authorization') auth:string|undefined,@Headers('idempotency-key') key:string|undefined,@Body() body:unknown){return this.labels.create(await this.service.actor(this.token(auth)),key,body);}
+  @Get('label-print-jobs/:id') async labelJob(@Headers('authorization') auth:string|undefined,@Param('id') id:string){return this.labels.get(await this.service.actor(this.token(auth)),id);}
+  @Post('label-print-jobs/:id/artifacts/:chunk') async prepareLabels(@Headers('authorization') auth:string|undefined,@Headers('idempotency-key') key:string|undefined,@Param('id') id:string,@Param('chunk') chunk:string){return this.labels.prepare(await this.service.actor(this.token(auth)),id,chunk,key);}
+  @Get('label-print-jobs/:id/artifacts/:chunk.pdf') async labelPdf(@Headers('authorization') auth:string|undefined,@Param('id') id:string,@Param('chunk') chunk:string,@Res() reply:FastifyReply){const result=await this.labels.pdf(await this.service.actor(this.token(auth)),id,chunk);return reply.type('application/pdf').header('Content-Disposition',`inline; filename="dayari-${id}-${chunk}.pdf"`).header('X-Artifact-SHA256',result.hash).send(result.bytes);}
+  @Post('label-print-jobs/:id/events') async labelEvent(@Headers('authorization') auth:string|undefined,@Headers('idempotency-key') key:string|undefined,@Param('id') id:string,@Body() body:unknown){return this.labels.event(await this.service.actor(this.token(auth)),id,key,body);}
+  private token(header: string | undefined): string | undefined { return header?.startsWith('Bearer ') ? header.slice(7) : undefined; }
+}
+
+export async function createApp(db: PrismaClient, originId: string, mode: string) {
+  @Module({ controllers: [ApiController], providers: [{ provide: PublicIdentitiesService, useValue: new PublicIdentitiesService(db, originId) }, { provide: LabelsService, useValue: new LabelsService(db, originId, mode) }, { provide: ReceivingService, useValue: new ReceivingService(db, originId, mode) }, { provide: CatalogueService, useValue: new CatalogueService(db, originId, mode) }] })
+  class AppModule {}
+  const adapter = new FastifyAdapter({ bodyLimit: 32000 });
+  adapter.getInstance().addHook('onSend', async (_request, reply, payload) => {
+    reply.header('Cache-Control', 'no-store');
+    reply.header('X-Content-Type-Options', 'nosniff');
+    return payload;
+  });
+  const app = await NestFactory.create<NestFastifyApplication>(AppModule, adapter, { logger: ['error', 'warn'] });
+  await app.init();
+  await adapter.getInstance().ready();
+  return app;
+}

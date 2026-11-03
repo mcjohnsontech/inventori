@@ -1,0 +1,10 @@
+@import "tailwindcss";
+:root { color-scheme: light; }
+body { margin: 0; background: #f7f7f2; color: #252923; font-family: Arial, Helvetica, sans-serif; }
+input, select, textarea { width: 100%; border: 1px solid #d6d8ce; border-radius: 8px; background: white; padding: 10px 12px; font-size: 14px; }
+input:focus, select:focus, textarea:focus { outline: 2px solid #16654b; outline-offset: 2px; }
+label { display: block; font-size: 12px; font-weight: 600; color: #555c51; }
+label > input, label > select, label > textarea { margin-top: 6px; }
+button, select { cursor: pointer; }
+th { font-weight: 500; text-align: left; color: #6c7366; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+th, td { padding: 16px 22px; border-bottom: 1px solid #eceee5; }

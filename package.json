@@ -1,0 +1,46 @@
+{
+  "name": "dayari-inventory",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=24.15.0"
+  },
+  "scripts": {
+    "build:contracts": "npm run build -w @dayari/contracts",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:seed": "tsx scripts/seed.ts",
+    "dev:api": "npm run dev -w @dayari/api",
+    "dev:web": "npm run dev -w @dayari/web",
+    "dev:db": "tsx scripts/local-postgres.ts",
+    "build": "npm run build:contracts && npm run db:generate && npm run build -w @dayari/api && npm run build -w @dayari/web",
+    "typecheck": "npm run build:contracts && tsc --noEmit -p apps/api/tsconfig.json && tsc --noEmit -p apps/web/tsconfig.json && tsc --noEmit -p tsconfig.json",
+    "test": "npm run build:contracts && node scripts/run-vitest.mjs run",
+    "test:integration": "npm run build:contracts && node scripts/run-vitest.mjs run --config vitest.integration.config.ts",
+    "test:e2e": "npm run build:contracts && npm run db:generate && npm run build -w @dayari/api && playwright test",
+    "identity:backfill": "tsx scripts/backfill-public-identities.ts"
+  },
+  "devDependencies": {
+    "@napi-rs/canvas": "1.1.0",
+    "@playwright/test": "^1.56.0",
+    "@types/node": "^24.0.0",
+    "@types/pdfkit": "0.17.7",
+    "@types/pg": "^8.15.0",
+    "@types/qrcode": "1.5.6",
+    "@types/supertest": "^6.0.0",
+    "dotenv": "^17.0.0",
+    "embedded-postgres": "17.11.0-beta.19",
+    "jsqr": "1.4.0",
+    "pdfjs-dist": "6.5.438",
+    "prisma": "^7.0.0",
+    "supertest": "^7.1.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0",
+    "vitest": "^4.0.0"
+  }
+}

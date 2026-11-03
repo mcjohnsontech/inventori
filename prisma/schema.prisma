@@ -1,0 +1,370 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+}
+enum Role {
+  ADMIN
+  MANAGER
+  PRODUCTION
+}
+model OriginNode {
+  id           String @id @db.Uuid
+  mode         String
+  nextSequence BigInt @default(0)
+  createdAt    DateTime @default(now()) @db.Timestamptz(6)
+  events       OutboxEvent[]
+}
+model User {
+  id           String @id @default(uuid()) @db.Uuid
+  email        String @unique
+  name         String
+  role         Role
+  passwordHash String
+  active       Boolean @default(true)
+  createdAt    DateTime @default(now()) @db.Timestamptz(6)
+  sessions     Session[]
+  audits       AuditEvent[]
+  commands     CommandResult[]
+}
+model Session {
+  id        String @id @default(uuid()) @db.Uuid
+  tokenHash String @unique
+  userId    String @db.Uuid
+  user      User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  expiresAt DateTime @db.Timestamptz(6)
+  revokedAt DateTime? @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  @@index([userId])
+}
+model LoginAttempt {
+  id        String @id @default(uuid()) @db.Uuid
+  email     String
+  succeeded Boolean
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  @@index([email, createdAt])
+}
+model Supplier {
+  id        String @id @default(uuid()) @db.Uuid
+  name      String
+  code      String @unique
+  originId  String @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  sources   SupplierSource[]
+}
+model SourceLocation {
+  id        String @id @default(uuid()) @db.Uuid
+  name      String
+  originId  String @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  sources   SupplierSource[]
+}
+model SupplierSource {
+  id         String @id @default(uuid()) @db.Uuid
+  supplierId String @db.Uuid
+  locationId String @db.Uuid
+  name       String
+  code       String @unique
+  originId   String @db.Uuid
+  supplier   Supplier @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  location   SourceLocation @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  createdAt  DateTime @default(now()) @db.Timestamptz(6)
+  sourcings  ProductSourcing[]
+  skuPrefix  SupplierLocationPrefix?
+  @@unique([supplierId, locationId])
+}
+model LocationRegistry {
+  id             String @id @default(uuid()) @db.Uuid
+  name           String
+  normalizedName String @unique
+  code           String @unique
+  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+  prefixes       SupplierLocationPrefix[]
+}
+model SupplierLocationPrefix {
+  id         String @id @default(uuid()) @db.Uuid
+  sourceId   String @unique @db.Uuid
+  registryId String @db.Uuid
+  code       String @unique
+  originId   String @db.Uuid
+  createdAt  DateTime @default(now()) @db.Timestamptz(6)
+  source     SupplierSource @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  registry   LocationRegistry @relation(fields: [registryId], references: [id], onDelete: Restrict)
+}
+model Product {
+  publicIdentity ProductPublicIdentity?
+  id          String @id @default(uuid()) @db.Uuid
+  name        String
+  description String @default("")
+  originId    String @db.Uuid
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  variants    Variant[]
+  attributes  Attribute[]
+  sourcings   ProductSourcing[]
+}
+model Attribute {
+  id        String @id @default(uuid()) @db.Uuid
+  productId String @db.Uuid
+  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  name      String
+  originId  String @db.Uuid
+  values    AttributeValue[]
+  @@unique([productId, name])
+}
+model AttributeValue {
+  id          String @id @default(uuid()) @db.Uuid
+  attributeId String @db.Uuid
+  attribute   Attribute @relation(fields: [attributeId], references: [id], onDelete: Restrict)
+  label       String
+  originId    String @db.Uuid
+  selections  VariantSelection[]
+  @@unique([attributeId, label])
+  @@unique([id, attributeId])
+}
+model Variant {
+  id             String @id @default(uuid()) @db.Uuid
+  productId      String @db.Uuid
+  product        Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  name           String
+  combinationKey String
+  originId       String @db.Uuid
+  selections     VariantSelection[]
+  skus           SupplierVariantSku[]
+  @@unique([productId, combinationKey])
+  @@unique([id, productId])
+}
+model VariantSelection {
+  variantId   String @db.Uuid
+  attributeId String @db.Uuid
+  valueId     String @db.Uuid
+  variant     Variant @relation(fields: [variantId], references: [id], onDelete: Restrict)
+  value       AttributeValue @relation(fields: [valueId, attributeId], references: [id, attributeId], onDelete: Restrict)
+  @@id([variantId, attributeId])
+}
+model ProductSourcing {
+  id        String @id @default(uuid()) @db.Uuid
+  sourceId  String @db.Uuid
+  productId String @db.Uuid
+  baseCode  String @unique
+  source    SupplierSource @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  originId  String @db.Uuid
+  skus      SupplierVariantSku[]
+  @@unique([sourceId, productId])
+  @@unique([id, productId])
+}
+model SupplierVariantSku {
+  id         String @id @default(uuid()) @db.Uuid
+  sourcingId String @db.Uuid
+  variantId  String @db.Uuid
+  productId  String @db.Uuid
+  suffix     String
+  fullCode   String @unique
+  originId   String @db.Uuid
+  sourcing   ProductSourcing @relation(fields: [sourcingId, productId], references: [id, productId], onDelete: Restrict)
+  variant    Variant @relation(fields: [variantId, productId], references: [id, productId], onDelete: Restrict)
+  @@unique([sourcingId, variantId])
+}
+model CommandResult {
+  id          String @id @default(uuid()) @db.Uuid
+  originId    String @db.Uuid
+  actorId     String @db.Uuid
+  actor       User @relation(fields: [actorId], references: [id], onDelete: Restrict)
+  commandType String
+  key         String @db.Uuid
+  requestHash String
+  response    Json
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  @@unique([originId, actorId, commandType, key])
+}
+model AuditEvent {
+  id          String @id @default(uuid()) @db.Uuid
+  originId    String @db.Uuid
+  actorId     String @db.Uuid
+  actor       User @relation(fields: [actorId], references: [id], onDelete: Restrict)
+  actorRole   Role
+  commandId   String @db.Uuid
+  action      String
+  subjectId   String @db.Uuid
+  snapshot    Json
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  @@index([subjectId, createdAt])
+}
+model OutboxEvent {
+  id             String @id @default(uuid()) @db.Uuid
+  originId       String @db.Uuid
+  origin         OriginNode @relation(fields: [originId], references: [id], onDelete: Restrict)
+  originSequence BigInt
+  schemaVersion  Int @default(1)
+  eventType      String
+  aggregateId    String @db.Uuid
+  commandId      String @db.Uuid
+  actorId        String @db.Uuid
+  payload        Json
+  payloadHash    String
+  recordedAt     DateTime @default(now()) @db.Timestamptz(6)
+  @@unique([originId, originSequence])
+}
+model InboxEvent {
+  id             String @id @default(uuid()) @db.Uuid
+  originId       String @db.Uuid
+  eventId        String @db.Uuid
+  originSequence BigInt
+  payloadHash    String
+  schemaVersion  Int
+  acceptedAt     DateTime @default(now()) @db.Timestamptz(6)
+  @@unique([originId, eventId])
+  @@unique([originId, originSequence])
+}
+
+
+// Ledger provenance and deferred completeness constraints are defined in migration SQL.
+model DeliveryBatch {
+  id String @id @default(uuid()) @db.Uuid
+  originId String @db.Uuid
+  sourceId String @db.Uuid
+  publicCode String
+  numberedOn DateTime @db.Date
+  dailyOrdinal Int
+  deliveredOn DateTime @db.Date
+  invoiceReference String?
+  acceptedAt DateTime @db.Timestamptz(6)
+  snapshot Json
+  @@unique([originId, publicCode])
+  @@unique([originId, numberedOn, dailyOrdinal])
+  @@index([sourceId, deliveredOn])
+}
+model StockTransaction {
+  id String @id @default(uuid()) @db.Uuid
+  batchId String @unique @db.Uuid
+  originId String @db.Uuid
+  commandId String @unique @db.Uuid
+  originSequence BigInt
+  type String
+  actorId String @db.Uuid
+  actorRole Role
+  recordedAt DateTime @db.Timestamptz(6)
+  @@unique([originId, originSequence])
+}
+model Receipt {
+  id String @id @default(uuid()) @db.Uuid
+  batchId String @unique @db.Uuid
+  transactionId String @unique @db.Uuid
+  sourceId String @db.Uuid
+  acceptedAt DateTime @db.Timestamptz(6)
+}
+model StockLot {
+  publicIdentity LotPublicIdentity?
+  id String @id @default(uuid()) @db.Uuid
+  skuId String @db.Uuid
+  batchId String @db.Uuid
+  sourceId String @db.Uuid
+  originId String @db.Uuid
+  @@unique([skuId, batchId])
+  @@index([batchId])
+}
+model ReceiptLine {
+  id String @id @default(uuid()) @db.Uuid
+  receiptId String @db.Uuid
+  batchId String @db.Uuid
+  skuId String @db.Uuid
+  lotId String @unique @db.Uuid
+  lineNumber Int
+  usableQuantity BigInt
+  damagedQuantity BigInt
+  totalQuantity BigInt @default(dbgenerated())
+  damageReason String
+  snapshot Json
+  @@unique([receiptId, skuId])
+  @@unique([receiptId, lineNumber])
+  @@index([batchId])
+}
+model StockMovement {
+  id String @id @default(uuid()) @db.Uuid
+  transactionId String @db.Uuid
+  batchId String @db.Uuid
+  lotId String @db.Uuid
+  receiptLineId String @db.Uuid
+  fromState String
+  toState String
+  quantity BigInt
+  @@unique([receiptLineId, toState])
+  @@index([lotId])
+  @@index([transactionId])
+  @@index([batchId])
+}
+model StockBalance {
+  lotId String @db.Uuid
+  state String
+  quantity BigInt
+  version BigInt @default(1)
+  lastTransactionId String @db.Uuid
+  @@id([lotId, state])
+}
+
+model LabelPrintJob {
+ id String @id @default(uuid()) @db.Uuid
+ receiptId String @db.Uuid
+ originId String @db.Uuid
+ actorId String @db.Uuid
+ commandId String @unique @db.Uuid
+ kind String
+ originalJobId String? @db.Uuid
+ reason String
+ profile Json
+ rendererVersion String
+ manifestHash String
+ totalCopies BigInt
+ createdAt DateTime @db.Timestamptz(6)
+ @@index([receiptId, createdAt])
+}
+model LabelPrintJobLine {
+ id String @id @default(uuid()) @db.Uuid
+ jobId String @db.Uuid
+ receiptLineId String @db.Uuid
+ lotId String @db.Uuid
+ purpose String
+ copies BigInt
+ payload String
+ content Json
+ ordinal Int
+ @@unique([jobId, lotId, purpose])
+ @@unique([jobId, ordinal])
+}
+model LabelPrintEvent {
+ id String @id @default(uuid()) @db.Uuid
+ jobId String @db.Uuid
+ originId String @db.Uuid
+ actorId String @db.Uuid
+ commandId String @unique @db.Uuid
+ kind String
+ chunk String
+ attemptId String @db.Uuid
+ copies BigInt
+ artifactHash String?
+ note String
+ createdAt DateTime @db.Timestamptz(6)
+ @@index([jobId, createdAt])
+}
+
+model ProductPublicIdentity {
+ productId String @id @db.Uuid
+ originId String @db.Uuid
+ code String
+ policyVersion Int @default(1)
+ commandId String @db.Uuid
+ assignedAt DateTime @default(now()) @db.Timestamptz(6)
+ product Product @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+ @@unique([originId, code])
+}
+model LotPublicIdentity {
+ lotId String @id @db.Uuid
+ originId String @db.Uuid
+ code String
+ policyVersion Int @default(1)
+ commandId String @db.Uuid
+ assignedAt DateTime @default(now()) @db.Timestamptz(6)
+ lot StockLot @relation(fields: [lotId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+ @@unique([originId, code])
+}

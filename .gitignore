@@ -1,0 +1,20 @@
+node_modules/
+.env
+.env.*
+!.env.example
+dist/
+.next/
+.next-e2e/
+coverage/
+playwright-report/
+test-results/
+*.tsbuildinfo
+*.log
+apps/api/generated/
+.local/
+
+# Generated evidence/private local artifacts are not source.
+artifacts/
+*.pdf
+*.dump
+*.backup
