@@ -1,3 +1,4 @@
+import { requireCapability } from './permissions.js';
 import { allocatePublicIdentity } from './public-code.js';
 import { randomUUID } from 'node:crypto';
 import { BadRequestException, ConflictException, ForbiddenException, UnauthorizedException } from '@nestjs/common';
@@ -52,12 +53,12 @@ export class CatalogueService {
   }
 
   shopInfo(user: User) {
-    if (!user.active || user.role !== 'ADMIN') throw new ForbiddenException('Shop configuration is available to Admin');
+    requireCapability(user,'SHOP_INFO');
     return { originId: this.originId, authority: this.mode, timeZone: 'Africa/Lagos', cloudSync: 'not-configured', observedAt: new Date().toISOString() };
   }
 
   async catalogue(user: User): Promise<import('@dayari/contracts').Catalogue> {
-    if (user.role === 'PRODUCTION') throw new ForbiddenException();
+    requireCapability(user,'CATALOGUE_READ');
     const [products, suppliers, skus, locations, sourcings] = await this.db.$transaction([
       this.db.product.findMany({ where: { originId: this.originId }, orderBy: { createdAt: 'desc' }, include: { publicIdentity: true, variants: true, attributes: { include: { values: true } } } }),
       this.db.supplier.findMany({ where: { originId: this.originId }, orderBy: { name: 'asc' }, include: { sources: { include: { skuPrefix: true } } } }),
@@ -75,7 +76,7 @@ export class CatalogueService {
   }
 
   async create(user: User, type: string, keyInput: unknown, input: unknown) {
-    if (user.role !== 'ADMIN') throw new ForbiddenException('Only Admin may create catalogue entries');
+    requireCapability(user,'CATALOGUE_WRITE');
     if (this.mode !== 'SHOP') throw new ForbiddenException('Catalogue writes belong to the shop authority');
     const key = parse(idempotencyKeySchema, keyInput);
     const schemas: Record<string, ZodType> = { products: productSchema, suppliers: supplierSchema, sources: sourceSchema, attributes: attributeSchema, values: valueSchema, variants: variantSchema, skus: skuSchema, 'supplier-setups': supplierSetupSchema, 'product-setups': productSetupSchema };

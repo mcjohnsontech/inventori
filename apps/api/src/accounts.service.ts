@@ -1,3 +1,4 @@
+import { requireCapability } from './permissions.js';
 import { accountProof } from './account-proof.js';
 import { createHmac, randomUUID } from 'node:crypto';
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException, UnauthorizedException } from '@nestjs/common';
@@ -9,7 +10,7 @@ function parse<T>(schema:ZodType<T>,input:unknown):T{const result=schema.safePar
 export function staffDto(user:User):StaffSummary{return {id:user.id,name:user.name,email:user.email,role:user.role,active:user.active,mustChangePassword:user.mustChangePassword,createdAt:user.createdAt.toISOString()};}
 export class AccountsService {
  constructor(readonly db:PrismaClient,readonly originId:string,readonly mode:string){}
- private admin(user:User){if(!user.active||user.role!=='ADMIN'||user.mustChangePassword)throw new ForbiddenException('Shop Admin access required');}
+ private admin(user:User){requireCapability(user,'STAFF_ADMIN');}
  async list(user:User,input:unknown){
   this.admin(user);const q=parse(staffQuery,input);
   const where:Prisma.UserWhereInput={membership:{originId:this.originId},...(q.role?{role:q.role}:{}),...(q.active?{active:q.active==='true'}:{}),...(q.q?{OR:[{name:{contains:q.q,mode:'insensitive'}},{email:{contains:q.q,mode:'insensitive'}}]}:{})};

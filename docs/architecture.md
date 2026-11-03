@@ -1,5 +1,11 @@
 # Architecture and API boundaries
 
+## Phase B — shop account boundary
+
+The owner approved SHOP-local staff administration, supervised initial passwords with compulsory change, and explicit isolated membership. User UUIDs remain global historical actors, but one immutable ShopMembership assigns an account to one origin. Sessions carry that origin and require matching active membership. Existing accounts/sessions are preserved without implicit enrollment; null-origin historical sessions fail authentication. New migrations009/010 are isolated-test only until separate operational authorization.
+
+AccountsService adds bounded Admin directory/detail and idempotent create/update/revoke commands, plus own profile/password change. Existing same-origin Next proxy uses explicit route allowlists and HttpOnly Strict cookies. Capability allowlists are shared in contracts; service guards still enforce active roles. Compulsory-change sessions can only read minimal me/change password/logout. User authentication generation changes fence stale in-flight writes under origin-first locks; password/role/status changes revoke all sessions. Persisted login/proof failure limits use PostgreSQL advisory locks. No credential/proof in audit/outbox/command responses; no reset delivery, account deletion, public registration, cloud user writes or sync authority is introduced.
+
 ## Phase1 public identity boundary
 
 Two immutable typed sidecars add origin-qualified alternate keys without changing UUID/SKU/lot authority. Backend allocation shares existing catalogue/receiving command transactions; deferred INSERT guards reject new unmapped products/lots. PublicIdentitiesService provides authenticated exact typed reads with role DTOs, no fuzzy search or stock writes. Minimal existing-workspace code form; old PDF/QR infrastructure unchanged. Backfill engine/CLI is isolated *_test-only, dry-run/saved-plan/replay with separate audited metadata. Operational migration/deployment is not performed. See phase-1-implementation-report.md.

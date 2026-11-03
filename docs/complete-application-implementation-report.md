@@ -29,3 +29,11 @@ Additive migration `202611030010_account_generation` applied only to `dayari_tes
 Executed: account/auth integration 9/9; unit 22/22; final typecheck and production build passed; extended browser provisioning → mandatory change → sign-in 1/1. Initial advisory-lock result failed Prisma void deserialization and was corrected with text casting; initial build caught a Windows encoding error, corrected before final successful build. Test-only concurrent Supertest requests emit listener warnings; existing pg/NO_COLOR warnings persist. No stock schema or ledger quantity changes.
 
 Published M2: `54a01295937ebfc93c687ef0b9b1a11e6edf7d3c`; remote SHA verified.
+
+## Milestone 4 — RBAC
+
+Added shared fixed role/capability allowlists and server requireCapability checks for account, catalogue, receiving, label and identity services. Navigation uses the same map; forbidden deep links show an explicit return path without loading sensitive workspaces. Production receives no catalogue/receiving/damage/print administration through these paths. No new role or permission editor. Architecture and permission matrix document the approved boundaries.
+
+Executed: final typecheck; unit 23/23; full PostgreSQL suite 56/56 (8 files, including catalogue/receiving/QR/printing/public identities/account/auth/RBAC); role/cookie/CSRF browser 1/1; production build passed. Direct negative tests cover sensitive GET/POST routes, guessed IDs/filters, Admin-only commands, inactive accounts and exact own-profile keys. No migration in M4.
+
+Published M3: `d50e73bfecc889ba19ea3c1db87123b60861ae1d`; remote SHA verified.

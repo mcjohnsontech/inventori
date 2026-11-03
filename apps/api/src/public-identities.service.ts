@@ -1,3 +1,4 @@
+import { requireCapability } from './permissions.js';
 import { BadRequestException, ForbiddenException, HttpException, NotFoundException } from '@nestjs/common';
 import { Prisma, type PrismaClient, type User } from '@prisma/client';
 import { identityQuerySchema, publicCodeSchema, type PublicIdentityLookup } from '@dayari/contracts';
@@ -6,7 +7,7 @@ export class PublicIdentitiesService {
   private reads = new Map<string, { at: number; count: number }>();
   constructor(readonly db: PrismaClient, readonly originId: string) {}
   async lookup(user: User, kind: 'PRODUCT' | 'LOT', codeInput: unknown, query: unknown): Promise<PublicIdentityLookup> {
-    if (!user.active || !['ADMIN','MANAGER','PRODUCTION'].includes(user.role)) throw new ForbiddenException();
+    requireCapability(user,'IDENTIFY');
     const now = Date.now();
     if (this.reads.size > 10000) for (const [id, row] of this.reads) if (now-row.at >= 60000) this.reads.delete(id);
     const row = this.reads.get(user.id); const rate = row && now-row.at < 60000 ? row : { at: now, count: 0 };

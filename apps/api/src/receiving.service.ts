@@ -1,3 +1,4 @@
+import { requireCapability } from './permissions.js';
 import { allocatePublicIdentity } from './public-code.js';
 import { randomUUID } from 'node:crypto';
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
@@ -16,7 +17,7 @@ function parse<T>(schema: ZodType<T>, value: unknown): T {
 const json = (value: unknown) => JSON.parse(JSON.stringify(value, (_, item) => typeof item === 'bigint' ? item.toString() : item)) as Prisma.InputJsonValue;
 export class ReceivingService {
   constructor(readonly db: PrismaClient, readonly originId: string, readonly mode: string) {}
-  allow(user: User) { if (!user.active || !['ADMIN', 'MANAGER'].includes(user.role)) throw new ForbiddenException('Receiving is available to Admin and Inventory Manager'); }
+  allow(user: User) { requireCapability(user,'RECEIVE'); }
   async options(user: User) {
     this.allow(user);
     const sources = await this.db.supplierSource.findMany({ where: { originId: this.originId, sourcings: { some: { skus: { some: {} } } } }, include: { supplier: true } });
