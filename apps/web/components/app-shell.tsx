@@ -8,7 +8,7 @@ export const destinations = {
   catalogue: { label: 'Catalogue', icon: BookOpen },
   suppliers: { label: 'Suppliers & sources', icon: Building2 },
   inventory: { label: 'Inventory', icon: Boxes },
-  receiving: { label: 'Receiving & stock', icon: Truck },
+  receiving: { label: 'Receiving', icon: Truck },
   receipts: { label: 'Receipts & activity', icon: ReceiptText },
   qr: { label: 'QR lookup', icon: QrCode },
   labels: { label: 'Labels & printing', icon: Printer },

@@ -19,6 +19,7 @@ export function WizardShell({ title, subtitle, steps, step, setStep, busy, error
     document.body.style.overflow = 'hidden';
     return () => { element.close(); document.body.style.overflow = overflow; };
   }, []);
+  useEffect(() => { const warn = (event: BeforeUnloadEvent) => { if (dirty) { event.preventDefault(); event.returnValue = ''; } }; window.addEventListener('beforeunload', warn); return () => window.removeEventListener('beforeunload', warn); }, [dirty]);
   useEffect(() => { heading.current?.focus({ preventScroll: true }); dialog.current?.scrollTo({ top: 0 }); }, [step]);
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -31,7 +32,7 @@ export function WizardShell({ title, subtitle, steps, step, setStep, busy, error
     </div>
     {discard ? <div className="p-8"><h3 className="text-lg font-semibold">Discard this draft?</h3><p className="mt-2 text-sm text-stone-500">Your entered details have not been saved.</p><div className="mt-6 flex justify-end gap-3"><Button variant="outline" onClick={() => setDiscard(false)}>Keep editing</Button><Button onClick={onClose}>Discard draft</Button></div></div> : <form onSubmit={submit}>
       <div className="space-y-6 p-6 sm:p-8"><h3 ref={heading} tabIndex={-1} className="text-lg font-semibold outline-none">{steps[step]}</h3><fieldset disabled={busy} className="space-y-5">{children}</fieldset>{error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}</div>
-      <div className="flex items-center justify-between gap-3 border-t border-stone-200 bg-white/60 p-5 sm:px-8"><Button variant="outline" type="button" onClick={() => step ? setStep(step - 1) : close()} disabled={busy}><ArrowLeft size={15} />{step ? 'Back' : 'Cancel'}</Button><span className="hidden text-[11px] text-stone-400 sm:block">Step {step + 1} of {steps.length}</span><Button disabled={busy}>{busy ? 'Saving…' : step === steps.length - 1 ? finishLabel : nextLabel}{!busy && <ArrowRight size={15} />}</Button></div>
+      <div className="sticky bottom-0 flex items-center justify-between gap-3 border-t border-stone-200 bg-[#fafbf7] p-5 sm:px-8"><Button variant="outline" type="button" onClick={() => step ? setStep(step - 1) : close()} disabled={busy}><ArrowLeft size={15} />{step ? 'Back' : 'Cancel'}</Button><span className="hidden text-[11px] text-stone-400 sm:block">Step {step + 1} of {steps.length}</span><Button disabled={busy}>{busy ? 'Saving…' : step === steps.length - 1 ? finishLabel : nextLabel}{!busy && <ArrowRight size={15} />}</Button></div>
     </form>}
   </dialog>;
 }
