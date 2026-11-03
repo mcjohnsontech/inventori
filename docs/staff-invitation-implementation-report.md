@@ -87,3 +87,11 @@ Final incremental verification after audit-command linkage: account/invitation i
 - packages/contracts/src/index.ts
 - playwright.config.ts
 - prisma/schema.prisma
+
+## GitHub publication
+
+Branch: feat/complete-application-systems. Feature completion commit: 4ec262ff086e3ce022a28571acdcb6f82da22ccb — feat(auth): implement secure isolated staff invitations.
+
+https://github.com/mcjohnsontech/inventori/commit/4ec262ff086e3ce022a28571acdcb6f82da22ccb
+
+Push succeeded and git ls-remote matched the exact local SHA. This publication does not apply operational migrations, enable real email, activate serialization or deploy the application.
