@@ -1,4 +1,6 @@
 'use client';
+import { ReportsWorkspace } from '../components/reports-workspace';
+import { HelpWorkspace } from '../components/help-workspace';
 import { ProductionWorkspace } from '../components/production-workspace';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ArrowRight, Box, Layers3, ShieldCheck } from 'lucide-react';
@@ -22,6 +24,7 @@ import { Button } from '../components/ui/button';
 
 type Actor = { id: string; name: string; role: Role; mustChangePassword?:boolean };
 export default function Page() {
+  const [missing,setMissing]=useState(false),[labelJob,setLabelJob]=useState('');
   const [qrCode,setQrCode]=useState('');
   const [workspace, setWorkspace] = useState<Workspace>('dashboard');
   const acceptedHash = useRef('');
@@ -31,9 +34,11 @@ export default function Page() {
       if (location.hash !== acceptedHash.current && !mayNavigate()) { history.replaceState(null, '', `${location.pathname}${acceptedHash.current}`); return; }
       acceptedHash.current = location.hash;
       const [key = '', detail = ''] = location.hash.slice(1).split('/');
-      if (['availability', 'users', 'dashboard', 'catalogue', 'suppliers', 'inventory', 'receiving', 'receipts', 'labels', 'qr', 'settings'].includes(key)) {
+      setMissing(Boolean(key)&&!['help','reports','availability','users','dashboard','catalogue','suppliers','inventory','receiving','receipts','labels','qr','settings'].includes(key));
+      if (['help','reports','availability', 'users', 'dashboard', 'catalogue', 'suppliers', 'inventory', 'receiving', 'receipts', 'labels', 'qr', 'settings'].includes(key)) {
         const id = /^[0-9a-f-]{36}$/i.test(detail) ? detail : '';
         setWorkspace(key as Workspace);if(key==='qr')setQrCode(/^[PL][A-Z0-9]{5}$/.test(detail)?detail:'');
+        if (key === 'labels')setLabelJob(id);
         if (key === 'catalogue') setCatalogueDetail(id);
         if (key === 'inventory') setStockProduct(id);
         if (key === 'receipts') setReceiptContext(id);
@@ -41,7 +46,7 @@ export default function Page() {
     };
     restore(); window.addEventListener('hashchange', restore); return () => window.removeEventListener('hashchange', restore);
   }, []);
-  function navigate(next: Workspace, id = '') { if (!mayNavigate()) return; const hash = `#${next}${id ? `/${id}` : ''}`; acceptedHash.current = hash; location.hash = hash; setWorkspace(next);if(next==='qr')setQrCode(id); setNotice(''); if (next === 'catalogue') setCatalogueDetail(id); if (next === 'inventory') setStockProduct(id); if (next === 'receipts') setReceiptContext(id); }
+  function navigate(next: Workspace, id = '') { if (!mayNavigate()) return; const hash = `#${next}${id ? `/${id}` : ''}`; acceptedHash.current = hash; location.hash = hash; setWorkspace(next);setMissing(false);if(next==='labels')setLabelJob(id);if(next==='qr')setQrCode(id); setNotice(''); if (next === 'catalogue') setCatalogueDetail(id); if (next === 'inventory') setStockProduct(id); if (next === 'receipts') setReceiptContext(id); }
   const [user, setUser] = useState<Actor | null>(null);
   const [catalogue, setCatalogue] = useState<Catalogue>({ products: [], suppliers: [], skus: [], locations: [], sourcings: [] });
   const [loading, setLoading] = useState(true);
@@ -56,7 +61,7 @@ export default function Page() {
   const [catalogueDetail, setCatalogueDetail] = useState('');
   const [catalogueReady, setCatalogueReady] = useState(false);
   async function load(actor: Actor) { if (!actor.mustChangePassword && actor.role !== 'PRODUCTION') { setCatalogue(await api<Catalogue>('catalogue')); setCatalogueReady(true); } }
-  useEffect(() => { api<Actor>('me').then(async actor => { setUser(actor); if (actor.role === 'PRODUCTION' && !location.hash) setWorkspace('availability'); try { await load(actor); } catch (failure) { setError((failure as Error).message); } }).catch(() => {}).finally(() => setLoading(false)); }, []);
+  useEffect(() => { api<Actor>('me').then(async actor => { setUser(actor); if (actor.role === 'PRODUCTION' && !location.hash) setWorkspace('availability'); try { await load(actor); } catch (failure) { setError((failure as Error).message); } }).catch(failure => {if(failure.status!==401)setError(failure.message);}).finally(() => setLoading(false)); }, []);
   useEffect(()=>{const expired=()=>{setUser(null);setCatalogueReady(false);setFlow(null);setError('Your session ended or your access changed. Sign in again.');};window.addEventListener('dayari:session-expired',expired);return()=>window.removeEventListener('dayari:session-expired',expired);},[]);
   function passwordChanged(){setUser(null);setCatalogueReady(false);setFlow(null);setError('');setNotice('Password updated. Sign in with your new password.');}
   async function login(event: FormEvent<HTMLFormElement>) {
@@ -74,6 +79,27 @@ export default function Page() {
     setFlow(null); setNotice(message);
     if (user) { try { await load(user); } catch { setError('Saved successfully. Refresh the page to reload the catalogue.'); } }
   }
+  function renderWorkspace(actor:Actor){
+    const home=()=>navigate(actor.role==='PRODUCTION'?'availability':'dashboard');
+    if(missing)return <div className="page"><h1>Workspace not found</h1><p className="mt-3 text-stone-500">This workspace address is unavailable.</p><Button className="mt-5" onClick={home}>Return to your workspace</Button></div>;
+    if(!workspaceAllowed(actor.role,workspace))return <div className="page"><h1>Access restricted</h1><p className="mt-3 text-stone-500">This workspace is not available for your role.</p><Button className="mt-5" onClick={home}>Return to your workspace</Button></div>;
+    if(['dashboard','catalogue','suppliers','inventory','reports'].includes(workspace)&&!catalogueReady)return <div className="page">{error?<p className="text-sm text-stone-500">Catalogue data is unavailable. Reload it above before continuing.</p>:<LoadingState/>}</div>;
+    switch(workspace){
+      case 'help':return <HelpWorkspace role={actor.role} navigate={navigate}/>;
+      case 'reports':return <ReportsWorkspace catalogue={catalogue} onProduct={id=>navigate('inventory',id)} onReceipt={id=>navigate('receipts',id)} onLabels={id=>navigate('labels',id)}/>;
+      case 'availability':return <ProductionWorkspace onScan={()=>navigate('qr')} onCode={code=>navigate('qr',code)}/>;
+      case 'users':return <UsersWorkspace actorId={actor.id}/>;
+      case 'settings':return <SettingsWorkspace user={actor} onPasswordChanged={passwordChanged}/>;
+      case 'dashboard':return <Dashboard catalogue={catalogue} role={actor.role as 'ADMIN'|'MANAGER'} name={actor.name} navigate={navigate} onReceipt={id=>navigate('receipts',id)}/>;
+      case 'qr':return <QrWorkspace initialCode={qrCode}/>;
+      case 'labels':return <LabelWorkspace initialJobId={labelJob}/>;
+      case 'inventory':return <InventoryWorkspace catalogue={catalogue} initialProductId={stockProduct} onProductDetail={id=>navigate('catalogue',id)} onProductFilter={id=>navigate('inventory',id)} onReceipt={id=>navigate('receipts',id)}/>;
+      case 'suppliers':return <SuppliersWorkspace catalogue={catalogue} role={actor.role} onSupplier={openSupplier} onProduct={openProduct}/>;
+      case 'receipts':return <ReceiptsWorkspace initialReceiptId={receiptContext} onSelect={id=>navigate('receipts',id)} onStock={id=>navigate('inventory',id)}/>;
+      case 'receiving':return <ReceivingWorkspace onHistory={()=>navigate('receipts')} onInventory={id=>navigate('inventory',id)}/>;
+      case 'catalogue':return <CatalogueWorkspace initialProductId={catalogueDetail} onSelect={id=>navigate('catalogue',id)} catalogue={catalogue} role={actor.role} onProduct={openProduct} onSupplier={openSupplier} onStock={id=>navigate('inventory',id)}/>;
+    }
+  }
   if (loading) return <main className="grid min-h-screen place-items-center text-sm text-stone-500">Opening Dayari Inventory…</main>;
   if (!user) return <main className="grid min-h-screen lg:grid-cols-2">
     <section className="flex flex-col justify-between bg-[#153e31] p-6 text-white lg:p-16">
@@ -86,10 +112,10 @@ export default function Page() {
   </main>;
 
   if(user.mustChangePassword)return <main className="mx-auto grid min-h-screen max-w-lg content-center gap-5 p-5"><p className="eyebrow">Dayari · Account setup</p><PasswordForm required onChanged={passwordChanged}/><Button variant="outline" onClick={logout} disabled={busy}>Sign out</Button></main>;
-  return <AppShell workspace={workspace} available={user.role==='PRODUCTION'?['availability','qr','settings']:['dashboard','catalogue','suppliers','inventory','receiving','receipts','labels','qr','users','settings']} onNavigate={navigate} user={user} onLogout={logout} busy={busy}>
+  return <AppShell workspace={workspace} available={user.role==='PRODUCTION'?['availability','qr','settings','help']:['dashboard','catalogue','suppliers','inventory','receiving','receipts','labels','qr','reports','users','settings','help']} onNavigate={navigate} user={user} onLogout={logout} busy={busy}>
     {notice && <p role="status" className="mx-5 mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900 break-words">{notice}</p>}
     {error && <div role="alert" className="mx-5 mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-800">{error}<Button variant="outline" size="small" className="ml-3" onClick={() => load(user).then(() => setError('')).catch(failure => setError(failure.message))}>Reload catalogue</Button></div>}
-    {!workspaceAllowed(user.role,workspace)?<div className="page"><h1>Access restricted</h1><p className="mt-3 text-stone-500">This workspace is not available for your role.</p><Button className="mt-5" onClick={()=>navigate(user.role==='PRODUCTION'?'availability':'dashboard')}>Return to your workspace</Button></div>:user.role !== 'PRODUCTION' && !catalogueReady ? <div className="page">{error ? <p className="text-sm text-stone-500">Catalogue data is unavailable. Reload it above before continuing.</p> : <LoadingState />}</div> : workspace === 'availability'?<ProductionWorkspace onScan={()=>navigate('qr')} onCode={code=>navigate('qr',code)}/>:workspace === 'users' ? (user.role === 'ADMIN' ? <UsersWorkspace actorId={user.id}/> : <div className="page"><h1>Access restricted</h1><p>Only shop Admin can manage staff.</p></div>) : workspace === 'settings' ? <SettingsWorkspace user={user} onPasswordChanged={passwordChanged} /> : user.role === 'PRODUCTION' ? <QrWorkspace initialCode={qrCode} /> : workspace === 'dashboard' ? <Dashboard catalogue={catalogue} role={user.role as 'ADMIN'|'MANAGER'} name={user.name} navigate={navigate} onReceipt={id => navigate('receipts', id)} /> : workspace === 'qr' ? <QrWorkspace initialCode={qrCode} /> : workspace === 'labels' ? <LabelWorkspace /> : workspace === 'inventory' ? <InventoryWorkspace catalogue={catalogue} initialProductId={stockProduct} onProductDetail={id => navigate('catalogue', id)} onProductFilter={id => navigate('inventory', id)} onReceipt={id => navigate('receipts', id)} /> : workspace === 'suppliers' ? <SuppliersWorkspace catalogue={catalogue} role={user.role} onSupplier={openSupplier} onProduct={openProduct} /> : workspace === 'receipts' ? <ReceiptsWorkspace initialReceiptId={receiptContext} onSelect={id => navigate('receipts', id)} onStock={id => navigate('inventory', id)} /> : workspace === 'receiving' ? <ReceivingWorkspace onHistory={() => navigate('receipts')} onInventory={id => navigate('inventory', id)} /> : <CatalogueWorkspace initialProductId={catalogueDetail} onSelect={id => navigate('catalogue', id)} catalogue={catalogue} role={user.role} onProduct={openProduct} onSupplier={openSupplier} onStock={id => navigate('inventory', id)} />}
+    {renderWorkspace(user)}
     {flow === 'supplier' && user.role === 'ADMIN' && <SupplierWizard catalogue={catalogue} initialSupplierId={supplierContext} onClose={() => setFlow(null)} onSaved={saved} />}
     {flow === 'product' && user.role === 'ADMIN' && <ProductWizard catalogue={catalogue} initialProductId={productContext} onClose={() => setFlow(null)} onSaved={saved} onConfigureSupplier={openSupplier} />}
   </AppShell>;

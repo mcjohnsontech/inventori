@@ -1,0 +1,16 @@
+'use client';
+import type {Role} from '@dayari/contracts';
+import type {Workspace} from './app-shell';
+import {Button} from './ui/button';
+import {PageHeader} from './ui/workspace';
+export function HelpWorkspace({role,navigate}:{role:Role;navigate:(workspace:Workspace)=>void}){
+ const guides=role==='PRODUCTION'?[
+  {title:'Find the exact item',text:'Search usable availability by product, variant or saved SKU. Each card keeps its delivery batch separate.',target:'availability' as Workspace,action:'Find usable stock'},
+  {title:'Read a label',text:'Scan an existing DYI:1 label or enter a Product or Lot Code. A shared lot QR identifies SKU and batch; it does not prove an individual item’s condition.',target:'qr' as Workspace,action:'Open QR lookup'},
+ ]:[
+  {title:'Receive safely',text:'Select the existing supplier and source, review every variant, separate usable and damaged arrivals, then confirm once. After a lost response, retry the same draft before starting another receipt.',target:'receiving' as Workspace,action:'Open receiving'},
+  {title:'Trace accepted stock',text:'Inspect stock by saved SKU and batch, then open its original receipt. Accepted quantities cannot be edited; ask the owner about an authorized correction workflow.',target:'inventory' as Workspace,action:'Explore inventory'},
+  {title:'Print with evidence',text:'Prepare labels from an accepted receipt. Browser handoff is not confirmed physical output. Report printed, failed or uncertain outcomes; check existing stickers before an explicit reprint.',target:'labels' as Workspace,action:'Open labels'},
+ ];
+ return <div className="page"><PageHeader eyebrow="Practical guidance" title="Help & operating guide" description="Use the current shop workflows with clear identity, quantity and retry checks."/><div className="grid gap-5 lg:grid-cols-2">{guides.map(g=><section key={g.title} className="surface p-5"><h2 className="text-xl font-semibold">{g.title}</h2><p className="my-4 text-sm leading-7 text-stone-500">{g.text}</p><Button variant="outline" onClick={()=>navigate(g.target)}>{g.action}</Button></section>)}<section className="surface p-5"><h2 className="text-xl font-semibold">Account access</h2><p className="my-4 text-sm leading-7 text-stone-500">Staff accounts are assigned to this shop. Keep your password private; a change signs out every session. Contact your shop Admin about access or deactivation. Recovery delivery is not enabled.</p><Button variant="outline" onClick={()=>navigate('settings')}>Review account & sessions</Button></section><section className="surface p-5"><h2 className="text-xl font-semibold">When the connection fails</h2><p className="mt-4 text-sm leading-7 text-stone-500">Reconnect to the shop network and keep the same draft for an interrupted submission. Check accepted records before starting a separate transaction. Internet access is not required to reach a running local shop server over shop Wi-Fi. Cloud synchronization is not configured.</p><p className="mt-3 text-sm leading-7 text-stone-500">Production issuing, recovery, corrections, daily closing and unit serialization are not available. Ask the owner before changing operational procedures.</p></section></div></div>;
+}

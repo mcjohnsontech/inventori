@@ -1,0 +1,2 @@
+import Link from 'next/link';
+export default function NotFound(){return <main className="grid min-h-dvh place-items-center p-6"><div className="surface max-w-lg p-7"><p className="eyebrow">Dayari Inventory · 404</p><h1 className="mt-3 text-2xl font-semibold">Page not found</h1><p className="my-5 text-sm leading-7 text-stone-500">This address does not match an application page. Return to the shop workspace to continue.</p><Link href="/" className="text-link">Return to your shop</Link></div></main>;}

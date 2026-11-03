@@ -4,6 +4,8 @@ import { BookOpen, Layers3, LogOut, Menu, QrCode, Printer, Truck, X, LayoutDashb
 import { can, type Role, type Capability } from '@dayari/contracts';
 
 export const destinations = {
+  help: {label:'Help & guide',icon:BookOpen},
+  reports: {label:'Reports & history',icon:ReceiptText},
   availability: {label:'Usable stock',icon:Boxes},
   users: { label: 'Users & access', icon: ShieldCheck },
   dashboard: { label: 'Overview', icon: LayoutDashboard },
@@ -17,7 +19,7 @@ export const destinations = {
   settings: { label: 'Account & shop', icon: Settings },
 };
 export type Workspace = keyof typeof destinations;
-const workspaceCapabilities:Record<Workspace,Capability>={availability:'IDENTIFY',users:'STAFF_ADMIN',dashboard:'OPERATIONAL_STOCK',catalogue:'CATALOGUE_READ',suppliers:'CATALOGUE_READ',inventory:'OPERATIONAL_STOCK',receiving:'RECEIVE',receipts:'RECEIVE',qr:'IDENTIFY',labels:'PRINT_ADMIN',settings:'OWN_ACCOUNT'};
+const workspaceCapabilities:Record<Workspace,Capability>={help:'OWN_ACCOUNT',reports:'OPERATIONAL_STOCK',availability:'IDENTIFY',users:'STAFF_ADMIN',dashboard:'OPERATIONAL_STOCK',catalogue:'CATALOGUE_READ',suppliers:'CATALOGUE_READ',inventory:'OPERATIONAL_STOCK',receiving:'RECEIVE',receipts:'RECEIVE',qr:'IDENTIFY',labels:'PRINT_ADMIN',settings:'OWN_ACCOUNT'};
 export function workspaceAllowed(role:Role,workspace:Workspace){return can(role,workspaceCapabilities[workspace]);}
 export function AppShell({ workspace, available, onNavigate, user, onLogout, busy, children }: {
   workspace: Workspace; available: Workspace[]; onNavigate: (workspace: Workspace) => void;
@@ -33,7 +35,7 @@ export function AppShell({ workspace, available, onNavigate, user, onLogout, bus
     return () => window.removeEventListener('keydown', close);
   }, [open]);
   return <div className="app-shell">
-    <a href="#workspace-content" className="skip-link">Skip to content</a>
+    <a href="#workspace-content" className="skip-link" onClick={event=>{event.preventDefault();document.getElementById('workspace-content')?.focus();}}>Skip to content</a>
     <aside className="app-sidebar">
       <div className="brand"><Layers3 size={27} aria-hidden="true" /><span>dayari<span className="brand-dot">.</span></span><span className="brand-caption">INVENTORY</span></div>
       <button ref={menu} className="mobile-menu icon-button" aria-label={open ? 'Close navigation' : 'Open navigation'} aria-expanded={open} aria-controls="workspace-navigation" onClick={() => setOpen(!open)}>{open ? <X size={22} /> : <Menu size={22} />}</button>

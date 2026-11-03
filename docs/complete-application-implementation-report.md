@@ -57,3 +57,11 @@ Executed: new PostgreSQL read-model tests 2/2; unit 24/24; typecheck and product
 Published M5: `1c8a09d48738ad570368102a52d1765b40d4743a`; remote SHA verified.
 
 M6 final mobile recheck passed 1/1, with all five overflow assertions; final typecheck passed after correcting a test-helper body type. Reviewed final 320px search and retained `docs/images/application/production-{320,1440}.png`. New read model tests prove no movement changes and damage-only exclusion. No Phase 3 hierarchy, fuzzy discovery, unit serialization or issuing activated.
+
+## Milestone 7 — shared pages and operational reporting
+
+Added role-aware Help & guide, Reports & history (exact SKU availability, latest 100 receipt/print records), explicit workspace-not-found/forbidden return paths and branded HTTP404 page. Existing own profile/session/password UI is linked from guidance. Reports use existing authorized stock/receipt/label read contracts; no new financial/audit endpoint, exported report or closing snapshot. SKU quantities come from server projections; no unlike-product stock grand total. Print-history deep links open the exact immutable manifest without printing. Account/help/QR/receipt pages no longer depend on successful catalogue loading. Refactored root workspace rendering into an explicit switch and corrected skip-link routing.
+
+Executed: typecheck and production build passed; full shared browser scenario 1/1 (report quantities, receipt/print links, profile, help, missing hash and real HTTP404). Five report viewport overflow checks passed. Initial browser check raced a still-pending cold sign-in; explicit response/status verification fixed the test. Report desktop/320px evidence retained in `docs/images/application/reports-{1440,320}.png`. No backend contract or schema change in M7.
+
+Published M6: `8224593316f2e0e9397ac9c1ab3189a554cece20`; remote SHA verified.
