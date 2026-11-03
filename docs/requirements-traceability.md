@@ -168,3 +168,14 @@ FR-02/20: local genuine QR, accepted-quantity per-item PDF labels, exact origin/
 | Honest supported administration | Read-only account and Admin-only minimal shop info | catalogue integration admin/shop allowlist; admin.spec.ts |
 
 Actual final results and limitations are recorded in admin-experience-implementation-report.md. This adds no StockUnit, DYI:2, production mutation, closing or cloud transport.
+
+## Staff invitations — owner-confirmed implementation
+
+| Requirement | Implementation boundary | Evidence |
+|---|---|---|
+| Admin-only, shop-scoped invitations | InvitationsService + existing actor/proof/permission gates | invitations integration / browser tests |
+| 24-hour expiry, revoke/resend, fixed approved roles | immutable StaffInvitation + guarded InvitationState + append-only events | expiry/concurrent acceptance/revocation tests |
+| New email only, no account recovery | reject existing/disabled emails, unique User.email | takeover/duplicate tests |
+| Staff chooses password, six characters all roles | shared accounts/invitation Zod contracts and acceptance page | unit/account/browser tests |
+| No real email before verification | injected isolated transport only, encrypted queue | delivery/failure/redaction tests |
+| No stock side effects | no ledger/receipt/catalogue mutation in invitation services | existing integration regressions |

@@ -81,3 +81,7 @@ Owner authorized local implementation of QR identity, A4 PDFs, print evidence/re
 ## Admin experience cross-cutting milestone — 3 November 2026
 
 Owner authorized a complete UX/integration refinement around implemented catalogue, receiving/ledger, lot QR/PDF and Phase1 identities, with seven separately published Git milestones. Implementation adds responsive operational workspaces and safe bounded reads; existing mutation services/schema remain unchanged. See admin-experience-implementation-report.md for exact status, tests, files and publication evidence. This is not Phase2 authorization and does not complete physical printer acceptance, unit serialization, production workflows, closing or sync. Stop for owner review after the seventh completion commit.
+
+## Invitation implementation slice — 3 November 2026
+
+Owner authorized implementation after Slices 1–3 and confirmed 24-hour/new-email-only single-use invitations, six-character passwords for all roles, and isolated delivery. Development includes additive migrations 011/012, account acceptance and invitation administration; operational migration and live SMTP rollout remain unapproved. This slice does not implement serialized inventory, V2 QR, unit labels, issuing, closing or synchronization.

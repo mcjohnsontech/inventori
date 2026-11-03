@@ -1,3 +1,4 @@
+import { revokeCreatedInvitations } from './invitation-revocation.js';
 import { requireCapability } from './permissions.js';
 import { accountProof } from './account-proof.js';
 import { createHmac, randomUUID } from 'node:crypto';
@@ -40,9 +41,11 @@ export class AccountsService {
    if(!current?.active||current.authVersion!==user.authVersion||!verifyPassword(data.currentPassword,current.passwordHash))throw new ForbiddenException('Account security state changed; sign in again');
    const prior=await tx.commandResult.findUnique({where:{originId_actorId_commandType_key:{originId:this.originId,actorId:user.id,commandType:'accounts.password.changed',key}}});
    if(prior)throw new ConflictException('This password-change key was already accepted. Sign in and review your account before starting another change');
+   const commandId=randomUUID();
    await tx.user.update({where:{id:user.id},data:{passwordHash:passwordHash(data.newPassword),mustChangePassword:false,authVersion:{increment:1}}});
    await tx.session.updateMany({where:{userId:user.id,revokedAt:null},data:{revokedAt:new Date()}});
-   const commandId=randomUUID(),commandType='accounts.password.changed',response={ok:true,signInRequired:true};
+   await revokeCreatedInvitations(tx,user.id,this.originId,commandId);
+   const commandType='accounts.password.changed',response={ok:true,signInRequired:true};
    const node=await tx.originNode.update({where:{id:this.originId},data:{nextSequence:{increment:1}}});
    const payload={subjectId:user.id,actorId:user.id,actorRole:user.role,commandId};
    await tx.auditEvent.create({data:{originId:this.originId,actorId:user.id,actorRole:user.role,commandId,action:commandType,subjectId:user.id,snapshot:payload}});
@@ -66,6 +69,7 @@ export class AccountsService {
    if(!verifyPassword(String(currentPassword),actor.passwordHash))throw new ForbiddenException('Current password was not accepted');
    const commandType=`accounts.${type}`,prior=await tx.commandResult.findUnique({where:{originId_actorId_commandType_key:{originId:this.originId,actorId:user.id,commandType,key}}});
    if(prior){if(prior.requestHash!==requestHash)throw new ConflictException('Idempotency key reused with different input');return prior.response;}
+   const commandId=randomUUID();
    let subject:User;
    if(type==='create')subject=await tx.user.create({data:{name:String(data.name),email:String(data.email),role:data.role as User['role'],passwordHash:passwordHash(String(initialPassword)),mustChangePassword:true,membership:{create:{originId:this.originId}}}});
    else{
@@ -74,10 +78,11 @@ export class AccountsService {
      if(id===user.id&&(data.active===false||data.role!=='ADMIN'))throw new ConflictException('You cannot deactivate or demote your own account');
      if(target.role==='ADMIN'&&target.active&&(data.active===false||data.role!=='ADMIN')&&await tx.user.count({where:{role:'ADMIN',active:true,membership:{originId:this.originId}}})<=1)throw new ConflictException('Keep at least one active shop Admin');
      subject=await tx.user.update({where:{id:id!},data:{name:String(data.name),role:data.role as User['role'],active:Boolean(data.active),...((data.role!==target.role||data.active!==target.active)?{authVersion:{increment:1}}:{})}});
+     if(subject.role!==target.role||subject.active!==target.active)await revokeCreatedInvitations(tx,target.id,this.originId,commandId);
      if(subject.role!==target.role||subject.active!==target.active)await tx.session.updateMany({where:{userId:id!,revokedAt:null},data:{revokedAt:new Date()}});
-    }else{subject=await tx.user.update({where:{id:target.id},data:{authVersion:{increment:1}}});await tx.session.updateMany({where:{userId:id!,originId:this.originId,revokedAt:null},data:{revokedAt:new Date()}});}
+    }else{await revokeCreatedInvitations(tx,target.id,this.originId,commandId);subject=await tx.user.update({where:{id:target.id},data:{authVersion:{increment:1}}});await tx.session.updateMany({where:{userId:id!,originId:this.originId,revokedAt:null},data:{revokedAt:new Date()}});}
    }
-   const commandId=randomUUID(),response=staffDto(subject),node=await tx.originNode.update({where:{id:this.originId},data:{nextSequence:{increment:1}}});
+   const response=staffDto(subject),node=await tx.originNode.update({where:{id:this.originId},data:{nextSequence:{increment:1}}});
    const evidence={subject:response,actorId:user.id,actorRole:actor.role,commandId};
    await tx.auditEvent.create({data:{originId:this.originId,actorId:user.id,actorRole:actor.role,commandId,action:commandType,subjectId:subject.id,snapshot:evidence}});
    await tx.outboxEvent.create({data:{originId:this.originId,originSequence:node.nextSequence,eventType:commandType,aggregateId:subject.id,commandId,actorId:user.id,payload:evidence,payloadHash:digest(canonical(evidence))}});

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 export const staffRole = z.enum(['ADMIN','MANAGER','PRODUCTION']);
-export const strongPassword = z.string().min(16).max(256).refine(value => /\S/.test(value), 'Use a nonblank password of at least 16 characters');
+export const strongPassword = z.string().min(6).max(256).refine(value => /\S/.test(value), 'Use a nonblank password of at least 6 characters');
 export const staffQuery = z.object({ q: z.string().trim().max(160).default(''), role: staffRole.optional(), active: z.enum(['true','false']).optional(), page: z.coerce.number().int().min(1).max(100000).default(1) }).strict();
 export const staffCreate = z.object({ name: z.string().trim().min(1).max(160), email: z.email().max(254).transform(value => value.toLowerCase()), role: staffRole, initialPassword: strongPassword, currentPassword: z.string().min(1).max(256) }).strict();
 export const staffUpdate = z.object({ name: z.string().trim().min(1).max(160), role: staffRole, active: z.boolean(), currentPassword: z.string().min(1).max(256) }).strict();
