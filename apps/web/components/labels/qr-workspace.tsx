@@ -351,7 +351,7 @@ export function QrWorkspace() {
                 className={camera ? 'max-h-80 w-full rounded-xl bg-black' : 'hidden'}
               />
 
-              {cameraMessage ? <WarningNotice>{cameraMessage}</WarningNotice> : null}
+              {cameraMessage ? <WarningNotice role="status">{cameraMessage}</WarningNotice> : null}
             </Stack>
           </form>
         </Panel>

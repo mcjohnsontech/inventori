@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { expect, test, type Page } from '@playwright/test';
-import { choose } from './ui';
+import { choose } from './ui.js';
 
 async function login(page: Page) {
   await page.goto('/');
@@ -42,7 +42,7 @@ test('Admin product extension, deep links and complete responsive workspaces use
   await choose(dialog, 'Supplier', supplier.supplier.id);
   await choose(dialog, 'Supplier location', supplier.source.id);
   await dialog.getByRole('button', { name: 'Continue', exact: true }).click();
-  await expect(dialog.getByRole('combobox', { name: 'Product', exact: true })).toHaveValue(product.product.id);
+  await expect(dialog.getByRole('combobox', { name: 'Product', exact: true })).toHaveAttribute('data-value', product.product.id);
   await dialog.getByRole('button', { name: 'Continue', exact: true }).click();
   expect(await dialog.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
   await page.screenshot({ path: 'test-results/admin/variant-selection-320.png' });
@@ -77,8 +77,9 @@ test('Admin product extension, deep links and complete responsive workspaces use
   await page.reload();
   await expect(page.getByRole('combobox', { name: 'Product', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: /Filter stock/ }).click();
-  await expect(page.getByRole('combobox', { name: 'Product', exact: true })).toHaveValue(product.product.id);
-  await page.getByRole('button', { name: `← Back to ${product.product.name}`, exact: true }).click();
+  await expect(page.getByRole('combobox', { name: 'Product', exact: true })).toHaveAttribute('data-value', product.product.id);
+  // The back arrow is an aria-hidden icon now, so it is not part of the name.
+  await page.getByRole('button', { name: `Back to ${product.product.name}`, exact: true }).click();
   await expect(page.getByRole('heading', { name: product.product.name, exact: true })).toBeVisible();
 
   for (const width of [1440, 1024, 768, 390, 320]) {
@@ -155,5 +156,7 @@ test('read failures retry safely and changed code input cancels stale results', 
   // Real endpoint denial is still enforced independently of navigation.
   await navigate(page, 'Account & shop');
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+  // Sign-out is async; wait for the signed-out screen before probing the API.
+  await expect(page.getByRole('heading', { name: 'Sign in to your shop', exact: true })).toBeVisible();
   expect((await page.request.get('/api/admin/shop')).status()).toBe(401);
 });

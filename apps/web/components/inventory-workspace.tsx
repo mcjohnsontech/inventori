@@ -25,6 +25,7 @@ import {
   DetailSkeleton,
   Disclosure,
   EmptyState,
+  ErrorNotice,
   Footnote,
   Icon,
   Field,
@@ -66,6 +67,7 @@ export function InventoryWorkspace({
   const [group, setGroup] = useState<Group>('lots');
   const [selected, setSelected] = useState('');
   const [page, setPage] = useState(1);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const details = useRef<HTMLElement>(null);
 
@@ -194,68 +196,88 @@ export function InventoryWorkspace({
               reset();
             }}
           />
-          <Field label="Product">
-            {(id) => (
-              <Select
-                id={id}
-                label="Filter by product"
-                value={productId || 'all'}
-                onChange={(value) => {
-                  const next = value === 'all' ? '' : value;
-                  setProductId(next);
-                  onProductFilter(next);
-                  reset();
-                }}
-                options={[
-                  { value: 'all', label: 'All products' },
-                  ...catalogue.products.map((product) => ({
-                    value: product.id,
-                    label: product.name,
-                  })),
-                ]}
-              />
+
+          <button
+            type="button"
+            aria-expanded={filtersOpen}
+            aria-controls="stock-filters"
+            onClick={() => setFiltersOpen((open) => !open)}
+            className="justify-self-start font-sans text-[13px] font-semibold tracking-[-0.02em] text-brand underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand sm:hidden"
+          >
+            {filtersOpen ? 'Hide stock filters' : 'Filter stock'}
+            {productId || sourceId || state !== 'all' ? ' · active' : ''}
+          </button>
+
+          <div
+            id="stock-filters"
+            className={cn(
+              'col-span-full grid gap-3 sm:grid-cols-3 lg:contents',
+              !filtersOpen && 'max-sm:hidden',
             )}
-          </Field>
-          <Field label="Supplier source">
-            {(id) => (
-              <Select
-                id={id}
-                label="Filter by supplier source"
-                value={sourceId || 'all'}
-                onChange={(value) => {
-                  setSourceId(value === 'all' ? '' : value);
-                  reset();
-                }}
-                options={[
-                  { value: 'all', label: 'All sources' },
-                  ...catalogue.suppliers.flatMap((supplier) =>
-                    supplier.sources.map((source) => ({
-                      value: source.id,
-                      label: `${supplier.name} · ${source.name}`,
+          >
+            <Field label="Product">
+              {(id) => (
+                <Select
+                  id={id}
+                  label="Product"
+                  value={productId || 'all'}
+                  onChange={(value) => {
+                    const next = value === 'all' ? '' : value;
+                    setProductId(next);
+                    onProductFilter(next);
+                    reset();
+                  }}
+                  options={[
+                    { value: 'all', label: 'All products' },
+                    ...catalogue.products.map((product) => ({
+                      value: product.id,
+                      label: product.name,
                     })),
-                  ),
-                ]}
-              />
-            )}
-          </Field>
-          <Field label="Availability">
-            {(id) => (
-              <Select
-                id={id}
-                label="Filter by availability"
-                value={state}
-                onChange={(value) => {
-                  setState(value);
-                  reset();
-                }}
-                options={[
-                  { value: 'all', label: 'All stock lots' },
-                  { value: 'usable', label: 'Has usable stock' },
-                  { value: 'damaged', label: 'Has damaged stock' },
-                ]}
-              />
-            )}
-          </Field>
+                  ]}
+                />
+              )}
+            </Field>
+            <Field label="Supplier source">
+              {(id) => (
+                <Select
+                  id={id}
+                  label="Supplier source"
+                  value={sourceId || 'all'}
+                  onChange={(value) => {
+                    setSourceId(value === 'all' ? '' : value);
+                    reset();
+                  }}
+                  options={[
+                    { value: 'all', label: 'All sources' },
+                    ...catalogue.suppliers.flatMap((supplier) =>
+                      supplier.sources.map((source) => ({
+                        value: source.id,
+                        label: `${supplier.name} · ${source.name}`,
+                      })),
+                    ),
+                  ]}
+                />
+              )}
+            </Field>
+            <Field label="Availability">
+              {(id) => (
+                <Select
+                  id={id}
+                  label="Availability"
+                  value={state}
+                  onChange={(value) => {
+                    setState(value);
+                    reset();
+                  }}
+                  options={[
+                    { value: 'all', label: 'All stock lots' },
+                    { value: 'usable', label: 'Has usable stock' },
+                    { value: 'damaged', label: 'Has damaged stock' },
+                  ]}
+                />
+              )}
+            </Field>
+          </div>
         </div>
 
         <div className="flex flex-col gap-3 border-b border-black/[0.06] px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between">
@@ -287,14 +309,7 @@ export function InventoryWorkspace({
           <CardGridSkeleton />
         ) : stock.error ? (
           <div className="p-5">
-            <EmptyState title="Stock could not be loaded" icon={BoxesIcon}>
-              {stock.error}
-            </EmptyState>
-            <div className="flex justify-center">
-              <Button variant="secondary" onClick={stock.refresh}>
-                Try again
-              </Button>
-            </div>
+            <ErrorNotice message={stock.error} onRetry={stock.refresh} />
           </div>
         ) : !total ? (
           <EmptyState title="No stock matches this view" icon={BoxesIcon}>

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { expect, test } from '@playwright/test';
-import { choose } from './ui';
+import { choose } from './ui.js';
 test('Manager receives a multi-product delivery, retries a lost response and sees separate usable/damaged stock', async ({ page }) => {
  await page.goto('/');
  async function login(email: string) { await page.getByLabel('Email address').fill(email); await page.getByLabel('Password', { exact: true }).fill(process.env.E2E_PASSWORD!); await page.getByRole('button', { name: 'Sign in', exact: true }).click(); if (!email.includes('production')) await page.getByRole('button', { name: 'Catalogue', exact: true }).click(); await expect(page.getByRole('heading', { name: email.includes('production') ? 'QR lookup' : 'Product catalogue' })).toBeVisible(); }

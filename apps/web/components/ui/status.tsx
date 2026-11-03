@@ -75,9 +75,19 @@ export function SuccessNotice({ message, className }: { message: string; classNa
   );
 }
 
-export function WarningNotice({ children, className }: { children: ReactNode; className?: string }) {
+export function WarningNotice({
+  children,
+  className,
+  role,
+}: {
+  children: ReactNode;
+  className?: string;
+  /** Announce it when it reports the outcome of something the user just did. */
+  role?: 'status' | 'alert';
+}) {
   return (
     <p
+      role={role}
       className={cn(
         'rounded-xl border border-damaged/20 bg-damaged-tint px-4 py-3.5 font-sans text-sm leading-[1.6] tracking-[-0.02em] text-damaged',
         className,

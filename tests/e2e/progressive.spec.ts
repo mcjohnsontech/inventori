@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { expect, test } from '@playwright/test';
-import { choose } from './ui';
+import { choose } from './ui.js';
 
 test('progressive setup retains drafts and reuses products across supplier prefixes', async ({ page }) => {
   // This end-to-end scenario includes two suppliers, product reuse, extension and discard.

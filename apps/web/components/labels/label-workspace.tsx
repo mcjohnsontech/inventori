@@ -361,11 +361,12 @@ export function LabelWorkspace({
           description="Includes every delivered unit. Damaged goods must be labelled and segregated by staff."
         >
           <Stack gap="tight">
-            <div className="flex flex-wrap gap-2">
-              <Badge tone="usable">{plan.totals.usable} usable copies</Badge>
-              <Badge tone="damaged">{plan.totals.damaged} damaged-intake copies</Badge>
-              <Badge>{plan.totals.delivered} total</Badge>
-            </div>
+            <p className="font-sans text-sm tracking-[-0.02em] text-ink">
+              Usable copies <strong className="font-semibold text-usable">{plan.totals.usable}</strong>
+              {' · '}Damaged-intake copies{' '}
+              <strong className="font-semibold text-damaged">{plan.totals.damaged}</strong>
+              {' · '}Total <strong className="font-semibold">{plan.totals.delivered}</strong>
+            </p>
 
             <ul className="space-y-1.5 border-t border-black/[0.06] pt-4">
               {plan.lines.map((line) => (
@@ -725,7 +726,9 @@ export function LabelWorkspace({
         title="Labels & printing"
         description="Create an immutable label manifest from an accepted receipt. Inspect the A4 PDF, print explicitly, then report the outcome. Printing never changes inventory."
       />
-      <div className="mt-8">{body}</div>
+      <section aria-label="Label printing" className="mt-8">
+        {body}
+      </section>
     </Page>
   );
 }

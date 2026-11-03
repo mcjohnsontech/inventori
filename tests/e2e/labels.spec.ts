@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { expect,test } from '@playwright/test';
-import { choose } from './ui';
+import { choose } from './ui.js';
 test('A4 label workflow, explicit reprint, uncertain output and Production read-only lookup',async({page})=>{
  test.setTimeout(120000);
  // Local-only assets and APIs: simulate unavailable internet while retaining shop access.
