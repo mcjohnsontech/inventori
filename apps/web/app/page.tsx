@@ -1,9 +1,10 @@
 'use client';
 import { useEffect, useState, type FormEvent } from 'react';
-import { ArrowRight, BookOpen, Box, Check, Layers3, LogOut, MapPin, Package, Plus, Search, ShieldCheck, Tag, Truck } from 'lucide-react';
+import { ArrowRight, Box, Layers3, ShieldCheck } from 'lucide-react';
 import type { Catalogue, Role } from '@dayari/contracts';
+import { Dashboard } from '../components/dashboard';
+import { CatalogueWorkspace } from '../components/catalogue/catalogue-workspace';
 import { AppShell, type Workspace } from '../components/app-shell';
-import { IdentityLookup } from '../components/identity-lookup';
 import { QrWorkspace } from '../components/labels/qr-workspace';
 import { LabelWorkspace } from '../components/labels/label-workspace';
 import { ReceivingWorkspace } from '../components/receiving/receiving-workspace';
@@ -18,9 +19,9 @@ async function api(path: string, init?: RequestInit) {
   return data;
 }
 export default function Page() {
-  const [workspace, setWorkspace] = useState<Workspace>('catalogue');
+  const [workspace, setWorkspace] = useState<Workspace>('dashboard');
   useEffect(() => {
-    const restore = () => { const key = location.hash.slice(1); if (['catalogue', 'receiving', 'labels', 'qr'].includes(key)) setWorkspace(key as Workspace); };
+    const restore = () => { const key = location.hash.slice(1); if (['dashboard', 'catalogue', 'receiving', 'labels', 'qr'].includes(key)) setWorkspace(key as Workspace); };
     restore(); window.addEventListener('hashchange', restore); return () => window.removeEventListener('hashchange', restore);
   }, []);
   function navigate(next: Workspace) { location.hash = next; setWorkspace(next); }
@@ -30,23 +31,22 @@ export default function Page() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-  const [search, setSearch] = useState('');
-  const [view, setView] = useState<'products' | 'suppliers' | 'skus'>('products');
   const [flow, setFlow] = useState<'supplier' | 'product' | null>(null);
   const [supplierContext, setSupplierContext] = useState('');
+  const [productContext, setProductContext] = useState('');
   async function load(actor: Actor) { if (actor.role !== 'PRODUCTION') setCatalogue(await api('catalogue')); }
-  useEffect(() => { api('me').then(async actor => { setUser(actor); await load(actor); }).catch(() => {}).finally(() => setLoading(false)); }, []);
+  useEffect(() => { api('me').then(async actor => { setUser(actor); if (actor.role === 'PRODUCTION') setWorkspace('qr'); try { await load(actor); } catch (failure) { setError((failure as Error).message); } }).catch(() => {}).finally(() => setLoading(false)); }, []);
   async function login(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true); setError('');
     const data = Object.fromEntries(new FormData(event.currentTarget));
-    try { const result = await api('sessions', { method: 'POST', body: JSON.stringify(data) }); setUser(result.user); await load(result.user); } catch (failure) { setError((failure as Error).message); } finally { setBusy(false); }
+    try { const result = await api('sessions', { method: 'POST', body: JSON.stringify(data) }); setUser(result.user); if (result.user.role === 'PRODUCTION') navigate('qr'); await load(result.user); } catch (failure) { setError((failure as Error).message); } finally { setBusy(false); }
   }
   async function logout() {
     setBusy(true);
-    try { await api('sessions/logout', { method: 'POST', body: '{}' }); sessionStorage.removeItem('dayari_pending_catalogue'); sessionStorage.removeItem('dayari_pending_supplier-setups'); sessionStorage.removeItem('dayari_pending_product-setups'); for(const key of Object.keys(sessionStorage))if(key.startsWith('dayari_label_'))sessionStorage.removeItem(key); setWorkspace('catalogue'); sessionStorage.removeItem('dayari_pending_receipt'); setUser(null); setCatalogue({ products: [], suppliers: [], skus: [], locations: [], sourcings: [] }); setFlow(null); setError(''); setNotice(''); } catch (failure) { setError((failure as Error).message); } finally { setBusy(false); }
+    try { await api('sessions/logout', { method: 'POST', body: '{}' }); sessionStorage.removeItem('dayari_pending_catalogue'); sessionStorage.removeItem('dayari_pending_supplier-setups'); sessionStorage.removeItem('dayari_pending_product-setups'); for(const key of Object.keys(sessionStorage))if(key.startsWith('dayari_label_'))sessionStorage.removeItem(key); setWorkspace('dashboard'); history.replaceState(null, '', location.pathname); sessionStorage.removeItem('dayari_pending_receipt'); setUser(null); setCatalogue({ products: [], suppliers: [], skus: [], locations: [], sourcings: [] }); setFlow(null); setError(''); setNotice(''); } catch (failure) { setError((failure as Error).message); } finally { setBusy(false); }
   }
   function openSupplier(id = '') { setSupplierContext(id); setError(''); setNotice(''); setFlow('supplier'); }
-  function openProduct() { setError(''); setNotice(''); setFlow('product'); }
+  function openProduct(id = '') { setProductContext(id); setError(''); setNotice(''); setFlow('product'); }
   async function saved(message: string) {
     setFlow(null); setNotice(message);
     if (user) { try { await load(user); } catch { setError('Saved successfully. Refresh the page to reload the catalogue.'); } }
@@ -62,21 +62,11 @@ export default function Page() {
       <form onSubmit={login} className="mt-8 space-y-5"><label>Email address<input name="email" type="email" autoComplete="username" required placeholder="you@dayari.com" /></label><label>Password<input name="password" type="password" autoComplete="current-password" required maxLength={256} /></label>{error && <p role="alert" className="text-sm text-red-700">{error}</p>}<Button className="w-full" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}<ArrowRight size={16} /></Button></form><p className="mt-8 text-xs leading-5 text-stone-500">Need access? Ask your administrator to set up your account.</p></div></section>
   </main>;
 
-  const products = catalogue.products.filter(item => item.name.toLowerCase().includes(search.toLowerCase()));
-  const suppliers = catalogue.suppliers.filter(item => `${item.name} ${item.code}`.toLowerCase().includes(search.toLowerCase()));
-  const skus = catalogue.skus.filter(item => `${item.fullCode} ${item.variant.product.name} ${item.sourcing.source.supplier.name}`.toLowerCase().includes(search.toLowerCase()));
-  return <AppShell workspace={workspace} available={['catalogue', 'receiving', 'labels', 'qr']} onNavigate={navigate} user={user} onLogout={logout} busy={busy}>
-      {workspace === 'qr' ? <QrWorkspace /> : workspace === 'labels' && user.role !== 'PRODUCTION' ? <LabelWorkspace /> : workspace === 'receiving' && user.role !== 'PRODUCTION' ? <ReceivingWorkspace /> : <div className="mx-auto max-w-7xl p-6 lg:p-10"><div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-[10px] font-semibold uppercase tracking-[.18em] text-emerald-800">Your inventory foundation</p><h1 className="mt-3 text-3xl font-semibold tracking-tight">Product catalogue</h1><p className="mt-3 text-sm text-stone-500">Shared products. Clear variants. Traceable suppliers.</p></div>{user.role === 'ADMIN' && <div className="flex gap-3"><Button variant="outline" onClick={() => openSupplier()}><Truck size={16} />Add supplier</Button><Button onClick={openProduct}><Plus size={16} />Add product</Button></div>}</div>
-      {user.role === 'PRODUCTION' ? <div className="mt-8 rounded-xl border border-stone-200 bg-white p-8"><ShieldCheck className="text-emerald-800" /><h2 className="mt-4 font-semibold">Your account is for production</h2><p className="mt-2 text-sm text-stone-500">Catalogue administration is available to Admin and Inventory Manager accounts. Use QR lookup to identify stock and view usable availability. Production issuing will be available in a later slice.</p></div> : <>
-        <div className="my-8 grid gap-4 sm:grid-cols-3">{[{ title: 'Parent products', count: catalogue.products.length, icon: Package, detail: 'Shared across suppliers' }, { title: 'Suppliers', count: catalogue.suppliers.length, icon: Truck, detail: 'With distinct source identities' }, { title: 'Variant SKUs', count: catalogue.skus.length, icon: Tag, detail: 'Supplier-specific stock identifiers' }].map(card => <div key={card.title} className="rounded-xl border border-stone-200 bg-white p-5"><div className="flex items-center justify-between text-xs text-stone-500">{card.title}<card.icon size={17} className="text-emerald-800" /></div><p className="mt-3 text-3xl font-semibold">{card.count}</p><p className="mt-2 text-[11px] text-stone-400">{card.detail}</p></div>)}</div>
-        {notice && <p role="status" className="mb-5 flex items-center gap-2 text-sm text-emerald-800"><Check size={16} />{notice}</p>}{error && <p role="alert" className="mb-5 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-        <section className="overflow-hidden rounded-xl border border-stone-200 bg-white"><div className="flex flex-wrap items-center justify-between gap-4 border-b border-stone-200 px-5 pt-2"><div className="flex gap-6">{(['products', 'suppliers', 'skus'] as const).map(tab => <button key={tab} onClick={() => { setView(tab); setSearch(''); }} className={`border-b-2 py-5 text-xs font-semibold ${view === tab ? 'border-emerald-800 text-emerald-900' : 'border-transparent text-stone-500'}`}>{tab === 'skus' ? 'Supplier SKUs' : tab === 'products' ? 'Products' : 'Suppliers'}</button>)}</div><div className="relative mb-2"><Search size={14} className="absolute left-3 top-3 text-stone-400" /><input aria-label="Search catalogue" placeholder="Search catalogue…" value={search} onChange={event => setSearch(event.target.value)} className="max-w-64 !py-2 !pl-9" /></div></div>
-        <IdentityLookup /><div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr>{(view === 'products' ? ['Product', 'Variants', 'Attributes'] : view === 'suppliers' ? ['Supplier', 'Code', 'Source locations'] : ['SKU', 'Product / variant', 'Supplier / source']).map(title => <th key={title}>{title}</th>)}</tr></thead><tbody>{view === 'products' && products.map(product => <tr key={product.id}><td><span className="font-semibold">{product.name}</span><p className="mt-1 font-mono text-xs text-emerald-800">{product.productCode ?? 'Code not assigned'}</p><p className="mt-1 text-xs text-stone-400">{product.description || 'Shared parent product'}</p></td><td><span className="rounded-full bg-[#edf2e9] px-2.5 py-1 text-xs text-emerald-900">{product.variants.length} variants</span></td><td className="text-xs text-stone-500">{product.attributes.map(attribute => attribute.name).join(', ') || 'No attributes configured'}</td></tr>)}{view === 'suppliers' && suppliers.map(supplier => <tr key={supplier.id}><td className="font-semibold">{supplier.name}</td><td className="font-mono text-xs">{supplier.code}</td><td className="text-xs text-stone-500">{supplier.sources.map(source => source.skuPrefix ? `${source.name} · ${source.skuPrefix.code}` : `${source.name} · prefix setup needed`).join(', ') || 'No source locations yet'}{user.role === 'ADMIN' && <button className="mt-2 block text-xs font-semibold text-emerald-800 underline underline-offset-2" onClick={() => openSupplier(supplier.id)}>Set up location for {supplier.name}</button>}</td></tr>)}{view === 'skus' && skus.map(sku => <tr key={sku.id}><td className="font-mono text-xs font-semibold text-emerald-900">{sku.fullCode}</td><td>{sku.variant.product.name}<p className="mt-1 text-xs text-stone-500">{sku.variant.name}</p></td><td>{sku.sourcing.source.supplier.name}<p className="mt-1 flex items-center gap-1 text-xs text-stone-500"><MapPin size={11} />{sku.sourcing.source.name}</p></td></tr>)}</tbody></table></div>
-        {(view === 'products' ? products : view === 'suppliers' ? suppliers : skus).length === 0 && <div className="grid justify-items-center px-6 py-16 text-center"><div className="grid size-14 place-items-center rounded-2xl bg-[#f0f3eb]"><Package size={24} className="text-emerald-800" /></div><h2 className="mt-5 font-semibold">{search ? 'No matching entries' : view === 'products' ? 'Start with your first product' : view === 'suppliers' ? 'Bring your suppliers together' : 'Connect products to their source'}</h2><p className="mt-2 max-w-md text-sm leading-6 text-stone-500">{search ? 'Try another name or code.' : view === 'products' ? 'Create one parent product, then add its variants and supplier-specific SKUs.' : view === 'suppliers' ? 'Add a supplier and a stable source location to preserve provenance.' : 'Select an existing supplier location; its product number is generated when you save.'}</p>{user.role === 'ADMIN' && !search && <Button variant="outline" className="mt-5" onClick={() => view === 'suppliers' ? openSupplier() : openProduct()}><Plus size={15} />{view === 'products' ? 'Create product' : view === 'suppliers' ? 'Add supplier' : 'Add product with SKUs'}</Button>}</div>}</section>
-        <p className="mt-5 text-[11px] leading-5 text-stone-400">Catalogue entries identify products and sources. They do not add inventory quantities.</p>
-      </>}
-      </div>}
+  return <AppShell workspace={workspace} available={['dashboard', 'catalogue', 'receiving', 'labels', 'qr']} onNavigate={navigate} user={user} onLogout={logout} busy={busy}>
+    {notice && <p role="status" className="mx-5 mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">{notice}</p>}
+    {error && <div role="alert" className="mx-5 mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-800">{error}<Button variant="outline" size="small" className="ml-3" onClick={() => load(user).then(() => setError('')).catch(failure => setError(failure.message))}>Reload catalogue</Button></div>}
+    {user.role === 'PRODUCTION' ? <QrWorkspace /> : workspace === 'dashboard' ? <Dashboard catalogue={catalogue} name={user.name} navigate={navigate} /> : workspace === 'qr' ? <QrWorkspace /> : workspace === 'labels' ? <LabelWorkspace /> : workspace === 'receiving' ? <ReceivingWorkspace /> : <CatalogueWorkspace catalogue={catalogue} role={user.role} onProduct={openProduct} onSupplier={openSupplier} onStock={() => navigate('receiving')} />}
     {flow === 'supplier' && user.role === 'ADMIN' && <SupplierWizard catalogue={catalogue} initialSupplierId={supplierContext} onClose={() => setFlow(null)} onSaved={saved} />}
-    {flow === 'product' && user.role === 'ADMIN' && <ProductWizard catalogue={catalogue} onClose={() => setFlow(null)} onSaved={saved} onConfigureSupplier={openSupplier} />}
+    {flow === 'product' && user.role === 'ADMIN' && <ProductWizard catalogue={catalogue} initialProductId={productContext} onClose={() => setFlow(null)} onSaved={saved} onConfigureSupplier={openSupplier} />}
   </AppShell>;
 }

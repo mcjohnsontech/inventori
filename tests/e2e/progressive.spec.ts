@@ -9,6 +9,7 @@ test('progressive setup retains drafts and reuses products across supplier prefi
   await page.getByLabel('Email address').fill('e2e-admin@dayari.test');
   await page.getByLabel('Password', { exact: true }).fill(process.env.E2E_PASSWORD!);
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await page.getByRole('button', { name: 'Catalogue', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Product catalogue' })).toBeVisible();
   // Bound visual evidence to the viewport; retained database fixtures must not create unbounded full-page bitmaps.
   const dialog = page.getByRole('dialog');
@@ -121,6 +122,7 @@ test('progressive setup retains drafts and reuses products across supplier prefi
   const after = await (await page.request.get('/api/catalogue')).json();
   for (const sku of saved.skus) expect(after.skus.find((row: { id: string }) => row.id === sku.id).fullCode).toBe(sku.fullCode);
   await page.getByRole('button', { name: 'Suppliers', exact: true }).click();
+  await page.getByLabel('Search catalogue', { exact: true }).fill(second.supplier.name);
   await page.getByRole('button', { name: `Set up location for ${second.supplier.name}`, exact: true }).click();
   await expect(dialog.getByRole('heading', { name: 'Set up supplier location', exact: true })).toBeVisible();
   await expect(dialog.getByRole('combobox', { name: 'Supplier', exact: true })).toHaveCount(0);
@@ -139,6 +141,7 @@ test('existing product with attributes and no combinations can create its first 
   await page.getByLabel('Email address').fill('e2e-admin@dayari.test');
   await page.getByLabel('Password', { exact: true }).fill(process.env.E2E_PASSWORD!);
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await page.getByRole('button', { name: 'Catalogue', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Product catalogue' })).toBeVisible();
   async function create(operation: string, data: unknown) {
     const response = await page.request.post(`/api/catalogue/${operation}`, {

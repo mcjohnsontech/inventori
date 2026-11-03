@@ -41,6 +41,16 @@ describe('catalogue vertical slice against PostgreSQL (FR-01,17–19,23–24)', 
     await create('products', { name: 'Forbidden' }, randomUUID(), manager).expect(403);
     await create('products', { name: 'Forbidden' }, randomUUID(), production).expect(403);
   });
+  it('scopes catalogue reads to the configured shop origin', async () => {
+    const foreignOrigin = randomUUID();
+    await db.originNode.create({ data: { id: foreignOrigin, mode: 'SHOP' } });
+    const foreignApp = await createApp(db, foreignOrigin, 'SHOP');
+    try {
+      const response = await request(foreignApp.getHttpServer()).post('/v1/catalogue/products').set('Authorization', `Bearer ${token}`).set('Idempotency-Key', randomUUID()).send({ name: `Foreign ${foreignOrigin}` }).expect(201);
+      const local = await request(app.getHttpServer()).get('/v1/catalogue').set('Authorization', `Bearer ${token}`).expect(200);
+      expect(local.body.products.some((product: {id:string}) => product.id === response.body.id)).toBe(false);
+    } finally { await foreignApp.close(); }
+  });
   it('creates one shared product and red variant with two independently attributable supplier SKUs', async () => {
     const product = (await create('products', { name: 'A5 Maple Notebook' }).expect(201)).body;
     expect(product.variants).toHaveLength(1);

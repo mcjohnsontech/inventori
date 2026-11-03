@@ -5,7 +5,7 @@ import { expect, test } from '@playwright/test';
 test('Product and Lot Codes remain discoverable through catalogue, stock and restricted Production lookup',async({page})=>{
  test.setTimeout(120000);
  await page.goto('/');
- async function login(email:string){await page.getByLabel('Email address').fill(email);await page.getByLabel('Password',{exact:true}).fill(process.env.E2E_PASSWORD!);await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page.getByRole('button',{name:'QR lookup',exact:true})).toBeVisible();}
+ async function login(email:string){await page.getByLabel('Email address').fill(email);await page.getByLabel('Password',{exact:true}).fill(process.env.E2E_PASSWORD!);await page.getByRole('button',{name:'Sign in',exact:true}).click();if(!email.includes('production'))await page.getByRole('button',{name:'Catalogue',exact:true}).click();await expect(page.getByRole('button',{name:'QR lookup',exact:true})).toBeVisible();}
  await login('e2e-admin@dayari.test');
  async function post(path:string,body:unknown){const r=await page.request.post('/api/'+path,{headers:{Origin:'http://127.0.0.1:3101','Idempotency-Key':randomUUID()},data:body});expect(r.status(),await r.text()).toBe(201);return r.json();}
  const catalogue=await(await page.request.get('/api/catalogue')).json(),supplier=await post('catalogue/supplier-setups',{supplier:{name:`Identity browser ${randomUUID().slice(0,8)}`},location:{registryId:catalogue.locations.find((l:any)=>l.code==='LG').id}});
@@ -13,7 +13,7 @@ test('Product and Lot Codes remain discoverable through catalogue, stock and res
  const receipt=await post('receipts',{sourceId:supplier.source.id,deliveredOn:'2020-01-01',invoiceReference:'PRIVATE-BROWSER-INVOICE',lines:[{skuId:product.skus[0].id,usableQuantity:3,damagedQuantity:1,damageReason:'PRIVATE damage on arrival'}]});
  const p=product.product.productCode,l=receipt.lines[0].lotCode;expect(p).toMatch(/^P.{5}$/);expect(l).toMatch(/^L.{5}$/);
  await page.reload();await expect(page.getByRole('heading',{name:'Product catalogue'})).toBeVisible();
- const row=page.getByRole('row').filter({hasText:product.product.name});await expect(row).toContainText(p);
+ await page.getByLabel('Search catalogue',{exact:true}).fill(p);const row=page.getByRole('button').filter({has:page.getByRole('heading',{name:product.product.name,exact:true})});await expect(row).toContainText(p);
  let panel=page.getByRole('region',{name:'Exact code lookup'});
  await panel.getByLabel('Product or Lot Code',{exact:true}).fill(p.toLowerCase());await panel.getByRole('button',{name:'Find code'}).click();await expect(panel.getByRole('status')).toContainText(product.product.name);
  await page.getByRole('button',{name:'Receiving & stock',exact:true}).click();panel=page.getByRole('region',{name:'Exact code lookup'});await panel.getByLabel('Product or Lot Code',{exact:true}).fill(l);await panel.getByRole('button',{name:'Find code'}).click();await expect(panel.getByRole('status')).toContainText('Usable availability: 3');await expect(panel.getByRole('status')).toContainText('Damaged lot quantity: 1');

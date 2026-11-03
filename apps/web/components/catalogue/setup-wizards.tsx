@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { nextSupplierCode, type Catalogue, type ProductSetupInput, type SupplierSetupInput } from '@dayari/contracts';
 import { Button } from '../ui/button';
@@ -40,7 +40,9 @@ export function SupplierWizard({ catalogue, onClose, onSaved, initialSupplierId 
   const source = supplier?.sources.find(row => row.id === sourceId);
   const supplierCode = supplier?.code ?? nextSupplierCode(name, catalogue.suppliers.map(row => row.code));
   const prefix = source && keepPrefix ? source.code : `${supplierCode}${registry?.code ?? locationCode}`;
+  const submitting = useRef(false);
   async function finish() {
+    if (submitting.current) return; submitting.current = true;
     setBusy(true); setError('');
     const body: SupplierSetupInput = {
       supplier: supplier ? { id: supplier.id } : { name },
@@ -49,7 +51,7 @@ export function SupplierWizard({ catalogue, onClose, onSaved, initialSupplierId 
       ...(!source && sourceName.trim() ? { sourceName: sourceName.trim() } : {}),
       useExistingPrefix: Boolean(source && keepPrefix),
     };
-    try { const result = await saveSetup('supplier-setups', body); await onSaved(`Supplier location ready. Prefix: ${result.prefix.code}`); } catch (failure) { setError((failure as Error).message); } finally { setBusy(false); }
+    try { const result = await saveSetup('supplier-setups', body); await onSaved(`Supplier location ready. Prefix: ${result.prefix.code}`); } catch (failure) { setError((failure as Error).message); } finally { submitting.current = false; setBusy(false); }
   }
   return <WizardShell title={initialSupplierId ? 'Set up supplier location' : 'Add supplier'} subtitle="Set up a supplier and location once. Select them whenever you add a product." steps={['Supplier', 'Location', 'Review prefix']} step={step} setStep={value => { setError(''); setStep(value); }} busy={busy} error={error} dirty={Boolean(name || supplierId || registryId)} onClose={onClose} onFinish={finish} finishLabel="Save supplier location">
     {step === 0 && <>
@@ -74,7 +76,7 @@ export function SupplierWizard({ catalogue, onClose, onSaved, initialSupplierId 
 }
 
 type VariantDraft = { id: string; name: string; suffix: string; values: Record<string, string>; selected: boolean };
-export function ProductWizard({ catalogue, onClose, onSaved, onConfigureSupplier }: Props & { onConfigureSupplier: (supplierId: string) => void }) {
+export function ProductWizard({ catalogue, onClose, onSaved, onConfigureSupplier, initialProductId = '' }: Props & { initialProductId?: string; onConfigureSupplier: (supplierId: string) => void }) {
   const [step, setStep] = useState(0);
   const [supplierId, setSupplierId] = useState('');
   const [sourceId, setSourceId] = useState('');
@@ -105,6 +107,11 @@ export function ProductWizard({ catalogue, onClose, onSaved, onConfigureSupplier
     const available = existing.variants.filter(row => !existing.attributes.length || row.combinationKey).map(row => ({ id: row.id, name: row.name, suffix: catalogue.skus.find(sku => sku.variantId === row.id && sku.sourcing.source.id === sourceId)?.suffix ?? (row.combinationKey ? '' : 'STD'), values: {}, selected: true }));
     setRows(available.length ? available : [{ id: '', name: '', suffix: '', values: {}, selected: true }]);
   }
+  useEffect(() => { if (initialProductId) chooseProduct(initialProductId); }, []);
+  function selectSource(id: string) {
+    setSourceId(id);
+    if (product && !extending) setRows(previous => previous.map(row => ({ ...row, suffix: catalogue.skus.find(sku => sku.variantId === row.id && sku.sourcing.source.id === id)?.suffix ?? (row.id && !product.attributes.length ? 'STD' : '') })));
+  }
   function changeRow(index: number, changes: Partial<VariantDraft>) { setRows(previous => previous.map((row, position) => position === index ? { ...row, ...changes } : row)); }
   function changeStep(value: number) {
     setError('');
@@ -112,19 +119,21 @@ export function ProductWizard({ catalogue, onClose, onSaved, onConfigureSupplier
     if (value > step && step === 2 && (options || product) && !selected.length) { setError('Select at least one variant.'); return; }
     setStep(value);
   }
+  const submitting = useRef(false);
   async function finish() {
+    if (submitting.current) return; submitting.current = true;
     setBusy(true); setError('');
     const body: ProductSetupInput = {
       sourceId, ...(extending ? { extendVariants: true } : {}), product: product ? { id: product.id } : { name, description },
       variants: !creatingVariants ? selected.map(row => ({ variantId: row.id, suffix: row.suffix })) : options ? selected.map(row => ({ name: row.name || attributes.map(attribute => row.values[attribute]).join(' / '), suffix: row.suffix, attributes: attributes.map(attribute => ({ attribute, value: row.values[attribute] ?? '' })) })) : [],
     };
-    try { const result = await saveSetup('product-setups', body); await onSaved(`Product saved. ${result.skus.map((sku: { fullCode: string }) => sku.fullCode).join(', ')}`); } catch (failure) { setError((failure as Error).message); } finally { setBusy(false); }
+    try { const result = await saveSetup('product-setups', body); await onSaved(`Product saved. ${result.skus.map((sku: { fullCode: string }) => sku.fullCode).join(', ')}`); } catch (failure) { setError((failure as Error).message); } finally { submitting.current = false; setBusy(false); }
   }
   return <WizardShell title="Add product" subtitle="Choose the supplier once, add product details, then review its generated SKUs." steps={['Supplier', 'Product', 'Variants', 'Review']} step={step} setStep={changeStep} busy={busy} error={error} dirty={Boolean(supplierId || name || productId)} onClose={onClose} onFinish={finish} finishLabel="Save product">
     {step === 0 && <>
       <label>Supplier<select required value={supplierId} onChange={event => { setSupplierId(event.target.value); setSourceId(''); }}><option value="" disabled>Select supplier</option>{catalogue.suppliers.map(row => <option value={row.id} key={row.id}>{row.name} · {row.code}</option>)}</select></label>
-      {supplier && <label>Supplier location<select required value={sourceId} onChange={event => setSourceId(event.target.value)}><option value="" disabled>Select supplier location</option>{supplier.sources.filter(row => row.skuPrefix).map(row => <option key={row.id} value={row.id}>{row.name} · {row.skuPrefix!.code}</option>)}</select></label>}
-      {supplier && !supplier.sources.some(row => row.skuPrefix) && <div className="rounded-xl border border-amber-200 bg-amber-50 p-4"><p className="text-sm leading-6">Set up this supplier’s location prefix once before adding products.</p><Button className="mt-3" variant="outline" type="button" onClick={() => onConfigureSupplier(supplier.id)}>Set up supplier location</Button></div>}
+      {supplier && <label>Supplier location<select required value={sourceId} onChange={event => selectSource(event.target.value)}><option value="" disabled>Select supplier location</option>{supplier.sources.filter(row => row.skuPrefix).map(row => <option key={row.id} value={row.id}>{row.name} · {row.skuPrefix!.code}</option>)}</select></label>}
+      {supplier && !supplier.sources.some(row => row.skuPrefix) && <div className="rounded-xl border border-amber-200 bg-amber-50 p-4"><p className="text-sm leading-6">Set up this supplier’s location prefix once before adding products.</p><Button className="mt-3" variant="outline" type="button" onClick={() => { if (window.confirm('Leave this product draft and configure the supplier location? Unsaved product details will be discarded.')) onConfigureSupplier(supplier.id); }}>Set up supplier location</Button></div>}
       {source?.skuPrefix && <Summary rows={[[ 'Supplier prefix', source.skuPrefix.code ]]} />}
       {!catalogue.suppliers.length && <p className="text-sm text-stone-500">Use the separate Add supplier button to register your first supplier.</p>}
     </>}

@@ -46,11 +46,11 @@ export class CatalogueService {
   async catalogue(user: User) {
     if (user.role === 'PRODUCTION') throw new ForbiddenException();
     const [products, suppliers, skus, locations, sourcings] = await this.db.$transaction([
-      this.db.product.findMany({ orderBy: { createdAt: 'desc' }, include: { publicIdentity: true, variants: true, attributes: { include: { values: true } } } }),
-      this.db.supplier.findMany({ orderBy: { name: 'asc' }, include: { sources: { include: { skuPrefix: true } } } }),
-      this.db.supplierVariantSku.findMany({ orderBy: { fullCode: 'asc' }, include: { variant: { include: { product: true } }, sourcing: { include: { source: { include: { supplier: true } } } } } }),
+      this.db.product.findMany({ where: { originId: this.originId }, orderBy: { createdAt: 'desc' }, include: { publicIdentity: true, variants: true, attributes: { include: { values: true } } } }),
+      this.db.supplier.findMany({ where: { originId: this.originId }, orderBy: { name: 'asc' }, include: { sources: { include: { skuPrefix: true } } } }),
+      this.db.supplierVariantSku.findMany({ where: { originId: this.originId }, orderBy: { fullCode: 'asc' }, include: { variant: { include: { product: true } }, sourcing: { include: { source: { include: { supplier: true } } } } } }),
       this.db.locationRegistry.findMany({ orderBy: { name: 'asc' } }),
-      this.db.productSourcing.findMany({ select: { sourceId: true, productId: true, baseCode: true } }),
+      this.db.productSourcing.findMany({ where: { originId: this.originId }, select: { sourceId: true, productId: true, baseCode: true } }),
     ]);
     return { products: products.map(p => ({ ...p, productCode: p.publicIdentity?.code ?? null })), suppliers, skus, locations, sourcings };
   }
