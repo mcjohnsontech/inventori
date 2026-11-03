@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { expect, test } from '@playwright/test';
+import { choose } from './ui';
 
 test('progressive setup retains drafts and reuses products across supplier prefixes', async ({ page }) => {
   // This end-to-end scenario includes two suppliers, product reuse, extension and discard.
@@ -19,7 +20,7 @@ test('progressive setup retains drafts and reuses products across supplier prefi
     await expect(dialog.getByRole('combobox', { name: 'Supplier', exact: true })).toHaveCount(0);
     await dialog.getByRole('textbox', { name: 'Supplier name', exact: true }).fill(name);
     await next();
-    await dialog.getByRole('combobox', { name: 'Location registry', exact: true }).selectOption({ label: 'Lagos (LG)' });
+    await choose(dialog, 'Location registry', { label: 'Lagos (LG)' });
     await dialog.getByRole('textbox', { name: 'Specific source or area (optional)', exact: true }).fill('Lagos Island');
     await next();
     await expect(dialog.getByRole('heading', { name: 'Review prefix', exact: true })).toBeVisible();
@@ -36,8 +37,8 @@ test('progressive setup retains drafts and reuses products across supplier prefi
   }
   async function startProduct(supplier: { supplier: { id: string }; source: { id: string } }) {
     await page.getByRole('button', { name: 'Add product', exact: true }).click();
-    await dialog.getByRole('combobox', { name: 'Supplier', exact: true }).selectOption(supplier.supplier.id);
-    await dialog.getByRole('combobox', { name: 'Supplier location', exact: true }).selectOption(supplier.source.id);
+    await choose(dialog, 'Supplier', supplier.supplier.id);
+    await choose(dialog, 'Supplier location', supplier.source.id);
     await next();
   }
   async function saveProduct() {
@@ -51,7 +52,7 @@ test('progressive setup retains drafts and reuses products across supplier prefi
   await startProduct(first);
   await dialog.getByRole('textbox', { name: 'Product name', exact: true }).fill(`Progressive notebook ${randomUUID().slice(0, 8)}`);
   await next();
-  await dialog.getByRole('combobox', { name: 'Does this product have options?', exact: true }).selectOption('yes');
+  await choose(dialog, 'Does this product have options?', 'yes');
   await dialog.getByRole('textbox', { name: 'Colour', exact: true }).fill('Red');
   await dialog.getByRole('textbox', { name: 'Variant suffix', exact: true }).fill('RED-A5');
   await dialog.getByRole('button', { name: 'Add variant row' }).click();
@@ -77,7 +78,7 @@ test('progressive setup retains drafts and reuses products across supplier prefi
   await page.setViewportSize({ width: 1280, height: 900 });
   const second = await addSupplier(`Second ${randomUUID().slice(0, 8)}`);
   await startProduct(second);
-  await dialog.getByRole('combobox', { name: 'Product', exact: true }).selectOption(saved.product.id);
+  await choose(dialog, 'Product', saved.product.id);
   await next();
   for (const sku of saved.skus) {
     const variant = saved.product.variants.find((row: { id: string }) => row.id === sku.variantId);
@@ -98,7 +99,7 @@ test('progressive setup retains drafts and reuses products across supplier prefi
   const data = await (await page.request.get('/api/catalogue')).json();
   expect(data.products.some((row: { name: string }) => row.name === 'Unsaved draft')).toBe(false);
   await startProduct(first);
-  await dialog.getByRole('combobox', { name: 'Product', exact: true }).selectOption(saved.product.id);
+  await choose(dialog, 'Product', saved.product.id);
   await next();
   await dialog.getByRole('button', { name: 'Add new variant combinations', exact: true }).click();
   await dialog.getByRole('textbox', { name: 'Colour', exact: true }).fill('Green');
@@ -162,10 +163,10 @@ test('existing product with attributes and no combinations can create its first 
   await page.getByRole('button', { name: 'Add product', exact: true }).click();
   const dialog = page.getByRole('dialog');
   const next = () => dialog.getByRole('button', { name: 'Continue', exact: true }).click();
-  await dialog.getByRole('combobox', { name: 'Supplier', exact: true }).selectOption(supplier.supplier.id);
-  await dialog.getByRole('combobox', { name: 'Supplier location', exact: true }).selectOption(supplier.source.id);
+  await choose(dialog, 'Supplier', supplier.supplier.id);
+  await choose(dialog, 'Supplier location', supplier.source.id);
   await next();
-  await dialog.getByRole('combobox', { name: 'Product', exact: true }).selectOption(product.id);
+  await choose(dialog, 'Product', product.id);
   await next();
   await expect(dialog.getByText('This product has attributes but no saved variant combinations yet.', { exact: false })).toBeVisible();
   await next();

@@ -1,75 +1,146 @@
- 'use client';
-import { useEffect, useRef, useState } from 'react';
-import { lagosDate, receiptSchema, type AcceptedReceipt, type OperationalStock, type ReceivingOptions } from '@dayari/contracts';
-import { LabelWorkspace } from '../labels/label-workspace';
-import { IdentityLookup } from '../identity-lookup';
-import { useApiRead } from '../../lib/api';
-import { PageHeader, EmptyState, LoadingState, ReadError, SearchField, Badge } from '../ui/workspace';
-import { Button } from '../ui/button';
-import { WizardShell } from '../catalogue/wizard-shell';
+'use client';
+import { TruckDeliveryIcon } from '@hugeicons/core-free-icons';
+import { useEffect, useState } from 'react';
+import type { AcceptedReceipt, ReceivingOptions } from '@dayari/contracts';
 
-async function api(path: string, init?: RequestInit) {
- const response = await fetch(`/api/${path}`, init);
- const result = await response.json();
- if (!response.ok) throw new Error(typeof result.message === 'string' ? result.message : 'Check the receiving details and try again.');
- return result;
-}
-type DraftLine = { skuId: string; usableQuantity: string; damagedQuantity: string; damageReason: string };
-function Totals({ usable, damaged, delivered }: { usable: string; damaged: string; delivered: string }) {
- return <div className="grid grid-cols-3 gap-2 sm:gap-3">{[['Usable', usable], ['Damaged', damaged], ['Delivered', delivered]].map(([name, value]) => <div key={name} className={`rounded-xl border p-2 sm:p-4 ${name === 'Damaged' ? 'border-amber-200 bg-amber-50' : 'border-stone-200 bg-white'}`}><p className="text-xs text-stone-500">{name}</p><p className="mt-2 break-all text-lg sm:text-2xl font-semibold">{value}</p></div>)}</div>;
-}
-export function ReceiptDetails({ receipt, onStock }: { receipt: AcceptedReceipt; onStock?: (productId: string) => void }) {
- const [labelsOpen, setLabelsOpen] = useState(false);
- const stock = useApiRead<OperationalStock>(`stock?batchId=${receipt.batch.id}`);
- return <section className="mt-6 space-y-5 rounded-xl border border-emerald-200 bg-emerald-50/40 p-5" aria-label="Accepted receipt">
- <div><p className="text-xs font-semibold uppercase tracking-widest text-emerald-800">Accepted receipt</p><h2 className="mt-2 text-xl font-semibold">{receipt.batch.publicCode}</h2><p className="mt-2 text-sm text-stone-600">{receipt.batch.supplierName} · {receipt.batch.sourceName}</p><p className="mt-1 text-xs text-stone-500">Delivered {receipt.batch.deliveredOn} · Accepted {new Date(receipt.batch.acceptedAt).toLocaleString('en-GB', { timeZone: 'Africa/Lagos' })} (Lagos)</p><details className="mt-3 text-xs text-stone-500"><summary className="cursor-pointer">Acceptance evidence</summary><p className="mt-2 break-all leading-6">Origin {receipt.batch.originId}<br />Acceptance sequence {receipt.originSequence}</p></details>{receipt.batch.invoiceReference && <p className="mt-2 text-sm">Invoice reference: {receipt.batch.invoiceReference}</p>}</div>
- <Totals {...receipt.totals} /><div className="space-y-3 md:hidden">{receipt.lines.map(line => <article key={line.id} className="rounded-xl border border-stone-200 bg-white p-4"><h3 className="text-sm font-semibold">{line.productName} · {line.variantName}</h3><p className="mt-2 break-all font-mono text-xs">{line.fullCode}</p><p className="mt-2 text-xs text-emerald-800">Product {line.productCode ?? 'Code not assigned'}<br />Lot {line.lotCode ?? 'Code not assigned'}</p><dl className="mt-4 grid grid-cols-3 gap-2 text-xs"><div><dt className="text-stone-500">Usable</dt><dd className="mt-1 font-semibold text-emerald-900">{line.usableQuantity}</dd></div><div><dt className="text-stone-500">Damaged</dt><dd className="mt-1 font-semibold text-amber-800">{line.damagedQuantity}</dd></div><div><dt className="text-stone-500">Total</dt><dd className="mt-1 font-semibold">{line.totalQuantity}</dd></div></dl>{line.damageReason && <p className="mt-3 text-xs leading-6 text-amber-800">{line.damageReason}</p>}{onStock && <button className="text-link mt-3" onClick={() => onStock(line.productId)}>Inspect stock lots</button>}</article>)}</div><div className="hidden overflow-x-auto md:block"><table className="w-full text-sm"><thead><tr><th>Product / saved SKU</th><th>Usable</th><th>Damaged</th><th>Total</th></tr></thead><tbody>{receipt.lines.map(line => <tr key={line.id}><td>{line.productName} · {line.variantName}<p className="mt-1 font-mono text-xs">{line.fullCode}</p><p className="mt-1 text-xs text-emerald-800">Product {line.productCode ?? 'Code not assigned'} · Lot {line.lotCode ?? 'Code not assigned'}</p>{onStock && <button className="text-link mt-2" onClick={() => onStock(line.productId)}>Inspect stock lots</button>}{line.damageReason && <p className="mt-1 text-xs text-amber-800">{line.damageReason}</p>}</td><td>{line.usableQuantity}</td><td>{line.damagedQuantity}</td><td>{line.totalQuantity}</td></tr>)}</tbody></table></div><p className="text-xs text-stone-500">Accepted history is immutable. Usable and damaged quantities are recorded separately.</p><section aria-label="Accepted batch balances" className="rounded-xl border border-stone-200 bg-white p-4"><h3 className="text-sm font-semibold">Current balances in this batch</h3>{stock.loading ? <LoadingState /> : stock.error ? <ReadError message={stock.error} onRetry={stock.refresh} /> : stock.data?.lots.map(lot => <div key={lot.lotId} className="mt-3 flex flex-wrap items-center gap-2 text-xs"><span className="break-all font-mono">{lot.fullCode}</span><Badge tone="usable">{lot.usable} usable</Badge><Badge tone="damaged">{lot.damaged} damaged</Badge></div>)}</section><details onToggle={event => event.currentTarget.open && setLabelsOpen(true)}><summary className="cursor-pointer text-sm font-semibold text-emerald-900">Print labels for this receipt</summary>{labelsOpen && <LabelWorkspace receiptId={receipt.id} compact />}</details></section>;
-}
-function ReceiveWizard({ options, onClose, onSaved }: { options: ReceivingOptions; onClose: () => void; onSaved: (receipt: AcceptedReceipt) => void }) {
- const [step, setStep] = useState(0); const [supplierId, setSupplierId] = useState(''); const [sourceId, setSourceId] = useState('');
- const [productSearch, setProductSearch] = useState('');
- const [lines, setLines] = useState<DraftLine[]>([]); const [deliveredOn, setDeliveredOn] = useState(lagosDate()); const [invoiceReference, setInvoice] = useState('');
- const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const submitting = useRef(false);
- const supplier = options.suppliers.find(item => item.id === supplierId); const source = supplier?.sources.find(item => item.id === sourceId);
- const available = options.skus.filter(item => item.sourceId === sourceId);
- const products = [...new Map(available.map(sku => [sku.productId, sku.productName])).entries()];
- const usable = lines.reduce((sum, row) => sum + Number(row.usableQuantity || 0), 0); const damaged = lines.reduce((sum, row) => sum + Number(row.damagedQuantity || 0), 0);
- function change(index: number, patch: Partial<DraftLine>) { setLines(previous => previous.map((line, i) => i === index ? { ...line, ...patch } : line)); }
- function changeStep(next: number) {
-  setError('');
-  if (next > step && step === 1 && !lines.length) { setError('Select at least one variant to receive.'); return; }
-  if (next > step && step === 2) { const valid = receiptSchema.safeParse({ sourceId, deliveredOn, invoiceReference, lines: lines.map(row => ({ ...row, usableQuantity: Number(row.usableQuantity), damagedQuantity: Number(row.damagedQuantity) })) }); if (!valid.success) { setError(valid.error.issues.map(issue => issue.message).join('. ')); return; } }
-  setStep(next);
- }
- async function finish() {
-  if (submitting.current) return;
-  submitting.current = true; setBusy(true); setError('');
-  try {
-   const body = { sourceId, deliveredOn, invoiceReference, lines: lines.map(row => ({ ...row, usableQuantity: Number(row.usableQuantity), damagedQuantity: Number(row.damagedQuantity) })) };
-   const fingerprint = JSON.stringify(body); const pending = JSON.parse(sessionStorage.getItem('dayari_pending_receipt') ?? 'null');
-   const key = pending?.fingerprint === fingerprint ? pending.key : crypto.randomUUID();
-   sessionStorage.setItem('dayari_pending_receipt', JSON.stringify({ fingerprint, key }));
-   const result = await api('receipts', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': key }, body: fingerprint });
-   sessionStorage.removeItem('dayari_pending_receipt'); onSaved(result);
-  } catch (failure) { setError(`${(failure as Error).message} Retry without changing the draft if the response was lost. Check recent receipts before starting a separate delivery.`); }
-  finally { submitting.current = false; setBusy(false); }
- }
- return <WizardShell title="Receive delivery" eyebrow="Stock receiving" subtitle="One supplier location, all delivered products. Keep usable and damaged arrivals separate." steps={['Supplier', 'Products', 'Quantities', 'Review']} step={step} setStep={changeStep} busy={busy} error={error} dirty={Boolean(supplierId || lines.length || invoiceReference)} onClose={onClose} onFinish={finish} finishLabel="Confirm receipt">
- {step === 0 && <><label>Receiving supplier<select required value={supplierId} onChange={event => { setSupplierId(event.target.value); setSourceId(''); setLines([]); }}><option value="" disabled>Select supplier</option>{options.suppliers.map(item => <option key={item.id} value={item.id}>{item.name} · {item.code}</option>)}</select></label>{supplier && <label>Receiving source<select required value={sourceId} onChange={event => { setSourceId(event.target.value); setLines([]); }}><option value="" disabled>Select source location</option>{supplier.sources.map(item => <option key={item.id} value={item.id}>{item.name} · {item.code}</option>)}</select></label>}<p className="text-sm leading-6 text-stone-500">Only existing sourced SKUs can be received. Ask Admin to complete catalogue setup if a product is missing.</p></>}
- {step === 1 && <><p className="text-sm text-stone-500">Select variants across as many products as this delivery contains.</p><SearchField label="Search receiving products" value={productSearch} onChange={setProductSearch} placeholder="Find a product, variant or SKU…" /><p className="text-xs text-emerald-800">{lines.length} variant line(s) selected</p>{products.filter(([id, name]) => `${name} ${available.filter(sku => sku.productId === id).map(sku => `${sku.variantName} ${sku.fullCode}`).join(' ')}`.toLowerCase().includes(productSearch.toLowerCase())).map(([productId, name]) => <section key={productId} className="rounded-xl border border-stone-200 bg-white p-4"><h4 className="font-semibold">{name}</h4><div className="mt-3 space-y-3">{available.filter(sku => sku.productId === productId).map(sku => <label key={sku.id} className="flex items-start gap-3"><input type="checkbox" className="!mt-1 !w-auto" checked={lines.some(line => line.skuId === sku.id)} onChange={event => setLines(previous => event.target.checked ? [...previous, { skuId: sku.id, usableQuantity: '0', damagedQuantity: '0', damageReason: '' }] : previous.filter(line => line.skuId !== sku.id))} /> <span>{sku.variantName}<span className="block font-mono text-xs font-normal text-stone-500">{sku.fullCode}</span></span></label>)}</div></section>)}</>}
- {step === 2 && <><div className="grid gap-4 sm:grid-cols-2"><label>Delivery date<input type="date" required min="0001-01-01" max={lagosDate()} value={deliveredOn} onChange={event => setDeliveredOn(event.target.value)} /></label><label>Invoice reference (optional)<input maxLength={160} value={invoiceReference} onChange={event => setInvoice(event.target.value)} /></label></div>{lines.map((line, index) => { const sku = available.find(item => item.id === line.skuId)!; return <section key={line.skuId} className="space-y-4 rounded-xl border border-stone-200 bg-white p-4"><div className="flex justify-between gap-3"><div><h4 className="font-semibold">{sku.productName} · {sku.variantName}</h4><p className="font-mono text-xs text-stone-500">{sku.fullCode}</p></div><button type="button" aria-label={`Remove ${sku.fullCode}`} className="text-xs text-stone-500 underline" onClick={() => setLines(previous => previous.filter(row => row.skuId !== line.skuId))}>Remove line</button></div><div className="grid grid-cols-2 gap-4"><label>Usable quantity<input aria-label={`${sku.fullCode} usable quantity`} type="number" min="0" max="2147483647" step="1" required value={line.usableQuantity} onChange={event => change(index, { usableQuantity: event.target.value })} /></label><label>Damaged quantity<input aria-label={`${sku.fullCode} damaged quantity`} type="number" min="0" max="2147483647" step="1" required value={line.damagedQuantity} onChange={event => change(index, { damagedQuantity: event.target.value })} /></label></div>{Number(line.damagedQuantity) > 0 && <label>Damage explanation<textarea aria-label={`${sku.fullCode} damage explanation`} required minLength={10} maxLength={2000} value={line.damageReason} onChange={event => change(index, { damageReason: event.target.value })} placeholder="Describe the condition of the damaged arrivals" /></label>}</section>; })}<Totals usable={String(usable)} damaged={String(damaged)} delivered={String(usable + damaged)} /></>}
- {step === 3 && <><div className="rounded-xl border border-stone-200 bg-white p-4 text-sm leading-7"><p><strong>{supplier?.name}</strong> · {source?.name}</p><p>Delivery date: {deliveredOn}</p>{invoiceReference && <p>Invoice reference: {invoiceReference}</p>}<p className="text-xs text-stone-500">A new delivery batch will be assigned when accepted. Acceptance is recorded now, independently of the delivery date.</p></div>{lines.map(line => { const sku = available.find(item => item.id === line.skuId)!; return <div key={line.skuId} className="rounded-xl border border-stone-200 bg-white p-4 text-sm"><p className="font-semibold">{sku.productName} · {sku.variantName}</p><p className="mt-1 break-all font-mono text-xs">{sku.fullCode}</p><p className="mt-3">Usable: {line.usableQuantity} · Damaged: {line.damagedQuantity} · Total: {Number(line.usableQuantity) + Number(line.damagedQuantity)}</p>{Number(line.damagedQuantity) > 0 && <p className="mt-2 text-amber-800">{line.damageReason}</p>}</div>; })}<Totals usable={String(usable)} damaged={String(damaged)} delivered={String(usable + damaged)} /><p className="text-xs leading-5 text-stone-500">Confirming accepts every line together. Damaged arrivals enter damaged stock only. This receipt cannot be edited or supplemented after acceptance.</p></>}
- </WizardShell>;
-}
-export function ReceivingWorkspace({ initialReceiptId = '', onHistory, onInventory }: { initialReceiptId?: string; onHistory?: () => void; onInventory?: (id: string) => void }) {
- const options = useApiRead<ReceivingOptions>('receiving/options');
- const [receipt, setReceipt] = useState<AcceptedReceipt | null>(null);
- const [open, setOpen] = useState(false);
- const selected = useApiRead<AcceptedReceipt>(initialReceiptId ? `receipts/${initialReceiptId}` : null);
- useEffect(() => { if (selected.data) setReceipt(selected.data); }, [selected.data]);
- return <div className="page"><PageHeader eyebrow="Local stock operations" title="Receiving" description="Accept one supplier delivery with all its products and variants. Usable and damaged arrivals are recorded separately." actions={<>{onHistory && <Button variant="outline" onClick={onHistory}>Receipt history</Button>}<Button disabled={options.loading || !options.data?.skus.length} onClick={() => setOpen(true)}>Receive delivery</Button></>} />
- {options.loading ? <LoadingState /> : options.error ? <ReadError message={options.error} onRetry={options.refresh} /> : <section className="surface"><div className="surface-heading"><h2>Ready to receive</h2><Badge>{options.data?.suppliers.length ?? 0} suppliers with sourced SKUs</Badge></div><div className="p-5"><ol className="receiving-guide"><li><strong>1. Choose the source</strong><span>One supplier location for the entire delivery.</span></li><li><strong>2. Add delivered variants</strong><span>Use saved SKUs across multiple products.</span></li><li><strong>3. Review and accept</strong><span>All lines, batch and movements commit together.</span></li></ol>{!options.data?.skus.length && <EmptyState title="Complete catalogue setup first">Ask Admin to register a supplier source and its product SKUs before receiving.</EmptyState>}</div></section>}
- {selected.loading && <LoadingState />}{selected.error && <ReadError message={selected.error} onRetry={selected.refresh} />}{receipt && <ReceiptDetails key={receipt.id} receipt={receipt} onStock={onInventory} />}
- <p className="mt-5 text-xs leading-6 text-stone-500">Acceptance creates immutable receipt evidence. After a lost response, retry the same unchanged draft; Dayari preserves its submission key.</p>
- {open && options.data && <ReceiveWizard options={options.data} onClose={() => setOpen(false)} onSaved={result => { setOpen(false); setReceipt(result); }} />}</div>;
+import { cn } from '../../lib/cn';
+import { useApiRead } from '../../lib/api';
+import {
+  Badge,
+  Button,
+  DetailSkeleton,
+  EmptyState,
+  ErrorNotice,
+  Footnote,
+  Page,
+  PageHeader,
+  Panel,
+  card,
+} from '../ui';
+import { ReceiptDetails } from './receipt-details';
+import { ReceiveWizard } from './receive-wizard';
+
+export { ReceiptDetails } from './receipt-details';
+
+const guide = [
+  { step: '1. Choose the source', detail: 'One supplier location for the entire delivery.' },
+  { step: '2. Add delivered variants', detail: 'Use saved SKUs across multiple products.' },
+  { step: '3. Review and accept', detail: 'All lines, batch and movements commit together.' },
+];
+
+export function ReceivingWorkspace({
+  initialReceiptId = '',
+  onHistory,
+  onInventory,
+}: {
+  initialReceiptId?: string;
+  onHistory?: () => void;
+  onInventory?: (id: string) => void;
+}) {
+  const options = useApiRead<ReceivingOptions>('receiving/options');
+  const selected = useApiRead<AcceptedReceipt>(
+    initialReceiptId ? `receipts/${initialReceiptId}` : null,
+  );
+
+  const [receipt, setReceipt] = useState<AcceptedReceipt | null>(null);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (selected.data) setReceipt(selected.data);
+  }, [selected.data]);
+
+  return (
+    <Page>
+      <PageHeader
+        eyebrow="Local stock operations"
+        title="Receiving"
+        description="Accept one supplier delivery with all its products and variants. Usable and damaged arrivals are recorded separately."
+        actions={
+          <>
+            {onHistory ? (
+              <Button variant="secondary" onClick={onHistory}>
+                Receipt history
+              </Button>
+            ) : null}
+            <Button
+              disabled={options.loading || !options.data?.skus.length}
+              onClick={() => setOpen(true)}
+            >
+              Receive delivery
+            </Button>
+          </>
+        }
+      />
+
+      <div className="mt-8 space-y-4">
+        {options.loading ? (
+          <div className={cn(card, 'p-6')}>
+            <DetailSkeleton rows={3} />
+          </div>
+        ) : options.error ? (
+          <ErrorNotice message={options.error} onRetry={options.refresh} />
+        ) : (
+          <Panel
+            title="Ready to receive"
+            description="How a delivery is accepted into the ledger."
+            action={
+              <Badge tone="brand">
+                {options.data?.suppliers.length ?? 0} suppliers with sourced SKUs
+              </Badge>
+            }
+          >
+            <ol className="grid gap-5 sm:grid-cols-3">
+              {guide.map((item) => (
+                <li key={item.step}>
+                  <strong className="block font-sans text-sm font-semibold tracking-[-0.02em] text-brand">
+                    {item.step}
+                  </strong>
+                  <span className="mt-2 block font-sans text-xs leading-[1.7] tracking-[-0.02em] text-grey-2">
+                    {item.detail}
+                  </span>
+                </li>
+              ))}
+            </ol>
+
+            {!options.data?.skus.length ? (
+              <div className="mt-4 border-t border-black/[0.06]">
+                <EmptyState title="Complete catalogue setup first" icon={TruckDeliveryIcon}>
+                  Ask Admin to register a supplier source and its product SKUs before receiving.
+                </EmptyState>
+              </div>
+            ) : null}
+          </Panel>
+        )}
+
+        {selected.loading ? (
+          <div className={cn(card, 'p-6')}>
+            <DetailSkeleton rows={5} />
+          </div>
+        ) : null}
+        {selected.error ? (
+          <ErrorNotice message={selected.error} onRetry={selected.refresh} />
+        ) : null}
+
+        {receipt ? (
+          <ReceiptDetails key={receipt.id} receipt={receipt} onStock={onInventory} />
+        ) : null}
+      </div>
+
+      <Footnote className="mt-5">
+        Acceptance creates immutable receipt evidence. After a lost response, retry the same
+        unchanged draft; Dayari preserves its submission key.
+      </Footnote>
+
+      {open && options.data ? (
+        <ReceiveWizard
+          options={options.data}
+          onClose={() => setOpen(false)}
+          onSaved={(result) => {
+            setOpen(false);
+            setReceipt(result);
+          }}
+        />
+      ) : null}
+    </Page>
+  );
 }

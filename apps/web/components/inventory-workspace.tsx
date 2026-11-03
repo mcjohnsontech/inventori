@@ -1,37 +1,451 @@
 'use client';
+import {
+  ArrowLeft01Icon,
+  ArrowRight01Icon,
+  BoxesIcon,
+  Cancel01Icon,
+  RefreshIcon,
+} from '@hugeicons/core-free-icons';
 import { useEffect, useRef, useState } from 'react';
 import type { Catalogue, LotEvidence, OperationalStock } from '@dayari/contracts';
-import { RefreshCw, X } from 'lucide-react';
+
+import { cn } from '../lib/cn';
 import { useApiRead } from '../lib/api';
-import { Button } from './ui/button';
-import { Badge, EmptyState, LoadingState, PageHeader, ReadError, SearchField } from './ui/workspace';
+import { formatDateTime, formatTime, isPositive } from '../lib/format';
+import {
+  Badge,
+  Breadcrumb,
+  Button,
+  CardGrid,
+  CardGridSkeleton,
+  Code,
+  type Column,
+  CopyButton,
+  DataTable,
+  DetailSkeleton,
+  EmptyState,
+  Footnote,
+  Icon,
+  Field,
+  LinkButton,
+  Page,
+  PageHeader,
+  Pager,
+  Panel,
+  SearchInput,
+  Select,
+  Stack,
+  Tabs,
+  card,
+  cardInteractive,
+} from './ui';
 import { IdentityLookup } from './identity-lookup';
 
-export function InventoryWorkspace({ catalogue, initialProductId = '', onReceipt, onProductDetail, onProductFilter }: { catalogue: Catalogue; initialProductId?: string; onReceipt: (id: string) => void; onProductDetail: (id: string) => void; onProductFilter: (id: string) => void }) {
+const PER_PAGE = 18;
+
+type Group = 'lots' | 'sku';
+
+export function InventoryWorkspace({
+  catalogue,
+  initialProductId = '',
+  onReceipt,
+  onProductDetail,
+  onProductFilter,
+}: {
+  catalogue: Catalogue;
+  initialProductId?: string;
+  onReceipt: (id: string) => void;
+  onProductDetail: (id: string) => void;
+  onProductFilter: (id: string) => void;
+}) {
   const [productId, setProductId] = useState(initialProductId);
-  const [advanced, setAdvanced] = useState(false);
   const [sourceId, setSourceId] = useState('');
   const [search, setSearch] = useState('');
   const [state, setState] = useState('all');
-  const [group, setGroup] = useState<'lots' | 'sku'>('lots');
+  const [group, setGroup] = useState<Group>('lots');
   const [selected, setSelected] = useState('');
+  const [page, setPage] = useState(1);
+
   const details = useRef<HTMLElement>(null);
-  useEffect(() => { setProductId(initialProductId); }, [initialProductId]);
-  useEffect(() => { if (selected) { details.current?.scrollIntoView({ block: 'start' }); details.current?.focus({ preventScroll: true }); } }, [selected]);
-  const [page, setPage] = useState(0);
-  const params = new URLSearchParams({ ...(productId ? { productId } : {}), ...(sourceId ? { sourceId } : {}) });
+
+  useEffect(() => setProductId(initialProductId), [initialProductId]);
+
+  useEffect(() => {
+    if (selected) {
+      details.current?.scrollIntoView({ block: 'start' });
+      details.current?.focus({ preventScroll: true });
+    }
+  }, [selected]);
+
+  const params = new URLSearchParams({
+    ...(productId ? { productId } : {}),
+    ...(sourceId ? { sourceId } : {}),
+  });
+
   const stock = useApiRead<OperationalStock>(`stock?${params}`);
   const evidence = useApiRead<LotEvidence>(selected ? `stock/lots/${selected}` : null);
-  const lots = (stock.data?.lots ?? []).filter(lot => `${lot.productName} ${lot.variantName} ${lot.fullCode} ${lot.publicCode} ${lot.productCode ?? ''} ${lot.lotCode ?? ''} ${lot.supplierName} ${lot.sourceName}`.toLowerCase().includes(search.toLowerCase()) && (state === 'all' || BigInt(state === 'usable' ? lot.usable : lot.damaged) > 0n));
-  const skus = (stock.data?.bySku ?? []).filter(sku => lots.some(lot => lot.skuId === sku.skuId));
-  const lot = stock.data?.lots.find(item => item.lotId === selected);
+
+  const lots = (stock.data?.lots ?? []).filter(
+    (lot) =>
+      `${lot.productName} ${lot.variantName} ${lot.fullCode} ${lot.publicCode} ${lot.productCode ?? ''} ${lot.lotCode ?? ''} ${lot.supplierName} ${lot.sourceName}`
+        .toLowerCase()
+        .includes(search.toLowerCase()) &&
+      (state === 'all' || isPositive(state === 'usable' ? lot.usable : lot.damaged)),
+  );
+
+  const skus = (stock.data?.bySku ?? []).filter((sku) =>
+    lots.some((lot) => lot.skuId === sku.skuId),
+  );
+
+  const lot = stock.data?.lots.find((item) => item.lotId === selected);
   const total = group === 'lots' ? lots.length : skus.length;
-  function reset() { setPage(0); setSelected(''); }
-  return <div className="page"><PageHeader eyebrow="Authoritative shop stock" title="Inventory" description="Explore usable and damaged stock by exact supplier SKU and delivery batch. Every lot retains its provenance." actions={<Button variant="outline" onClick={stock.refresh}><RefreshCw size={15} />Refresh stock</Button>} />
-    {productId && <p className="mb-5"><button className="text-link" onClick={() => onProductDetail(productId)}>← Back to {catalogue.products.find(product => product.id === productId)?.name ?? 'product'}</button></p>}<section className="surface"><div className="filter-grid p-5"><SearchField label="Search inventory" value={search} onChange={value => { setSearch(value); reset(); }} placeholder="Product, variant, SKU, lot or batch…" /><button className="text-link text-left sm:hidden" aria-expanded={advanced} aria-controls="stock-filter-product stock-filter-source stock-filter-state" onClick={() => setAdvanced(!advanced)}>{advanced ? 'Hide stock filters' : 'Filter stock'}{(productId || sourceId || state !== 'all') ? ' · active' : ''}</button><label id="stock-filter-product" className={advanced ? 'stock-filter' : 'stock-filter is-collapsed'}>Product<select value={productId} onChange={event => { setProductId(event.target.value); onProductFilter(event.target.value); reset(); }}><option value="">All products</option>{catalogue.products.map(product => <option key={product.id} value={product.id}>{product.name}</option>)}</select></label><label id="stock-filter-source" className={advanced ? 'stock-filter' : 'stock-filter is-collapsed'}>Supplier source<select value={sourceId} onChange={event => { setSourceId(event.target.value); reset(); }}><option value="">All sources</option>{catalogue.suppliers.flatMap(supplier => supplier.sources.map(source => <option key={source.id} value={source.id}>{supplier.name} · {source.name}</option>))}</select></label><label id="stock-filter-state" className={advanced ? 'stock-filter' : 'stock-filter is-collapsed'}>Availability<select value={state} onChange={event => { setState(event.target.value); reset(); }}><option value="all">All stock lots</option><option value="usable">Has usable stock</option><option value="damaged">Has damaged stock</option></select></label></div>
-      {group === 'sku' && <p className="px-5 text-xs leading-6 text-stone-500">SKU balances include all delivery batches for the selected product and source. Text and availability filters choose matching SKUs, not partial quantities.</p>}<div className="surface-heading"><div className="tab-list"><button aria-pressed={group === 'lots'} onClick={() => { setGroup('lots'); setPage(0); }}>Delivery lots</button><button aria-pressed={group === 'sku'} onClick={() => { setGroup('sku'); setPage(0); }}>SKU balances</button></div><span className="text-xs text-stone-500">{stock.data ? `As of ${new Date(stock.data.asOf).toLocaleTimeString('en-GB', { timeZone: 'Africa/Lagos' })} Lagos` : 'Loading local projection…'}</span></div>
-      {stock.loading ? <div className="px-5"><LoadingState /></div> : stock.error ? <div className="px-5"><ReadError message={stock.error} onRetry={stock.refresh} /></div> : !total ? <EmptyState title="No stock matches this view">Try another filter. Registered catalogue variants appear here after an accepted delivery.</EmptyState> : group === 'lots' ? <div className="stock-grid">{lots.slice(page * 18, (page + 1) * 18).map(item => <button key={item.lotId} className={`stock-card ${selected === item.lotId ? 'is-selected' : ''}`} onClick={() => setSelected(item.lotId)}><div className="flex flex-wrap justify-between gap-2"><span className="font-mono text-xs text-emerald-800">{item.lotCode ?? 'Code not assigned'}</span><span className="text-xs text-stone-500">{item.publicCode}</span></div><h2 className="mt-3 text-sm font-semibold">{item.productName} · {item.variantName}</h2><p className="mt-1 font-mono text-xs text-emerald-800">{item.productCode ?? 'Code not assigned'}</p><p className="mt-2 break-all font-mono text-xs">{item.fullCode}</p><p className="mt-2 text-xs text-stone-500">{item.supplierName} · {item.sourceName}</p><div className="mt-4 flex flex-wrap gap-2"><Badge tone="usable">{item.usable} usable</Badge><Badge tone="damaged">{item.damaged} damaged</Badge></div><span className="text-link mt-4 block">Inspect lot provenance →</span></button>)}</div> : <div tabIndex={0} className="responsive-table"><table><thead><tr><th>Supplier SKU / variant</th><th>Usable</th><th>Damaged</th><th>Batch provenance</th></tr></thead><tbody>{skus.slice(page * 18, (page + 1) * 18).map(sku => { const row = stock.data!.lots.find(lot => lot.skuId === sku.skuId)!; return <tr key={sku.skuId}><td>{row.productName} · {row.variantName}<p className="mt-1 break-all font-mono text-xs">{sku.fullCode}</p></td><td><Badge tone="usable">{sku.usable}</Badge></td><td><Badge tone="damaged">{sku.damaged}</Badge></td><td><button className="text-link" onClick={() => { setSearch(sku.fullCode); setGroup('lots'); setPage(0); }}>View delivery lots</button></td></tr>; })}</tbody></table></div>}
-      {total > 18 && <div className="pagination"><span>{page * 18 + 1}–{Math.min((page + 1) * 18, total)} of {total}</span><Button size="small" variant="outline" disabled={!page} onClick={() => setPage(page - 1)}>Previous</Button><Button size="small" variant="outline" disabled={(page + 1) * 18 >= total} onClick={() => setPage(page + 1)}>Next</Button></div>}</section>
-    {lot && <section ref={details} tabIndex={-1} aria-label="Lot provenance" className="surface mt-5"><div className="surface-heading"><h2>{lot.lotCode ?? 'Stock lot'} · {lot.variantName}</h2><button className="icon-button" aria-label="Close lot details" onClick={() => setSelected('')}><X size={17} /></button></div><div className="space-y-4 p-5"><p className="text-sm">{lot.productName} · {lot.productCode ?? 'Code not assigned'}</p><p className="break-all font-mono text-sm">{lot.fullCode}</p><div className="flex gap-3"><Badge tone="usable">{lot.usable} usable</Badge><Badge tone="damaged">{lot.damaged} damaged</Badge></div>{evidence.loading ? <LoadingState /> : evidence.error ? <ReadError message={evidence.error} onRetry={evidence.refresh} /> : evidence.data && <><p className="text-xs text-stone-500">Delivered {evidence.data.deliveredOn} · Accepted {new Date(evidence.data.acceptedAt).toLocaleString('en-GB', { timeZone: 'Africa/Lagos' })} Lagos · Sequence {evidence.data.originSequence}</p><div className="space-y-2">{evidence.data.movements.map(movement => <p key={movement.id} className="text-sm">External arrival → {movement.toState === 'U' ? 'Usable' : 'Damaged'} <strong>{movement.quantity}</strong></p>)}</div><Button variant="outline" onClick={() => onReceipt(evidence.data!.receiptId)}>View accepted receipt</Button></>}<details><summary className="text-link">Immutable identity details</summary><p className="mt-3 break-all text-xs leading-6 text-stone-500">Lot {lot.lotId}<br />Batch {lot.batchId}<br />Origin {lot.originId}</p></details></div></section>}
-    <details className="mt-5"><summary className="text-link">Exact Product or Lot Code lookup</summary><IdentityLookup /></details><p className="mt-5 text-xs leading-6 text-stone-500">Balances are server projections of the immutable movement ledger. Printing and identification never change stock.</p></div>;
+  const pageCount = Math.max(1, Math.ceil(total / PER_PAGE));
+  const current = Math.min(page, pageCount);
+  const start = (current - 1) * PER_PAGE;
+
+  function reset() {
+    setPage(1);
+    setSelected('');
+  }
+
+  const skuColumns: Column<(typeof skus)[number]>[] = [
+    {
+      key: 'sku',
+      label: 'Supplier SKU / variant',
+      wide: true,
+      cell: (row) => {
+        const source = stock.data!.lots.find((item) => item.skuId === row.skuId)!;
+
+        return (
+          <>
+            <span className="block font-medium">
+              {source.productName} · {source.variantName}
+            </span>
+            <span className="mt-1 flex items-start gap-2">
+              <Code tone="brand">{row.fullCode}</Code>
+              <CopyButton value={row.fullCode} label="supplier SKU" />
+            </span>
+          </>
+        );
+      },
+    },
+    {
+      key: 'usable',
+      label: 'Usable',
+      align: 'right',
+      cell: (row) => <Badge tone="usable">{row.usable}</Badge>,
+    },
+    {
+      key: 'damaged',
+      label: 'Damaged',
+      align: 'right',
+      cell: (row) => <Badge tone="damaged">{row.damaged}</Badge>,
+    },
+    {
+      key: 'batches',
+      label: 'Batch provenance',
+      cell: (row) => (
+        <LinkButton
+          onClick={() => {
+            setSearch(row.fullCode);
+            setGroup('lots');
+            setPage(1);
+          }}
+        >
+          View delivery lots
+        </LinkButton>
+      ),
+    },
+  ];
+
+  return (
+    <Page>
+      <PageHeader
+        eyebrow="Authoritative shop stock"
+        title="Inventory"
+        description="Explore usable and damaged stock by exact supplier SKU and delivery batch. Every lot retains its provenance."
+        actions={
+          <Button variant="secondary" onClick={stock.refresh}>
+            <Icon icon={RefreshIcon} size={15} />
+            Refresh stock
+          </Button>
+        }
+      />
+
+      {productId ? (
+        <Breadcrumb>
+          <LinkButton onClick={() => onProductDetail(productId)}>
+            <Icon icon={ArrowLeft01Icon} size={15} strokeWidth={2} />
+            Back to{' '}
+            {catalogue.products.find((product) => product.id === productId)?.name ?? 'product'}
+          </LinkButton>
+        </Breadcrumb>
+      ) : null}
+
+      <section className={cn(card, 'mt-8 overflow-hidden')}>
+        <div className="grid gap-3 border-b border-black/[0.06] px-5 py-4 lg:grid-cols-[minmax(0,1.6fr)_repeat(3,minmax(0,1fr))] lg:items-end">
+          <SearchInput
+            label="Search inventory"
+            value={search}
+            placeholder="Product, variant, SKU, lot or batch…"
+            onChange={(value) => {
+              setSearch(value);
+              reset();
+            }}
+          />
+          <Field label="Product">
+            {(id) => (
+              <Select
+                id={id}
+                label="Filter by product"
+                value={productId || 'all'}
+                onChange={(value) => {
+                  const next = value === 'all' ? '' : value;
+                  setProductId(next);
+                  onProductFilter(next);
+                  reset();
+                }}
+                options={[
+                  { value: 'all', label: 'All products' },
+                  ...catalogue.products.map((product) => ({
+                    value: product.id,
+                    label: product.name,
+                  })),
+                ]}
+              />
+            )}
+          </Field>
+          <Field label="Supplier source">
+            {(id) => (
+              <Select
+                id={id}
+                label="Filter by supplier source"
+                value={sourceId || 'all'}
+                onChange={(value) => {
+                  setSourceId(value === 'all' ? '' : value);
+                  reset();
+                }}
+                options={[
+                  { value: 'all', label: 'All sources' },
+                  ...catalogue.suppliers.flatMap((supplier) =>
+                    supplier.sources.map((source) => ({
+                      value: source.id,
+                      label: `${supplier.name} · ${source.name}`,
+                    })),
+                  ),
+                ]}
+              />
+            )}
+          </Field>
+          <Field label="Availability">
+            {(id) => (
+              <Select
+                id={id}
+                label="Filter by availability"
+                value={state}
+                onChange={(value) => {
+                  setState(value);
+                  reset();
+                }}
+                options={[
+                  { value: 'all', label: 'All stock lots' },
+                  { value: 'usable', label: 'Has usable stock' },
+                  { value: 'damaged', label: 'Has damaged stock' },
+                ]}
+              />
+            )}
+          </Field>
+        </div>
+
+        <div className="flex flex-col gap-3 border-b border-black/[0.06] px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+          <Tabs
+            label="Stock grouping"
+            value={group}
+            onChange={(value) => {
+              setGroup(value);
+              setPage(1);
+            }}
+            tabs={[
+              { value: 'lots', label: 'Delivery lots' },
+              { value: 'sku', label: 'SKU balances' },
+            ]}
+          />
+          <span className="font-sans text-xs tracking-[-0.02em] text-grey-3">
+            {stock.data ? `As of ${formatTime(stock.data.asOf)}` : 'Loading local projection…'}
+          </span>
+        </div>
+
+        {group === 'sku' ? (
+          <Footnote className="border-b border-black/[0.06] px-5 py-3">
+            SKU balances include all delivery batches for the selected product and source. Text and
+            availability filters choose matching SKUs, not partial quantities.
+          </Footnote>
+        ) : null}
+
+        {stock.loading ? (
+          <CardGridSkeleton />
+        ) : stock.error ? (
+          <div className="p-5">
+            <EmptyState title="Stock could not be loaded" icon={BoxesIcon}>
+              {stock.error}
+            </EmptyState>
+            <div className="flex justify-center">
+              <Button variant="secondary" onClick={stock.refresh}>
+                Try again
+              </Button>
+            </div>
+          </div>
+        ) : !total ? (
+          <EmptyState title="No stock matches this view" icon={BoxesIcon}>
+            Try another filter. Registered catalogue variants appear here after an accepted
+            delivery.
+          </EmptyState>
+        ) : group === 'lots' ? (
+          <CardGrid>
+            {lots.slice(start, start + PER_PAGE).map((item) => (
+              <button
+                key={item.lotId}
+                type="button"
+                onClick={() => setSelected(item.lotId)}
+                aria-pressed={selected === item.lotId}
+                className={cn(
+                  card,
+                  cardInteractive,
+                  'flex flex-col p-5',
+                  selected === item.lotId && 'ring-2 ring-brand ring-offset-2',
+                )}
+              >
+                <span className="flex flex-wrap items-center justify-between gap-2">
+                  <Code tone="brand">{item.lotCode ?? 'Code not assigned'}</Code>
+                  <Code tone="muted">{item.publicCode}</Code>
+                </span>
+                <span className="mt-3 block font-sans text-sm leading-snug font-semibold tracking-[-0.02em] break-words text-ink">
+                  {item.productName} · {item.variantName}
+                </span>
+                <span className="mt-1.5 block">
+                  <Code tone="muted">{item.productCode ?? 'Code not assigned'}</Code>
+                </span>
+                <span className="mt-2 block">
+                  <Code>{item.fullCode}</Code>
+                </span>
+                <span className="mt-2 block font-sans text-xs tracking-[-0.02em] text-grey-3">
+                  {item.supplierName} · {item.sourceName}
+                </span>
+                <span className="mt-4 flex flex-wrap gap-1.5">
+                  <Badge tone="usable">{item.usable} usable</Badge>
+                  <Badge tone="damaged">{item.damaged} damaged</Badge>
+                </span>
+                <span className="mt-4 flex items-center gap-1.5 font-sans text-[13px] font-semibold tracking-[-0.02em] text-brand">
+                  Inspect lot provenance
+                  <Icon icon={ArrowRight01Icon} size={14} strokeWidth={2} />
+                </span>
+              </button>
+            ))}
+          </CardGrid>
+        ) : (
+          <DataTable
+            bare
+            columns={skuColumns}
+            rows={skus.slice(start, start + PER_PAGE)}
+            rowKey={(row) => row.skuId}
+            emptyMessage="No SKU balances match this view."
+          />
+        )}
+
+        <Pager page={current} pageCount={pageCount} total={total} onChange={setPage} />
+      </section>
+
+      {lot ? (
+        <section
+          ref={details}
+          tabIndex={-1}
+          aria-label="Lot provenance"
+          className="mt-4 outline-none"
+        >
+          <Panel
+            title={`${lot.lotCode ?? 'Stock lot'} · ${lot.variantName}`}
+            description={`${lot.productName} · ${lot.productCode ?? 'Code not assigned'}`}
+            action={
+              <button
+                type="button"
+                aria-label="Close lot details"
+                onClick={() => setSelected('')}
+                className="grid size-9 place-items-center rounded-lg text-grey-3 transition-colors hover:bg-surface-muted hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+              >
+                <Icon icon={Cancel01Icon} size={17} />
+              </button>
+            }
+          >
+            <Stack gap="tight">
+              <span className="flex items-start gap-2">
+                <Code className="text-sm">{lot.fullCode}</Code>
+                <CopyButton value={lot.fullCode} label="supplier SKU" />
+              </span>
+              <div className="flex flex-wrap gap-2">
+                <Badge tone="usable">{lot.usable} usable</Badge>
+                <Badge tone="damaged">{lot.damaged} damaged</Badge>
+              </div>
+
+              {evidence.loading ? (
+                <DetailSkeleton />
+              ) : evidence.error ? (
+                <EmptyState title="Provenance unavailable">{evidence.error}</EmptyState>
+              ) : evidence.data ? (
+                <>
+                  <Footnote>
+                    Delivered {evidence.data.deliveredOn} · Accepted{' '}
+                    {formatDateTime(evidence.data.acceptedAt)} · Sequence{' '}
+                    {evidence.data.originSequence}
+                  </Footnote>
+                  <ul className="space-y-1.5 border-t border-black/[0.06] pt-4">
+                    {evidence.data.movements.map((movement) => (
+                      <li
+                        key={movement.id}
+                        className="font-sans text-sm tracking-[-0.02em] text-ink"
+                      >
+                        External arrival → {movement.toState === 'U' ? 'Usable' : 'Damaged'}{' '}
+                        <strong className="font-semibold">{movement.quantity}</strong>
+                      </li>
+                    ))}
+                  </ul>
+                  <Button
+                    variant="secondary"
+                    onClick={() => onReceipt(evidence.data!.receiptId)}
+                  >
+                    View accepted receipt
+                  </Button>
+                </>
+              ) : null}
+
+              <details className="border-t border-black/[0.06] pt-4">
+                <summary className="cursor-pointer font-sans text-[13px] font-semibold tracking-[-0.02em] text-brand underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
+                  Immutable identity details
+                </summary>
+                <Footnote className="mt-3">
+                  <Code tone="muted" className="block">
+                    Lot {lot.lotId}
+                  </Code>
+                  <Code tone="muted" className="mt-1 block">
+                    Batch {lot.batchId}
+                  </Code>
+                  <Code tone="muted" className="mt-1 block">
+                    Origin {lot.originId}
+                  </Code>
+                </Footnote>
+              </details>
+            </Stack>
+          </Panel>
+        </section>
+      ) : null}
+
+      <div className="mt-4">
+        <IdentityLookup />
+      </div>
+
+      <Footnote className="mt-5">
+        Balances are server projections of the immutable movement ledger. Printing and
+        identification never change stock.
+      </Footnote>
+    </Page>
+  );
 }

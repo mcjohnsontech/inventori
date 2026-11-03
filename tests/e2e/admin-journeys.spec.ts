@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { expect, test, type Page } from '@playwright/test';
+import { choose } from './ui';
 
 async function login(page: Page) {
   await page.goto('/');
@@ -38,8 +39,8 @@ test('Admin product extension, deep links and complete responsive workspaces use
   await page.setViewportSize({ width: 320, height: 900 });
   await page.getByRole('button', { name: 'Add variants or source', exact: true }).click();
   const dialog = page.getByRole('dialog');
-  await dialog.getByRole('combobox', { name: 'Supplier', exact: true }).selectOption(supplier.supplier.id);
-  await dialog.getByRole('combobox', { name: 'Supplier location', exact: true }).selectOption(supplier.source.id);
+  await choose(dialog, 'Supplier', supplier.supplier.id);
+  await choose(dialog, 'Supplier location', supplier.source.id);
   await dialog.getByRole('button', { name: 'Continue', exact: true }).click();
   await expect(dialog.getByRole('combobox', { name: 'Product', exact: true })).toHaveValue(product.product.id);
   await dialog.getByRole('button', { name: 'Continue', exact: true }).click();
@@ -101,7 +102,7 @@ test('Admin product extension, deep links and complete responsive workspaces use
       }
       if (key === 'labels') {
         await page.getByLabel('Search label receipts', { exact: true }).fill(receipt.batch.publicCode);
-        await page.getByRole('combobox', { name: 'Accepted receipt', exact: true }).selectOption(receipt.id);
+        await choose(page, 'Accepted receipt', receipt.id);
         await expect(page.getByText(`Label plan · ${receipt.batch.publicCode}`, { exact: true })).toBeVisible();
       }
       if (key === 'settings') await expect(page.getByText('Africa/Lagos', { exact: true })).toBeVisible();
