@@ -5,10 +5,10 @@ import type { QrLookup } from '@dayari/contracts';
 import { cn } from '../../lib/cn';
 import { formatDateTime } from '../../lib/format';
 import {
-  Badge,
   Button,
   Code,
   CopyButton,
+  Disclosure,
   ErrorNotice,
   Field,
   Footnote,
@@ -295,10 +295,7 @@ export function QrWorkspace() {
                 )}
               </Field>
 
-              <details>
-                <summary className="cursor-pointer font-sans text-[13px] font-semibold tracking-[-0.02em] text-brand underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
-                  Scanner framing profile
-                </summary>
+              <Disclosure summary="Scanner framing profile">
                 <div className="mt-3 space-y-2">
                   <Field label="Known scanner prefix">
                     {(id) => (
@@ -325,7 +322,7 @@ export function QrWorkspace() {
                     punctuation are preserved. Input is captured only while focused here.
                   </Footnote>
                 </div>
-              </details>
+              </Disclosure>
 
               <div className="flex flex-wrap gap-2.5">
                 <Button disabled={busy || !payload}>
@@ -385,10 +382,14 @@ export function QrWorkspace() {
               <Code className="block text-ink">Batch {result.publicBatchCode}</Code>
             </div>
 
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Badge tone="usable">{result.usable} usable</Badge>
+            <div className="mt-4 space-y-1">
+              <p className="font-display text-lg font-semibold tracking-[-0.03em] text-usable">
+                Usable availability: {result.usable}
+              </p>
               {result.damaged !== undefined ? (
-                <Badge tone="damaged">{result.damaged} damaged</Badge>
+                <p className="font-sans text-sm tracking-[-0.02em] text-damaged">
+                  Damaged lot quantity: {result.damaged}
+                </p>
               ) : null}
             </div>
 

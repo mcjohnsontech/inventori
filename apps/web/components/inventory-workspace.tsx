@@ -23,6 +23,7 @@ import {
   CopyButton,
   DataTable,
   DetailSkeleton,
+  Disclosure,
   EmptyState,
   Footnote,
   Icon,
@@ -319,9 +320,9 @@ export function InventoryWorkspace({
                   <Code tone="brand">{item.lotCode ?? 'Code not assigned'}</Code>
                   <Code tone="muted">{item.publicCode}</Code>
                 </span>
-                <span className="mt-3 block font-sans text-sm leading-snug font-semibold tracking-[-0.02em] break-words text-ink">
+                <h2 className="mt-3 font-sans text-sm leading-snug font-semibold tracking-[-0.02em] break-words text-ink">
                   {item.productName} · {item.variantName}
-                </span>
+                </h2>
                 <span className="mt-1.5 block">
                   <Code tone="muted">{item.productCode ?? 'Code not assigned'}</Code>
                 </span>
@@ -417,10 +418,7 @@ export function InventoryWorkspace({
                 </>
               ) : null}
 
-              <details className="border-t border-black/[0.06] pt-4">
-                <summary className="cursor-pointer font-sans text-[13px] font-semibold tracking-[-0.02em] text-brand underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
-                  Immutable identity details
-                </summary>
+              <Disclosure summary="Immutable identity details" className="border-t border-black/[0.06] pt-4">
                 <Footnote className="mt-3">
                   <Code tone="muted" className="block">
                     Lot {lot.lotId}
@@ -432,15 +430,15 @@ export function InventoryWorkspace({
                     Origin {lot.originId}
                   </Code>
                 </Footnote>
-              </details>
+              </Disclosure>
             </Stack>
           </Panel>
         </section>
       ) : null}
 
-      <div className="mt-4">
+      <Disclosure summary="Exact Product or Lot Code lookup" className="mt-5">
         <IdentityLookup />
-      </div>
+      </Disclosure>
 
       <Footnote className="mt-5">
         Balances are server projections of the immutable movement ledger. Printing and

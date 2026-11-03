@@ -13,6 +13,7 @@ import {
   type Column,
   CopyButton,
   DataTable,
+  Disclosure,
   EmptyState,
   Footnote,
   Icon,
@@ -415,9 +416,9 @@ export function CatalogueWorkspace({
                 className={cn(card, cardInteractive, 'flex flex-col p-5')}
               >
                 <Code tone="brand">{item.productCode ?? 'Code not assigned'}</Code>
-                <span className="mt-2.5 block font-sans text-[15px] leading-snug font-semibold tracking-[-0.03em] break-words text-ink">
+                <h2 className="mt-2.5 font-sans text-[15px] leading-snug font-semibold tracking-[-0.03em] break-words text-ink">
                   {item.name}
-                </span>
+                </h2>
                 <span className="mt-1.5 line-clamp-2 block font-sans text-xs leading-[1.6] tracking-[-0.02em] text-grey-3">
                   {item.description || 'Shared parent product'}
                 </span>
@@ -462,9 +463,9 @@ export function CatalogueWorkspace({
         <Pager page={current} pageCount={pageCount} total={total} onChange={setPage} />
       </section>
 
-      <div className="mt-4">
+      <Disclosure summary="Find an exact Product or Lot Code" open className="mt-5">
         <IdentityLookup />
-      </div>
+      </Disclosure>
 
       <Footnote className="mt-5">
         Catalogue registration does not add stock. Receive an accepted delivery to create stock

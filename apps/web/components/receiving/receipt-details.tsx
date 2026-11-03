@@ -11,6 +11,7 @@ import {
   CopyButton,
   DataTable,
   DetailSkeleton,
+  Disclosure,
   ErrorNotice,
   Footnote,
   LinkButton,
@@ -105,10 +106,7 @@ export function ReceiptDetails({
 
           <Totals {...receipt.totals} />
 
-          <details className="border-t border-black/[0.06] pt-4">
-            <summary className="cursor-pointer font-sans text-[13px] font-semibold tracking-[-0.02em] text-brand underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
-              Acceptance evidence
-            </summary>
+          <Disclosure summary="Acceptance evidence" className="border-t border-black/[0.06] pt-4">
             <Footnote className="mt-3">
               <Code tone="muted" className="block">
                 Origin {receipt.batch.originId}
@@ -117,11 +115,12 @@ export function ReceiptDetails({
                 Acceptance sequence {receipt.originSequence}
               </Code>
             </Footnote>
-          </details>
+          </Disclosure>
         </Stack>
       </Panel>
 
       <Panel
+        level={3}
         title="Delivered lines"
         description="Usable and damaged quantities are recorded separately and never combined."
         flush
@@ -136,7 +135,7 @@ export function ReceiptDetails({
         <Footnote className="px-5 py-4">Accepted history is immutable.</Footnote>
       </Panel>
 
-      <Panel title="Current balances in this batch">
+      <Panel level={3} label="Accepted batch balances" title="Current balances in this batch">
         {stock.loading ? (
           <DetailSkeleton rows={2} />
         ) : stock.error ? (
@@ -155,13 +154,13 @@ export function ReceiptDetails({
         )}
       </Panel>
 
-      <Panel title="Labels" description="Printing never changes inventory.">
-        <details onToggle={(event) => event.currentTarget.open && setLabelsOpen(true)}>
-          <summary className="cursor-pointer font-sans text-[13px] font-semibold tracking-[-0.02em] text-brand underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
-            Print labels for this receipt
-          </summary>
+      <Panel level={3} title="Labels" description="Printing never changes inventory.">
+        <Disclosure
+          summary="Print labels for this receipt"
+          onOpen={() => setLabelsOpen(true)}
+        >
           {labelsOpen ? <LabelWorkspace receiptId={receipt.id} compact /> : null}
-        </details>
+        </Disclosure>
       </Panel>
     </section>
   );

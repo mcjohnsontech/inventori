@@ -92,6 +92,7 @@ export function IdentityLookup() {
 
   return (
     <Panel
+      label="Exact code lookup"
       title="Find by Product or Lot Code"
       description="Codes identify a shared product or one exact delivery lot. Lookup never changes stock."
       action={<Badge>Exact lookup · this shop</Badge>}
@@ -146,12 +147,16 @@ export function IdentityLookup() {
               </Code>
             </p>
           ) : null}
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div className="mt-3 space-y-1">
             {result.usable !== undefined ? (
-              <Badge tone="usable">{result.usable} usable</Badge>
+              <p className="font-sans text-sm font-semibold tracking-[-0.02em] text-usable">
+                Usable availability: {result.usable}
+              </p>
             ) : null}
             {result.damaged !== undefined ? (
-              <Badge tone="damaged">{result.damaged} damaged</Badge>
+              <p className="font-sans text-sm tracking-[-0.02em] text-damaged">
+                Damaged lot quantity: {result.damaged}
+              </p>
             ) : null}
           </div>
           <Footnote className="mt-3">

@@ -12,6 +12,7 @@ import {
   Code,
   type Column,
   DataTable,
+  Disclosure,
   EmptyState,
   ErrorNotice,
   Field,
@@ -585,10 +586,7 @@ export function LabelWorkspace({
               </Stack>
             ) : null}
 
-            <details className="border-t border-black/[0.06] pt-4">
-              <summary className="cursor-pointer font-sans text-[13px] font-semibold tracking-[-0.02em] text-brand underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
-                Explicit reprint
-              </summary>
+            <Disclosure summary="Explicit reprint" className="border-t border-black/[0.06] pt-4">
               <Stack gap="tight" className="mt-4">
                 {job.lines.map((line) => (
                   <div key={line.id} className="flex flex-wrap items-end gap-3">
@@ -645,12 +643,9 @@ export function LabelWorkspace({
                   Create explicit reprint
                 </Button>
               </Stack>
-            </details>
+            </Disclosure>
 
-            <details>
-              <summary className="cursor-pointer font-sans text-[13px] font-semibold tracking-[-0.02em] text-brand underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
-                Print attempt history
-              </summary>
+            <Disclosure summary="Print attempt history">
               <ul className="mt-3 space-y-1.5">
                 {job.events.map((entry) => (
                   <li
@@ -667,7 +662,7 @@ export function LabelWorkspace({
                 Manifest counts, handed-off counts and operator reports are separate evidence,
                 never verified affixed units.
               </Footnote>
-            </details>
+            </Disclosure>
           </Stack>
         </Panel>
       ) : null}

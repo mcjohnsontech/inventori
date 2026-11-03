@@ -9,6 +9,7 @@ import {
   Button,
   Code,
   CopyButton,
+  Disclosure,
   EmptyState,
   Footnote,
   Icon,
@@ -128,10 +129,7 @@ export function SuppliersWorkspace({
                         </div>
 
                         {products.length ? (
-                          <details className="group mt-3">
-                            <summary className="cursor-pointer font-sans text-[13px] font-semibold tracking-[-0.02em] text-brand underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
-                              Products and saved SKUs
-                            </summary>
+                          <Disclosure summary="Products and saved SKUs" className="mt-3">
                             <ul className="mt-3 space-y-3">
                               {products.map((product) => (
                                 <li key={product.id}>
@@ -156,7 +154,7 @@ export function SuppliersWorkspace({
                                 </li>
                               ))}
                             </ul>
-                          </details>
+                          </Disclosure>
                         ) : null}
                       </div>
                     );
