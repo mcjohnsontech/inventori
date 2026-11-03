@@ -45,3 +45,15 @@ Manager landing now prioritizes receiving, accepted deliveries, lot availability
 Published M4: `26608360da98b972140726daa2b3346ac0e3ca33`; remote SHA verified. M5 final test results follow after rerun.
 
 M5 final checks passed: typecheck and production build; Manager+receiving browser 2/2 after navigation fix, then final Manager viewport browser 1/1 after collapsible-guide refinement. Five widths assert no horizontal overflow. Desktop and final 320px screenshots visually reviewed and retained at `docs/images/application/manager-{1440,320}.png`. Existing receiving browser proves multi-product/damage quantities, draft Back/discard, lost-response same-key retry, receipt history and exact lot provenance. No new backend mutation or permissions.
+
+## Milestone 6 — Production workspace
+
+Added authenticated `GET /v1/availability?q=Green&page=1&productId=<optional UUID>&lotId=<optional UUID>`. Strict bounded filters, 20-row pages, stable order, repeatable-read row/count snapshot; literal substring matching rather than fuzzy/universal Phase 3 search. Reads only positive U projections and explicit identity joins at the current origin. DTO fields: product/variant/SKU/lot/batch IDs and labels, decimal-string usable quantity, pagination/origin/dataAsOf. No damaged-state/invoice/audit/print/supplier-private query or response. Exact codes and old DYI:1 remain supported; no stock changes or migration.
+
+Production lands on usable discovery, sees only its permitted navigation, and can open a lot's saved code in the existing exact QR/code lookup surface. No issuing/reservation button or simulated mutation. Historical missing codes are stated without fabrication/backfill. Existing Production browser expectations updated to the authorized new landing page, preserving QR/print-denial assertions.
+
+Executed: new PostgreSQL read-model tests 2/2; unit 24/24; typecheck and production build passed; discovery/QR-label/code browser regressions 3/3. Desktop/mobile reviewed; shortened the operational guidance and made mobile search full-width. Final browser recheck follows before publication.
+
+Published M5: `1c8a09d48738ad570368102a52d1765b40d4743a`; remote SHA verified.
+
+M6 final mobile recheck passed 1/1, with all five overflow assertions; final typecheck passed after correcting a test-helper body type. Reviewed final 320px search and retained `docs/images/application/production-{320,1440}.png`. New read model tests prove no movement changes and damage-only exclusion. No Phase 3 hierarchy, fuzzy discovery, unit serialization or issuing activated.

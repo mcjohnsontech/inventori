@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { expect, test } from '@playwright/test';
 test('Manager receives a multi-product delivery, retries a lost response and sees separate usable/damaged stock', async ({ page }) => {
  await page.goto('/');
- async function login(email: string) { await page.getByLabel('Email address').fill(email); await page.getByLabel('Password', { exact: true }).fill(process.env.E2E_PASSWORD!); await page.getByRole('button', { name: 'Sign in', exact: true }).click(); if (!email.includes('production')) await page.getByRole('button', { name: 'Catalogue', exact: true }).click(); await expect(page.getByRole('heading', { name: email.includes('production') ? 'QR lookup' : 'Product catalogue' })).toBeVisible(); }
+ async function login(email: string) { await page.getByLabel('Email address').fill(email); await page.getByLabel('Password', { exact: true }).fill(process.env.E2E_PASSWORD!); await page.getByRole('button', { name: 'Sign in', exact: true }).click(); if (!email.includes('production')) await page.getByRole('button', { name: 'Catalogue', exact: true }).click(); await expect(page.getByRole('heading', { name: email.includes('production') ? 'Production workspace' : 'Product catalogue' })).toBeVisible(); }
  await login('e2e-admin@dayari.test');
  async function create(operation: string, body: unknown) { const response=await page.request.post(`/api/catalogue/${operation}`,{headers:{Origin:'http://127.0.0.1:3101','Idempotency-Key':randomUUID()},data:body});expect(response.ok(),await response.text()).toBe(true);return response.json(); }
  const catalogue=await (await page.request.get('/api/catalogue')).json();

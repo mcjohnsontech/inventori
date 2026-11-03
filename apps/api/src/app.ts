@@ -1,3 +1,4 @@
+import { AvailabilityService } from './availability.service.js';
 import { AccountsService } from './accounts.service.js';
 import { PublicIdentitiesService } from './public-identities.service.js';
 import 'reflect-metadata';
@@ -12,7 +13,8 @@ import { CatalogueService } from './catalogue.service.js';
 
 @Controller('v1')
 class ApiController {
-  constructor(@Inject(AccountsService) private readonly accounts: AccountsService, @Inject(CatalogueService) private readonly service: CatalogueService, @Inject(ReceivingService) private readonly receiving: ReceivingService, @Inject(LabelsService) private readonly labels: LabelsService, @Inject(PublicIdentitiesService) private readonly identities: PublicIdentitiesService) {}
+  constructor(@Inject(AvailabilityService) private readonly availability:AvailabilityService,@Inject(AccountsService) private readonly accounts: AccountsService, @Inject(CatalogueService) private readonly service: CatalogueService, @Inject(ReceivingService) private readonly receiving: ReceivingService, @Inject(LabelsService) private readonly labels: LabelsService, @Inject(PublicIdentitiesService) private readonly identities: PublicIdentitiesService) {}
+  @Get('availability') async available(@Query() query:unknown,@Headers('authorization') auth?:string){return this.availability.list(await this.service.actor(this.token(auth)),query);}
   @Get('account') async account(@Headers('authorization') auth?:string){return this.accounts.own(await this.service.actor(this.token(auth)));}
   @Post('account/password') async password(@Body() body:unknown,@Headers('idempotency-key') key:string|undefined,@Headers('authorization') auth?:string){return this.accounts.changePassword(await this.service.actor(this.token(auth),true),key,body);}
   @Get('admin/users') async users(@Query() query:unknown,@Headers('authorization') auth?:string){return this.accounts.list(await this.service.actor(this.token(auth)),query);}
@@ -58,7 +60,7 @@ class ApiController {
 }
 
 export async function createApp(db: PrismaClient, originId: string, mode: string) {
-  @Module({ controllers: [ApiController], providers: [{provide:AccountsService,useValue:new AccountsService(db,originId,mode)}, { provide: PublicIdentitiesService, useValue: new PublicIdentitiesService(db, originId) }, { provide: LabelsService, useValue: new LabelsService(db, originId, mode) }, { provide: ReceivingService, useValue: new ReceivingService(db, originId, mode) }, { provide: CatalogueService, useValue: new CatalogueService(db, originId, mode) }] })
+  @Module({ controllers: [ApiController], providers: [{provide:AvailabilityService,useValue:new AvailabilityService(db,originId)},{provide:AccountsService,useValue:new AccountsService(db,originId,mode)}, { provide: PublicIdentitiesService, useValue: new PublicIdentitiesService(db, originId) }, { provide: LabelsService, useValue: new LabelsService(db, originId, mode) }, { provide: ReceivingService, useValue: new ReceivingService(db, originId, mode) }, { provide: CatalogueService, useValue: new CatalogueService(db, originId, mode) }] })
   class AppModule {}
   const adapter = new FastifyAdapter({ bodyLimit: 32000 });
   adapter.getInstance().addHook('onSend', async (_request, reply, payload) => {

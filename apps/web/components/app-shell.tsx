@@ -4,6 +4,7 @@ import { BookOpen, Layers3, LogOut, Menu, QrCode, Printer, Truck, X, LayoutDashb
 import { can, type Role, type Capability } from '@dayari/contracts';
 
 export const destinations = {
+  availability: {label:'Usable stock',icon:Boxes},
   users: { label: 'Users & access', icon: ShieldCheck },
   dashboard: { label: 'Overview', icon: LayoutDashboard },
   catalogue: { label: 'Catalogue', icon: BookOpen },
@@ -16,7 +17,7 @@ export const destinations = {
   settings: { label: 'Account & shop', icon: Settings },
 };
 export type Workspace = keyof typeof destinations;
-const workspaceCapabilities:Record<Workspace,Capability>={users:'STAFF_ADMIN',dashboard:'OPERATIONAL_STOCK',catalogue:'CATALOGUE_READ',suppliers:'CATALOGUE_READ',inventory:'OPERATIONAL_STOCK',receiving:'RECEIVE',receipts:'RECEIVE',qr:'IDENTIFY',labels:'PRINT_ADMIN',settings:'OWN_ACCOUNT'};
+const workspaceCapabilities:Record<Workspace,Capability>={availability:'IDENTIFY',users:'STAFF_ADMIN',dashboard:'OPERATIONAL_STOCK',catalogue:'CATALOGUE_READ',suppliers:'CATALOGUE_READ',inventory:'OPERATIONAL_STOCK',receiving:'RECEIVE',receipts:'RECEIVE',qr:'IDENTIFY',labels:'PRINT_ADMIN',settings:'OWN_ACCOUNT'};
 export function workspaceAllowed(role:Role,workspace:Workspace){return can(role,workspaceCapabilities[workspace]);}
 export function AppShell({ workspace, available, onNavigate, user, onLogout, busy, children }: {
   workspace: Workspace; available: Workspace[]; onNavigate: (workspace: Workspace) => void;

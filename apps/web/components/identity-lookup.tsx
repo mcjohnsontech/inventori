@@ -3,10 +3,11 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { publicCodeSchema, type PublicIdentityLookup } from '@dayari/contracts';
 import { Button } from './ui/button';
 
-export function IdentityLookup() {
-  const [code,setCode]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState('');
+export function IdentityLookup({initialCode=''}:{initialCode?:string}) {
+  const [code,setCode]=useState(initialCode),[busy,setBusy]=useState(false),[error,setError]=useState('');
   const [result,setResult]=useState<PublicIdentityLookup|null>(null), working=useRef(false);
   const request = useRef<AbortController | null>(null), revision = useRef(0);
+  useEffect(()=>{clearPending();setCode(initialCode);},[initialCode]);
   useEffect(() => () => { revision.current++; request.current?.abort(); }, []);
   function clearPending() { revision.current++; request.current?.abort(); working.current=false;setBusy(false);setResult(null);setError(''); }
   async function submit(e:FormEvent){
