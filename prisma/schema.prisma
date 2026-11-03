@@ -23,15 +23,26 @@ model User {
   role         Role
   passwordHash String
   active       Boolean @default(true)
+  mustChangePassword Boolean @default(false)
   createdAt    DateTime @default(now()) @db.Timestamptz(6)
   sessions     Session[]
   audits       AuditEvent[]
   commands     CommandResult[]
+  membership   ShopMembership?
+}
+model ShopMembership {
+  userId String @id @db.Uuid
+  originId String @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  @@unique([userId, originId])
+  @@index([originId])
 }
 model Session {
   id        String @id @default(uuid()) @db.Uuid
   tokenHash String @unique
   userId    String @db.Uuid
+  originId  String? @db.Uuid
   user      User @relation(fields: [userId], references: [id], onDelete: Restrict)
   expiresAt DateTime @db.Timestamptz(6)
   revokedAt DateTime? @db.Timestamptz(6)

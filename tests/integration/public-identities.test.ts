@@ -1,3 +1,4 @@
+import { shopToken } from './shop-fixture.js';
 import { randomUUID, createHash } from 'node:crypto';
 import { readFile, readdir, mkdir, writeFile } from 'node:fs/promises';
 import { Client } from 'pg';
@@ -25,7 +26,7 @@ const frozenTables=['Supplier','SupplierSource','SupplierLocationPrefix','Produc
 async function snapshot(client:Prisma.TransactionClient|PrismaClient){const data:Record<string,unknown>={};for(const t of frozenTables)data[t]=await client.$queryRawUnsafe(`SELECT to_jsonb(t)::text AS row FROM "${t}" t ORDER BY to_jsonb(t)::text COLLATE "C"`);return JSON.stringify(data);}
 beforeAll(async()=>{
  db=database(url);await db.originNode.create({data:{id:originId,mode:'SHOP'}});app=await createApp(db,originId,'SHOP');
- for(const role of ['ADMIN','MANAGER','PRODUCTION'] as const){const u=await db.user.create({data:{email:`${role.toLowerCase()}-${originId}@identity.test`,name:role,role,passwordHash:passwordHash(password)}});const r=await request(app.getHttpServer()).post('/v1/sessions').send({email:u.email,password}).expect(200);if(role==='ADMIN'){admin=r.body.token;adminId=u.id;}else if(role==='MANAGER')manager=r.body.token;else production=r.body.token;}
+ for(const role of ['ADMIN','MANAGER','PRODUCTION'] as const){const u=await db.user.create({data:{email:`${role.toLowerCase()}-${originId}@identity.test`,name:role,role,passwordHash:passwordHash(password),membership:{create:{originId}}}});const r=await request(app.getHttpServer()).post('/v1/sessions').send({email:u.email,password}).expect(200);if(role==='ADMIN'){admin=r.body.token;adminId=u.id;}else if(role==='MANAGER')manager=r.body.token;else production=r.body.token;}
  const registry=await db.locationRegistry.findFirstOrThrow({where:{code:'LG'}});
  sourceId=(await post('catalogue/supplier-setups',{supplier:{name:`Identity ${originId}`},location:{registryId:registry.id}}).expect(201)).body.source.id;
  product=(await post('catalogue/product-setups',{sourceId,product:{name:'Identity notebook'},variants:[{name:'Red',suffix:'RED',attributes:[{attribute:'Colour',value:'Red'}]}]}).expect(201)).body;
@@ -64,7 +65,7 @@ it('handles real database candidate collisions/concurrent origin writers and pre
  let count=0;const before=await snapshot(db);await expect(forcedProduct(()=>{count++;return 'P22222';})).rejects.toThrow('CODE_ALLOCATION_BUSY');expect(count).toBe(32);expect(await snapshot(db)).toBe(before);
  const other=randomUUID();await db.originNode.create({data:{id:other,mode:'SHOP'}});const independent=await forcedProduct(()=> 'P22222',other);expect(independent.id).not.toBe(first.id);
  const local=(await get('inventory/products/by-code/P22222',production).expect(200)).body;expect(local.productId).toBe(first.id);await get(`inventory/products/by-code/P22222?originId=${other}`,production).expect(404);
- const foreignApp=await createApp(db,other,'SHOP');try{const r=await request(foreignApp.getHttpServer()).get('/v1/inventory/products/by-code/P22222').set('Authorization','Bearer '+production).expect(200);expect(r.body.productId).toBe(independent.id);}finally{await foreignApp.close();}
+ const foreignApp=await createApp(db,other,'SHOP');try{const foreignToken=await shopToken(db,foreignApp,other,'PRODUCTION');await request(foreignApp.getHttpServer()).get('/v1/inventory/products/by-code/P22222').set('Authorization','Bearer '+production).expect(401);const r=await request(foreignApp.getHttpServer()).get('/v1/inventory/products/by-code/P22222').set('Authorization','Bearer '+foreignToken).expect(200);expect(r.body.productId).toBe(independent.id);}finally{await foreignApp.close();}
  let draw=0;const parallel=await Promise.all([forcedProduct(()=>++draw===1?'P44444':'P55555'),forcedProduct(()=>++draw===1?'P44444':'P55555')]);expect(new Set(parallel.map(x=>x.productCode)).size).toBe(2);
 });
 

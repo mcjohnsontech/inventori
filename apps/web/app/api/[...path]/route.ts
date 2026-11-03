@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
-const allowed = /^(inventory\/(products|lots)\/by-code\/[A-Za-z0-9]{6}|qr\/(resolve|manual|manual-sources)|label-print-jobs(?:\/[0-9a-fA-F-]{36}(?:\/events|\/artifacts\/[0-9]{1,12}(?:\.pdf)?)?)?|receipts\/[0-9a-fA-F-]{36}\/label-plan|receiving\/options|receipts(?:\/[0-9a-fA-F-]{36})?|stock(?:\/lots\/[0-9a-fA-F-]{36})?|sessions|sessions\/logout|me|admin\/shop|catalogue|catalogue\/(products|suppliers|sources|attributes|values|variants|skus|supplier-setups|product-setups))$/;
+const allowed = /^(inventory\/(products|lots)\/by-code\/[A-Za-z0-9]{6}|qr\/(resolve|manual|manual-sources)|label-print-jobs(?:\/[0-9a-fA-F-]{36}(?:\/events|\/artifacts\/[0-9]{1,12}(?:\.pdf)?)?)?|receipts\/[0-9a-fA-F-]{36}\/label-plan|receiving\/options|receipts(?:\/[0-9a-fA-F-]{36})?|stock(?:\/lots\/[0-9a-fA-F-]{36})?|sessions|sessions\/logout|me|admin\/users(?:\/[0-9a-fA-F-]{36}(?:\/(?:update|revoke))?)?|admin\/shop|catalogue|catalogue\/(products|suppliers|sources|attributes|values|variants|skus|supplier-setups|product-setups))$/;
 async function handle(request: NextRequest, context: { params: Promise<{ path: string[] }> }) {
   const path = (await context.params).path.join('/');
   if (!allowed.test(path)) return NextResponse.json({ message: 'Not found' }, { status: 404 });

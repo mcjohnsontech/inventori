@@ -23,18 +23,20 @@ export class CatalogueService {
     const attempts = await this.db.loginAttempt.count({ where: { email, createdAt: { gt: new Date(Date.now() - 15 * 60_000) }, succeeded: false } });
     if (attempts >= 10) throw new UnauthorizedException('Too many attempts. Try again later.');
     const user = await this.db.user.findUnique({ where: { email } });
-    const valid = verifyPassword(data.password, user?.passwordHash ?? dummyHash) && user?.active;
+    const member = user ? await this.db.shopMembership.findUnique({where:{userId:user.id}}) : null;
+    const valid = verifyPassword(data.password, user?.passwordHash ?? dummyHash) && user?.active && member?.originId === this.originId;
     await this.db.loginAttempt.create({ data: { email, succeeded: Boolean(valid) } });
     if (!valid || !user) throw new UnauthorizedException('Invalid credentials');
     const token = `${randomUUID()}.${randomUUID()}`;
-    await this.db.session.create({ data: { tokenHash: digest(token), userId: user.id, expiresAt: new Date(Date.now() + 8 * 60 * 60_000) } });
-    return { token, user: { id: user.id, name: user.name, role: user.role } };
+    await this.db.session.create({ data: { tokenHash: digest(token), userId: user.id, originId:this.originId, expiresAt: new Date(Date.now() + 8 * 60 * 60_000) } });
+    return { token, user: { id: user.id, name: user.name, role: user.role, mustChangePassword:user.mustChangePassword } };
   }
 
-  async actor(token: string | undefined): Promise<User> {
+  async actor(token: string | undefined, allowPasswordChange = false): Promise<User> {
     if (!token || token.length > 200) throw new UnauthorizedException();
-    const session = await this.db.session.findUnique({ where: { tokenHash: digest(token) }, include: { user: true } });
-    if (!session || session.revokedAt || session.expiresAt <= new Date() || !session.user.active) throw new UnauthorizedException();
+    const session = await this.db.session.findUnique({ where: { tokenHash: digest(token) }, include: { user: {include:{membership:true}} } });
+    if (!session || session.originId!==this.originId || session.user.membership?.originId!==this.originId || session.revokedAt || session.expiresAt <= new Date() || !session.user.active) throw new UnauthorizedException();
+    if(session.user.mustChangePassword&&!allowPasswordChange)throw new ForbiddenException('PASSWORD_CHANGE_REQUIRED');
     return session.user;
   }
 

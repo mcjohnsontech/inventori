@@ -1,0 +1,20 @@
+import { test, expect } from '@playwright/test';
+test('Admin can provision shop staff, inspect sessions and preserve directory filters',async({page})=>{
+ await page.goto('/');
+ await page.getByLabel('Email address').fill('e2e-admin@dayari.test');await page.getByLabel('Password',{exact:true}).fill(process.env.E2E_PASSWORD!);
+ await page.getByRole('button',{name:'Sign in',exact:true}).click();
+ await page.getByRole('navigation',{name:'Workspace'}).getByRole('button',{name:'Users & access'}).click();
+ await expect(page.getByRole('heading',{name:'Users & access'})).toBeVisible();
+ await page.getByRole('button',{name:'Create staff account'}).click();
+ const email=`browser-${Date.now()}@staff.test`;
+ await page.getByLabel('Full name').fill('Browser Staff');await page.getByLabel('Email address',{exact:true}).fill(email);
+ await page.getByLabel('Initial password',{exact:true}).fill(crypto.randomUUID());await page.getByLabel('Your current password',{exact:true}).fill(process.env.E2E_PASSWORD!);
+ await page.getByRole('button',{name:'Create account',exact:true}).click();
+ await expect(page.getByRole('status')).toContainText('Account saved');
+ await page.getByRole('searchbox',{name:'Search staff'}).fill(email);
+ await page.getByRole('button').filter({hasText:email}).click();
+ await expect(page.getByRole('heading',{name:'Account details'})).toBeVisible();
+ await expect(page.getByText('First password change pending.',{exact:false})).toBeVisible();
+ await page.getByRole('button',{name:'Back to staff directory'}).click();
+ await expect(page.getByRole('searchbox',{name:'Search staff'})).toHaveValue(email);
+});

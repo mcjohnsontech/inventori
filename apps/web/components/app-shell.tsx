@@ -1,9 +1,10 @@
 'use client';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { BookOpen, Layers3, LogOut, Menu, QrCode, Printer, Truck, X, LayoutDashboard, Boxes, Building2, ReceiptText, Settings } from 'lucide-react';
+import { BookOpen, Layers3, LogOut, Menu, QrCode, Printer, Truck, X, LayoutDashboard, Boxes, Building2, ReceiptText, Settings, ShieldCheck } from 'lucide-react';
 import type { Role } from '@dayari/contracts';
 
 export const destinations = {
+  users: { label: 'Users & access', icon: ShieldCheck },
   dashboard: { label: 'Overview', icon: LayoutDashboard },
   catalogue: { label: 'Catalogue', icon: BookOpen },
   suppliers: { label: 'Suppliers & sources', icon: Building2 },
@@ -35,7 +36,7 @@ export function AppShell({ workspace, available, onNavigate, user, onLogout, bus
       <button ref={menu} className="mobile-menu icon-button" aria-label={open ? 'Close navigation' : 'Open navigation'} aria-expanded={open} aria-controls="workspace-navigation" onClick={() => setOpen(!open)}>{open ? <X size={22} /> : <Menu size={22} />}</button>
       <div id="workspace-navigation" className={`sidebar-content ${open ? 'is-open' : ''}`}>
         <div className="shop-context"><span className="status-dot" />Local shop workspace<p>Connected through your shop service</p></div>
-        <nav aria-label="Workspace" className="workspace-nav">{available.filter(key => user.role !== 'PRODUCTION' || key === 'qr' || key === 'settings').map(key => {
+        <nav aria-label="Workspace" className="workspace-nav">{available.filter(key => (key !== 'users' || user.role === 'ADMIN')).filter(key => user.role !== 'PRODUCTION' || key === 'qr' || key === 'settings').map(key => {
           const item = destinations[key]; const Icon = item.icon;
           return <button key={key} aria-current={workspace === key ? 'page' : undefined} onClick={() => { setOpen(false); onNavigate(key); }}><Icon size={18} aria-hidden="true" /><span>{item.label}</span></button>;
         })}</nav>

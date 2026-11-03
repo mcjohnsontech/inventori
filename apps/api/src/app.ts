@@ -1,3 +1,4 @@
+import { AccountsService } from './accounts.service.js';
 import { PublicIdentitiesService } from './public-identities.service.js';
 import 'reflect-metadata';
 import { Body, Controller, Get, Headers, HttpCode, Inject, Module, Param, Post, Query, Res } from '@nestjs/common';
@@ -11,19 +12,24 @@ import { CatalogueService } from './catalogue.service.js';
 
 @Controller('v1')
 class ApiController {
-  constructor(@Inject(CatalogueService) private readonly service: CatalogueService, @Inject(ReceivingService) private readonly receiving: ReceivingService, @Inject(LabelsService) private readonly labels: LabelsService, @Inject(PublicIdentitiesService) private readonly identities: PublicIdentitiesService) {}
+  constructor(@Inject(AccountsService) private readonly accounts: AccountsService, @Inject(CatalogueService) private readonly service: CatalogueService, @Inject(ReceivingService) private readonly receiving: ReceivingService, @Inject(LabelsService) private readonly labels: LabelsService, @Inject(PublicIdentitiesService) private readonly identities: PublicIdentitiesService) {}
+  @Get('admin/users') async users(@Query() query:unknown,@Headers('authorization') auth?:string){return this.accounts.list(await this.service.actor(this.token(auth)),query);}
+  @Get('admin/users/:id') async userDetail(@Param('id') id:string,@Headers('authorization') auth?:string){return this.accounts.detail(await this.service.actor(this.token(auth)),id);}
+  @Post('admin/users') async createUser(@Body() body:unknown,@Headers('idempotency-key') key:string|undefined,@Headers('authorization') auth?:string){return this.accounts.command(await this.service.actor(this.token(auth)),'create',null,key,body);}
+  @Post('admin/users/:id/update') async updateUser(@Param('id') id:string,@Body() body:unknown,@Headers('idempotency-key') key:string|undefined,@Headers('authorization') auth?:string){return this.accounts.command(await this.service.actor(this.token(auth)),'update',id,key,body);}
+  @Post('admin/users/:id/revoke') async revokeUser(@Param('id') id:string,@Body() body:unknown,@Headers('idempotency-key') key:string|undefined,@Headers('authorization') auth?:string){return this.accounts.command(await this.service.actor(this.token(auth)),'revoke',id,key,body);}
   @Get('inventory/products/by-code/:code') async productCode(@Param('code') code:string,@Query() query:unknown,@Headers('authorization') auth?:string){return this.identities.lookup(await this.service.actor(this.token(auth)),'PRODUCT',code,query);}
   @Get('inventory/lots/by-code/:code') async lotCode(@Param('code') code:string,@Query() query:unknown,@Headers('authorization') auth?:string){return this.identities.lookup(await this.service.actor(this.token(auth)),'LOT',code,query);}
   @Get('health') health() { return { status: 'ok', service: 'dayari-api', authority: this.service.mode, cloudSync: 'not-configured' }; }
   @Post('sessions') @HttpCode(200) login(@Body() body: unknown) { return this.service.login(body); }
   @Post('sessions/logout') @HttpCode(200) async logout(@Headers('authorization') authorization?: string) {
     const token = this.token(authorization);
-    await this.service.actor(token);
+    await this.service.actor(token,true);
     return this.service.logout(token!);
   }
   @Get('me') async me(@Headers('authorization') authorization?: string) {
-    const actor = await this.service.actor(this.token(authorization));
-    return { id: actor.id, name: actor.name, role: actor.role };
+    const actor = await this.service.actor(this.token(authorization),true);
+    return { id: actor.id, name: actor.name, role: actor.role, mustChangePassword:actor.mustChangePassword };
   }
   @Get('admin/shop') async shop(@Headers('authorization') authorization?: string) { return this.service.shopInfo(await this.service.actor(this.token(authorization))); }
   @Get('catalogue') async catalogue(@Headers('authorization') authorization?: string) { return this.service.catalogue(await this.service.actor(this.token(authorization))); }
@@ -50,7 +56,7 @@ class ApiController {
 }
 
 export async function createApp(db: PrismaClient, originId: string, mode: string) {
-  @Module({ controllers: [ApiController], providers: [{ provide: PublicIdentitiesService, useValue: new PublicIdentitiesService(db, originId) }, { provide: LabelsService, useValue: new LabelsService(db, originId, mode) }, { provide: ReceivingService, useValue: new ReceivingService(db, originId, mode) }, { provide: CatalogueService, useValue: new CatalogueService(db, originId, mode) }] })
+  @Module({ controllers: [ApiController], providers: [{provide:AccountsService,useValue:new AccountsService(db,originId,mode)}, { provide: PublicIdentitiesService, useValue: new PublicIdentitiesService(db, originId) }, { provide: LabelsService, useValue: new LabelsService(db, originId, mode) }, { provide: ReceivingService, useValue: new ReceivingService(db, originId, mode) }, { provide: CatalogueService, useValue: new CatalogueService(db, originId, mode) }] })
   class AppModule {}
   const adapter = new FastifyAdapter({ bodyLimit: 32000 });
   adapter.getInstance().addHook('onSend', async (_request, reply, payload) => {

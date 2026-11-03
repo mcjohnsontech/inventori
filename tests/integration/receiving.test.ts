@@ -1,3 +1,4 @@
+import { shopToken } from './shop-fixture.js';
 import { allocatePublicIdentity } from '../../apps/api/src/public-code.js';
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -22,7 +23,7 @@ describe('immutable receiving ledger (FR-01/03/12/14/17/19/23/24)', () => {
  beforeAll(async()=>{
   db=database(url); await db.originNode.create({data:{id:originId,mode:'SHOP'}});
   app=await createApp(db,originId,'SHOP');
-  for(const role of ['ADMIN','MANAGER','PRODUCTION'] as const){const user=await db.user.create({data:{email:`${role.toLowerCase()}-${originId}@test.local`,name:role,role,passwordHash:passwordHash(password)}});if(role==='ADMIN')adminId=user.id;const res=await request(app.getHttpServer()).post('/v1/sessions').send({email:user.email,password}).expect(200);if(role==='ADMIN')admin=res.body.token;else if(role==='MANAGER')manager=res.body.token;else production=res.body.token;}
+  for(const role of ['ADMIN','MANAGER','PRODUCTION'] as const){const user=await db.user.create({data:{email:`${role.toLowerCase()}-${originId}@test.local`,name:role,role,passwordHash:passwordHash(password),membership:{create:{originId}}}});if(role==='ADMIN')adminId=user.id;const res=await request(app.getHttpServer()).post('/v1/sessions').send({email:user.email,password}).expect(200);if(role==='ADMIN')admin=res.body.token;else if(role==='MANAGER')manager=res.body.token;else production=res.body.token;}
   const registry=await db.locationRegistry.findFirstOrThrow({where:{code:'LG'}});
   sourceId=(await post('catalogue/supplier-setups',{supplier:{name:`Receiving ${originId}`},location:{registryId:registry.id}}).expect(201)).body.source.id;
   otherSource=(await post('catalogue/supplier-setups',{supplier:{name:`Alternate ${originId}`},location:{registryId:registry.id}}).expect(201)).body.source.id;
@@ -60,7 +61,7 @@ describe('immutable receiving ledger (FR-01/03/12/14/17/19/23/24)', () => {
   await read('stock/lots/not-a-uuid').expect(400);
   const foreign = randomUUID(); await db.originNode.create({data:{id:foreign,mode:'SHOP'}});
   const foreignApp = await createApp(db, foreign, 'SHOP');
-  try { await request(foreignApp.getHttpServer()).get(`/v1/stock/lots/${id}`).set('Authorization',`Bearer ${admin}`).expect(404); } finally { await foreignApp.close(); }
+  try { const foreignToken=await shopToken(db,foreignApp,foreign); await request(foreignApp.getHttpServer()).get(`/v1/stock/lots/${id}`).set('Authorization',`Bearer ${admin}`).expect(401); await request(foreignApp.getHttpServer()).get(`/v1/stock/lots/${id}`).set('Authorization',`Bearer ${foreignToken}`).expect(404); } finally { await foreignApp.close(); }
  });
  it('keeps repeat deliveries and other supplier stock distinct with correct product/SKU aggregates',async()=>{
   const next=(await post('receipts',receipt([{skuId:red,usableQuantity:5,damagedQuantity:0,damageReason:''}])).expect(201)).body;
@@ -158,7 +159,8 @@ describe('immutable receiving ledger (FR-01/03/12/14/17/19/23/24)', () => {
  it('qualifies readable batch codes by immutable origin across independent shop writers',async()=>{
   const independentOrigin=randomUUID();await db.originNode.create({data:{id:independentOrigin,mode:'SHOP'}});
   const independent=await createApp(db,independentOrigin,'SHOP');
-  const send=(path:string,body:object)=>request(independent.getHttpServer()).post(`/v1/${path}`).set('Authorization',`Bearer ${admin}`).set('Idempotency-Key',randomUUID()).send(body);
+  const independentToken=await shopToken(db,independent,independentOrigin);
+  const send=(path:string,body:object)=>request(independent.getHttpServer()).post(`/v1/${path}`).set('Authorization',`Bearer ${independentToken}`).set('Idempotency-Key',randomUUID()).send(body);
   try{
    const registry=await db.locationRegistry.findFirstOrThrow({where:{code:'LG'}});
    const supplier=(await send('catalogue/supplier-setups',{supplier:{name:`Independent ${randomUUID()}`},location:{registryId:registry.id}}).expect(201)).body;
