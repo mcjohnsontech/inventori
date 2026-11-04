@@ -118,10 +118,6 @@ export function LabelWorkspace({
   } | null>(null);
   const [sheetStart, setSheetStart] = useState<SheetStart>(defaultSheetStart);
   const [previewHash, setPreviewHash] = useState('');
-  const [attempt, setAttempt] = useState('');
-  const [ack, setAck] = useState(false);
-  const [reported, setReported] = useState('');
-  const [note, setNote] = useState('');
 
   const [selected, setSelected] = useState<Record<string, string>>({});
   const [reason, setReason] = useState('');
@@ -156,18 +152,16 @@ export function LabelWorkspace({
     return () => controller.abort();
   }, [receiptId]);
 
-  // Reprint selections and outcome notes are unsaved work; warn before losing them.
+  // Preserve unsaved layout and reprint selections when navigating.
   const dirty = Boolean(
     (!artifact && (sheetStart.startSlot > 0 || sheetStart.damagedStartSlot > 0)) ||
       reason.trim() ||
-      Object.values(selected).some((value) => value.trim()) ||
-      (attempt && note.trim()),
+      Object.values(selected).some((value) => value.trim()),
   );
 
   function mayDiscard() {
     return (
-      !busy &&
-      (!dirty || window.confirm('Discard unsaved label positions, reprint selections or print-outcome notes?'))
+      !busy && (!dirty || window.confirm('Discard unsaved label positions, reprint selections?'))
     );
   }
 
@@ -228,12 +222,9 @@ export function LabelWorkspace({
     loadPart(next, '0');
     setReceiptId(next.receiptId);
     setPreviewHash('');
-    setAttempt('');
     setPart('1');
     setSelected({});
     setReason('');
-    setNote('');
-    setAck(false);
   }
 
   function loadPart(next: LabelJob, chunk: string) {
@@ -266,30 +257,6 @@ export function LabelWorkspace({
     if (job) setJob(await read(`label-print-jobs/${job.id}`));
   }
 
-  async function event(kind: string, id = attempt, printNote?: string) {
-    if (!job || !artifact) return;
-
-    await write(`label-print-jobs/${job.id}/events`, {
-      kind,
-      chunk: artifact.chunk,
-      attemptId: id,
-      ...(kind === 'OPERATOR_REPORTED_PRINTED' ? { copies: reported } : {}),
-      note: printNote ?? note,
-    });
-
-    await refreshJob();
-
-    setNotice(
-      kind === 'HANDOFF_REQUESTED'
-        ? 'PDF handoff recorded. Physical output has not been confirmed.'
-        : kind === 'OPERATOR_REPORTED_PRINTED'
-          ? 'Operator report saved. This is reported output, not verified affixed labels.'
-          : kind === 'OUTCOME_UNKNOWN'
-            ? 'Uncertain output recorded. Check physical labels before retrying or reprinting.'
-            : 'Print outcome recorded. Inventory is unchanged.',
-    );
-  }
-
   const validPart = Boolean(
     job && /^([1-9][0-9]*)$/.test(part) && BigInt(part) <= BigInt(job.chunks),
   );
@@ -307,16 +274,10 @@ export function LabelWorkspace({
   async function prepare() {
     await action(async () => {
       await ensureArtifact();
-      setAttempt('');
-      setAck(false);
     });
   }
   async function print(alignment = false) {
     if (working.current || !job || !previewHash || !validPart) return;
-    if (job.events.some((e) => e.kind === 'HANDOFF_REQUESTED' && e.chunk === chunk) && !ack) {
-      setError('Check previous physical output and acknowledge before starting another attempt.');
-      return;
-    }
     const windowRef = window.open('about:blank', '_blank');
     if (!windowRef) {
       setError('Print window blocked. Allow it and retry explicitly.');
@@ -336,13 +297,8 @@ export function LabelWorkspace({
             ? 'Alignment trial: plain paper; select page 1 only in the native print dialog. Output is not confirmed.'
             : 'Operator requested printing of the saved PDF; physical output is not confirmed.',
         });
-        setAttempt(id);
-        setReported(ready.copies);
-        setAck(false);
         await refreshJob();
-        setNotice(
-          'Print requested for the generated PDF. Check physical output and report the result.',
-        );
+        setNotice('Print dialog requested. Need another copy? Use Reprint labels below.');
         const document = windowRef.document;
         document.title = 'Dayari label printing';
         document.body.style.margin = '0';
@@ -579,8 +535,6 @@ export function LabelWorkspace({
                               if (!mayDiscard()) return;
                               const next = e.target.value;
                               setPart(next);
-                              setAttempt('');
-                              setAck(false);
                               if (/^[1-9][0-9]*$/.test(next) && BigInt(next) <= BigInt(job.chunks))
                                 loadPart(job, (BigInt(next) - 1n).toString());
                               else {
@@ -654,13 +608,13 @@ export function LabelWorkspace({
             <>
               {artifact && (
                 <SuccessNotice
-                  message={`PDF ready: ${artifact.copies} labels on ${artifact.pages} A4 sheet(s). Not yet confirmed printed.`}
+                  message={`PDF ready: ${artifact.copies} labels on ${artifact.pages} A4 sheet(s). Ready to print.`}
                 />
               )}
-              <div className="sticky bottom-3 z-10 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-black/10 bg-white/95 p-4 shadow-lg backdrop-blur-sm">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-black/10 bg-white p-4">
                 <div className="text-xs leading-5 text-grey-2">
                   <strong className="block text-ink">
-                    {previewHash ? 'Ready · output not confirmed' : 'Preparing preview…'}
+                    {previewHash ? 'Ready to print' : 'Preparing preview…'}
                   </strong>
                   Print at actual size / 100%.
                 </div>
@@ -685,16 +639,10 @@ export function LabelWorkspace({
                     disabled={busy || !previewHash || !validPart}
                     onClick={() => void print()}
                   >
-                    Print {layout?.pages ?? 0} sheets
+                    Print {layout?.pages ?? 0} {layout?.pages === 1 ? 'sheet' : 'sheets'}
                   </Button>
                 </div>
               </div>
-              {job.events.some((e) => e.kind === 'HANDOFF_REQUESTED' && e.chunk === chunk) && (
-                <label className="flex items-start gap-2 text-sm">
-                  <Checkbox checked={ack} onChange={(e) => setAck(e.target.checked)} />I checked
-                  previous output before starting another print attempt.
-                </label>
-              )}
               {artifact && (
                 <div className="flex flex-wrap gap-5 text-sm">
                   <a
@@ -711,67 +659,10 @@ export function LabelWorkspace({
                 </div>
               )}
               <Footnote>
-                Use plain paper for the alignment trial and select a single page in the device
-                dialog. Profile bounds are not a certification of your printer margins. Printing,
-                downloading and opening a dialog do not prove physical output.
+                Use plain paper for the alignment trial and select page 1 in the print dialog. Print
+                at actual size / 100%.
               </Footnote>
-              {attempt && artifact && (
-                <Panel title="Report this print attempt">
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <Field label="Operator-reported copies">
-                      {(id) => (
-                        <Input
-                          id={id}
-                          type="number"
-                          min="1"
-                          max={artifact.copies}
-                          value={reported}
-                          onChange={(e) => setReported(e.target.value)}
-                        />
-                      )}
-                    </Field>
-                    <Field label="Print outcome note">
-                      {(id) => (
-                        <Input
-                          id={id}
-                          maxLength={1000}
-                          value={note}
-                          onChange={(e) => setNote(e.target.value)}
-                        />
-                      )}
-                    </Field>
-                  </div>
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <Button
-                      variant="secondary"
-                      disabled={busy}
-                      onClick={() => action(() => event('OPERATOR_REPORTED_PRINTED'))}
-                    >
-                      Report printed
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      disabled={busy}
-                      onClick={() => action(() => event('OUTCOME_UNKNOWN'))}
-                    >
-                      Output uncertain
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      disabled={busy}
-                      onClick={() => action(() => event('FAILED'))}
-                    >
-                      Report failed
-                    </Button>
-                  </div>
-                  <Footnote className="mt-3">
-                    For partial output, report only observed copies. Check physical output after a
-                    jam or cancellation before explicitly reprinting missing labels. Duplicate
-                    stickers retain the same lot identity and never add stock.
-                  </Footnote>
-                </Panel>
-              )}
-              <Panel title="Reprints & evidence">
+              <Panel title="Reprint labels">
                 <Stack>
                   <Disclosure
                     summary="Explicit reprint"
@@ -843,14 +734,14 @@ export function LabelWorkspace({
                           className="font-sans text-xs leading-[1.7] tracking-[-0.02em] text-grey-2"
                         >
                           {formatDateTime(entry.createdAt)} · {entry.kind.replaceAll('_', ' ')} ·{' '}
-                          {entry.copies} reported/requested copies
+                          {entry.copies} copies
                           {entry.note ? ` · ${entry.note}` : ''}
                         </li>
                       ))}
                     </ul>
                     <Footnote className="mt-2">
-                      Manifest counts, handed-off counts and operator reports are separate evidence,
-                      never verified affixed units.
+                      Print requests are logged automatically. Older operator reports remain in
+                      history.
                     </Footnote>
                   </Disclosure>
                 </Stack>

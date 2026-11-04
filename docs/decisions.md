@@ -190,3 +190,7 @@ Implementation order: secure invitation vertical slice; serialized receiving and
 ## Labels & printing redesign — 4 November 2026
 
 CONFIRMED owner request: in-page rendering of the same PDF used for printing, partly-used-sheet start picking, default purpose-separated sheets, SKU prominence, explicit profile geometry/bounds and no QR/external-service changes. Engineering: additive v2 A4 software layout profiles, local PDF.js/worker, read-only draft preview, and immutable per-artifact start settings in existing event evidence. No schema/operational migration or hardware certification is inferred. Historical renderers/profile constraints remain; physical printer margins still require trials. Original accepted manifest timestamps preserve existing PDF hashes across the pulled UTC adapter change, without editing any historical row.
+
+## Printing workflow correction — 4 November 2026
+
+CONFIRMED owner direction supersedes the earlier operator-outcome UI: no printed/failed/uncertain form and no acknowledgement checkbox before another print request. Operators use existing selective reprints for replacements. Print handoff requests continue to be recorded automatically; no physical-success event is fabricated. Existing historical operator reports and backend compatibility remain immutable. Reprint manifest validation, reason, authorization, idempotency and no-stock-effects rules remain unchanged. UI layout corrections require no schema or operational migration.

@@ -396,6 +396,7 @@ export function InventoryWorkspace({
           <DataTable
             bare
             label="Inventory delivery lots"
+            mobileStack
             columns={lotColumns}
             rows={lots.slice(start, start + PER_PAGE)}
             rowKey={(row) => row.lotId}
@@ -405,6 +406,7 @@ export function InventoryWorkspace({
           <DataTable
             bare
             label="Inventory SKU balances"
+            mobileStack
             columns={skuColumns}
             rows={skus.slice(start, start + PER_PAGE)}
             rowKey={(row) => row.skuId}

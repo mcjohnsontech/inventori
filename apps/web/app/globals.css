@@ -170,3 +170,41 @@
 .text-link:hover {
   text-decoration: underline;
 }
+
+/* Native fields in the older account/staff/report screens share the same
+ * geometry as Field/Input. Classed design-system controls are untouched. */
+.page > [data-page-header] {
+  margin-bottom: 1.5rem;
+}
+
+:where(.page, .surface) label:has(> :is(input, select, textarea):not([class], [type="checkbox"], [type="radio"], [type="hidden"])) {
+  display: grid;
+  min-width: 0;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+:where(.page, .surface) label > :is(input, select, textarea):not([class], [type="checkbox"], [type="radio"], [type="hidden"]) {
+  width: 100%;
+  min-width: 0;
+  min-height: 2.75rem;
+  border: 1px solid rgb(0 0 0 / 15%);
+  border-radius: var(--radius-btn);
+  background: white;
+  padding: 0.625rem 0.875rem;
+  color: var(--color-ink);
+  font: inherit;
+  font-weight: 400;
+}
+
+:where(.page, .surface) label > :is(input, select, textarea):not([class], [type="checkbox"], [type="radio"], [type="hidden"]):focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+}
+
+:where(.page, .surface) label > :is(input, select, textarea):not([class], [type="checkbox"], [type="radio"], [type="hidden"]):disabled {
+  background: var(--color-surface-muted);
+  color: var(--color-grey-3);
+  cursor: not-allowed;
+}

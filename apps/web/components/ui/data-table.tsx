@@ -20,6 +20,7 @@ export function DataTable<T>({
   skeletonRows = 5,
   bare = false,
   label,
+  mobileStack = false,
 }: {
   columns: Column<T>[];
   rows: T[];
@@ -31,6 +32,8 @@ export function DataTable<T>({
   bare?: boolean;
   /** Names the table for assistive tech when the page has more than one. */
   label?: string;
+  /** Keep every field and action visible in narrow inventory rows. */
+  mobileStack?: boolean;
 }) {
   return (
     <div
@@ -40,8 +43,15 @@ export function DataTable<T>({
         !bare && 'rounded-2xl border border-black/[0.07] bg-white',
       )}
     >
-      <table aria-label={label} className="w-full min-w-[540px] border-collapse text-left font-sans text-sm tracking-[-0.02em] text-ink">
-        <thead>
+      <table
+        role="table"
+        aria-label={label}
+        className={cn(
+          'w-full min-w-[540px] border-collapse text-left font-sans text-sm tracking-[-0.02em] text-ink',
+          mobileStack && 'max-sm:block max-sm:min-w-0',
+        )}
+      >
+        <thead role="rowgroup" className={mobileStack ? 'max-sm:sr-only' : undefined}>
           <tr>
             {columns.map((column) => (
               <th
@@ -57,7 +67,7 @@ export function DataTable<T>({
             ))}
           </tr>
         </thead>
-        <tbody>
+        <tbody role="rowgroup" className={mobileStack ? 'max-sm:block' : undefined}>
           {loading && rows.length === 0 ? (
             Array.from({ length: skeletonRows }).map((_, row) => (
               <tr key={row}>
@@ -79,18 +89,35 @@ export function DataTable<T>({
             </tr>
           ) : (
             rows.map((row) => (
-              <tr key={rowKey(row)} className="group hover:bg-surface-muted/60">
+              <tr
+                role="row"
+                key={rowKey(row)}
+                className={cn(
+                  'group hover:bg-surface-muted/60',
+                  mobileStack &&
+                    'max-sm:block max-sm:border-b max-sm:border-black/[0.06] max-sm:py-3',
+                )}
+              >
                 {columns.map((column) => (
                   <td
                     key={column.key}
+                    role="cell"
                     data-label={column.label}
                     className={cn(
                       'border-b border-black/[0.06] px-4 py-3.5 align-top',
                       column.wide ? 'min-w-[280px]' : 'whitespace-nowrap',
                       column.align === 'right' && 'text-right',
+                      mobileStack &&
+                        'max-sm:flex max-sm:min-w-0 max-sm:items-start max-sm:justify-between max-sm:gap-3 max-sm:border-0 max-sm:px-5 max-sm:py-2 max-sm:whitespace-normal max-sm:before:w-20 max-sm:before:shrink-0 max-sm:before:text-left max-sm:before:text-xs max-sm:before:text-grey-2 max-sm:before:content-[attr(data-label)]',
                     )}
                   >
-                    {column.cell(row)}
+                    {mobileStack ? (
+                      <div className="min-w-0 max-sm:flex-1 max-sm:text-right max-sm:break-words">
+                        {column.cell(row)}
+                      </div>
+                    ) : (
+                      column.cell(row)
+                    )}
                   </td>
                 ))}
               </tr>

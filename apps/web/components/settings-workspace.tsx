@@ -80,8 +80,8 @@ export function SettingsWorkspace({
               {permissions[user.role]}
             </p>
             <Footnote>
-              Use Sign out in the workspace navigation to end this session. Password changes, user
-              administration and role editing do not have supported commands in this milestone.
+              Change your password above or use Sign out in the navigation. Admins manage staff roles
+              and access in Users & access.
             </Footnote>
           </Stack>
         </Panel>

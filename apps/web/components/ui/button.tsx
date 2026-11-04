@@ -8,7 +8,7 @@ type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 const base =
-  'inline-flex items-center justify-center gap-2 rounded-btn font-sans font-semibold tracking-[-0.02em] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60';
+  'inline-flex max-w-full items-center justify-center gap-2 rounded-btn font-sans font-semibold tracking-[-0.02em] whitespace-normal transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60';
 
 const variants = {
   primary: 'bg-brand text-white hover:bg-brand-dark focus-visible:outline-brand',
@@ -22,9 +22,9 @@ const variants = {
 };
 
 const sizes = {
-  default: 'h-11 px-5 text-sm',
-  compact: 'h-9 px-3.5 text-[13px]',
-  small: 'h-9 px-3.5 text-[13px]',
+  default: 'min-h-11 px-5 py-2.5 text-sm',
+  compact: 'min-h-9 px-3.5 py-1.5 text-[13px]',
+  small: 'min-h-9 px-3.5 py-1.5 text-[13px]',
 };
 
 export function Button({ variant = 'primary', size = 'default', className, ...props }: Props) {

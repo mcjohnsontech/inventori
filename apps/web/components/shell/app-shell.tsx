@@ -31,6 +31,14 @@ export function AppShell({
     <TooltipProvider>
       <a
         href="#workspace-content"
+        onClick={(event) => {
+          // This app routes on URL fragments. A native anchor jump would turn
+          // the skip target into an unknown workspace route.
+          event.preventDefault();
+          const content = document.getElementById('workspace-content');
+          content?.focus({ preventScroll: true });
+          content?.scrollIntoView({ block: 'start' });
+        }}
         className="fixed top-2 left-4 z-[100] -translate-y-24 rounded-lg border border-brand bg-white px-4 py-3 font-sans text-sm font-semibold text-brand transition-transform focus:translate-y-0"
       >
         Skip to content
@@ -53,7 +61,7 @@ export function AppShell({
           className={cn('min-w-0', collapsed ? 'lg:ml-[84px]' : 'lg:ml-[264px]')}
         >
           <TopBar workspace={workspace} account={account} />
-          <main id="workspace-content" tabIndex={-1} className="outline-none">
+          <main id="workspace-content" tabIndex={-1} className="scroll-mt-[124px] outline-none lg:scroll-mt-16">
             {children}
           </main>
         </div>

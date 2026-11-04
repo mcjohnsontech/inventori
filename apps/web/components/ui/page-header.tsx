@@ -12,8 +12,8 @@ export function PageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-4 border-l-2 border-brand pl-5 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
-      <div>
+    <div data-page-header className="flex min-w-0 flex-col gap-4 border-l-2 border-brand pl-5 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between sm:gap-6">
+      <div className="min-w-0 sm:flex-[1_1_20rem]">
         {eyebrow ? (
           <p className="font-sans text-xs font-semibold tracking-[0.1em] text-brand uppercase">
             {eyebrow}

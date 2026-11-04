@@ -19,7 +19,7 @@ export function SearchInput({
   className?: string;
 }) {
   return (
-    <div className={cn('relative', className)}>
+    <div className={cn('relative h-11 self-end', className)}>
       <span className="pointer-events-none absolute inset-y-0 left-0 grid w-10 place-items-center text-grey-3">
         <Icon icon={Search01Icon} size={16} />
       </span>

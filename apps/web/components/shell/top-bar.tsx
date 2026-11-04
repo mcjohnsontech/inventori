@@ -18,7 +18,7 @@ export function TopBar({
   }, [title]);
 
   return (
-    <div className="sticky top-0 z-20 border-b border-black/[0.06] bg-white/85 backdrop-blur">
+    <div className="sticky top-[68px] z-20 border-b border-black/[0.06] bg-white/85 backdrop-blur lg:top-0">
       <div className="flex h-14 items-center justify-between gap-4 px-4 sm:px-6 lg:h-16 lg:px-10">
         <p className="min-w-0 truncate font-sans text-sm tracking-[-0.02em] text-grey-3">
           <span className="hidden lg:inline">

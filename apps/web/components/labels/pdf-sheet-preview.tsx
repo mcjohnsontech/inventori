@@ -161,9 +161,9 @@ export function PdfSheetPreview({
   }, [selected, rendered, page, job.profile]);
   return (
     <div className="space-y-5" aria-label="Generated PDF preview">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h3 className="text-sm font-semibold">Sheet preview</h3>
-        <div className="flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-2">
           <Button
             type="button"
             size="compact"
@@ -177,7 +177,7 @@ export function PdfSheetPreview({
           >
             ‹
           </Button>
-          <span className="text-xs tabular-nums" aria-live="polite">
+          <span className="shrink-0 text-xs whitespace-nowrap tabular-nums" aria-live="polite">
             Sheet {page + 1} of {placement.pages}
           </span>
           <Button

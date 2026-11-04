@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react';
+import { ArrowDown01Icon } from '@hugeicons/core-free-icons';
+import { Icon } from './icon';
 
 import { cn } from '../../lib/cn';
 
@@ -24,12 +26,13 @@ export function Disclosure({
   return (
     <details
       open={open}
-      className={cn('group', className)}
+      className={cn('[&[open]>summary>svg]:rotate-180', className)}
       onToggle={(event) => {
         if (event.currentTarget.open) onOpen?.();
       }}
     >
-      <summary className="inline-flex cursor-pointer items-center gap-1.5 font-sans text-[13px] font-semibold tracking-[-0.02em] text-brand underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
+      <summary className="flex w-fit max-w-full cursor-pointer list-none items-center gap-2 font-sans text-[13px] font-semibold tracking-[-0.02em] text-brand underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand [&::-webkit-details-marker]:hidden">
+        <Icon icon={ArrowDown01Icon} size={16} className="shrink-0 transition-transform" />
         {Heading ? <Heading className="inline text-inherit">{summary}</Heading> : summary}
       </summary>
       <div className="mt-3">{children}</div>
