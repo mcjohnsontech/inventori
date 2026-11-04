@@ -50,4 +50,10 @@ Synthetic fixtures only. All five widths (320, 390, 768, 1024 and 1440px) are ca
 
 Screenshots were inspected as part of the review. The label workflow blocks nonlocal browser requests and verifies the real PDF/canvas, sheet picker, paging, repeated handoff, selective reprint, draft warning, original quantities and Production denial. No success, failure or uncertain-output report is submitted by that workflow.
 
-Publication will be recorded after verification.
+## Publication and local service
+
+| Milestone | Commit | Branch | Verification | Push |
+|---|---|---|---|---|
+| UI review and printing simplification | [`6ab117f9aa1fc0192a2a0e9d2b08aee1c2f6432f`](https://github.com/mcjohnsontech/inventori/commit/6ab117f9aa1fc0192a2a0e9d2b08aee1c2f6432f) — `fix(ui): simplify printing and correct workspace layouts` | `feat/complete-application-systems` | 35 unit tests; eight distinct browser cases across the documented runs; final visual rerun; typecheck and production build | Successful; remote SHA verified |
+
+Local web server restored on port 3000. Separate Chrome verification returned web HTTP 200, API health HTTP 200 and a visible hydrated sign-in form. No operational login, stock mutation, migration or deployment was performed. A documentation-only follow-up records this publication evidence.
