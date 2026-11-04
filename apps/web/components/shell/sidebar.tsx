@@ -14,25 +14,29 @@ import { roleLabel } from '../../lib/format';
 import { Icon } from '../ui/icon';
 import { Tooltip } from '../ui/tooltip';
 import { BrandLockup } from './brand-lockup';
-import { destinations, navGroups, type Workspace } from './destinations';
+import { destinations, navGroups, workspaceAllowed, type Workspace } from './destinations';
 
 type Account = { name: string; role: string };
 
 function Items({
   available,
+  role,
   current,
   collapsed,
   onNavigate,
 }: {
   available: Workspace[];
+  role: string;
   current: Workspace;
   collapsed: boolean;
   onNavigate: (workspace: Workspace) => void;
 }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-2.5">
       {navGroups.map((group) => {
-        const keys = group.keys.filter((key) => available.includes(key));
+        const keys = group.keys.filter(
+          (key) => available.includes(key) && workspaceAllowed(role as never, key),
+        );
         if (!keys.length) return null;
 
         return (
@@ -40,11 +44,11 @@ function Items({
             {collapsed ? (
               <span className="sr-only">{group.name}</span>
             ) : (
-              <p className="px-3.5 pb-1 font-sans text-[10px] font-semibold tracking-[0.09em] text-grey-3 uppercase">
+              <p className="px-3 pb-0.5 font-sans text-[10px] font-semibold tracking-[0.09em] text-grey-3 uppercase">
                 {group.name}
               </p>
             )}
-            <ul className="space-y-1">
+            <ul className="space-y-0.5">
               {keys.map((key) => {
                 const item = destinations[key];
                 const active = current === key;
@@ -57,13 +61,13 @@ function Items({
                     onClick={() => onNavigate(key)}
                     className={cn(
                       'flex w-full items-center rounded-xl font-sans text-sm font-medium tracking-[-0.02em] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand',
-                      collapsed ? 'h-11 w-11 justify-center' : 'h-10 gap-3 px-3.5',
+                      collapsed ? 'h-10 w-10 justify-center' : 'h-9 gap-3 px-3',
                       active
                         ? 'bg-brand-tint font-semibold text-brand'
                         : 'text-grey-2 hover:bg-surface-muted hover:text-ink',
                     )}
                   >
-                    <Icon icon={item.icon} size={19} />
+                    <Icon icon={item.icon} size={18} />
                     {collapsed ? null : <span className="truncate">{item.label}</span>}
                   </button>
                 );
@@ -238,6 +242,7 @@ export function Sidebar({
         >
           <Items
             available={available}
+            role={account.role}
             current={current}
             collapsed={collapsed}
             onNavigate={navigate}
@@ -293,6 +298,7 @@ export function Sidebar({
               <nav aria-label="Workspace" className="flex-1 overflow-y-auto px-3">
                 <Items
                   available={available}
+                  role={account.role}
                   current={current}
                   collapsed={false}
                   onNavigate={navigate}

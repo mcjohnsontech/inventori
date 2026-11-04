@@ -48,10 +48,9 @@ export function AppShell({
           onToggle={toggle}
         />
         <div
-          className={cn(
-            'min-w-0 transition-[margin] duration-200',
-            collapsed ? 'lg:ml-[84px]' : 'lg:ml-[264px]',
-          )}
+          // No margin transition: it would animate on viewport changes too, and
+          // a half-applied margin briefly overflows the page at narrow widths.
+          className={cn('min-w-0', collapsed ? 'lg:ml-[84px]' : 'lg:ml-[264px]')}
         >
           <TopBar workspace={workspace} account={account} />
           <main id="workspace-content" tabIndex={-1} className="outline-none">

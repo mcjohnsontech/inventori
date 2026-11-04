@@ -89,6 +89,8 @@
   max-width: 1480px;
   margin: 0 auto;
   padding: 2rem 1rem;
+  /* Saved SKUs and lot codes are long and unbroken; never let them overflow. */
+  overflow-wrap: anywhere;
 }
 
 @media (min-width: 640px) {
@@ -100,6 +102,7 @@
 }
 
 .surface {
+  overflow-wrap: anywhere;
   border: 1px solid rgba(0, 0, 0, 0.07);
   border-radius: 1rem;
   background: var(--color-surface);

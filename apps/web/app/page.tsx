@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import type { Catalogue, Role } from '@dayari/contracts';
 
-import { api } from '../lib/api';
+import { ApiError, api } from '../lib/api';
 import { AppShell } from '../components/shell/app-shell';
 import { workspaceOrder, type Workspace } from '../components/shell/destinations';
 import { LoginPage } from '../components/login-page';
@@ -113,16 +113,32 @@ export default function DayariInventory() {
     api<Actor>('me')
       .then(async (actor) => {
         setUser(actor);
-        if (actor.role === 'PRODUCTION') setWorkspace('qr');
+        if (actor.role === 'PRODUCTION' && !location.hash) setWorkspace('availability');
         try {
           await load(actor);
         } catch (failure) {
           setError((failure as Error).message);
         }
       })
-      .catch(() => {})
+      .catch((failure) => {
+        if (!(failure instanceof ApiError) || failure.status !== 401) {
+          setError((failure as Error).message);
+        }
+      })
       .finally(() => setLoading(false));
   }, [load]);
+
+  useEffect(() => {
+    const expired = () => {
+      setUser(null);
+      setCatalogueReady(false);
+      setFlow(null);
+      setError('Your session ended or your access changed. Sign in again.');
+    };
+
+    window.addEventListener('dayari:session-expired', expired);
+    return () => window.removeEventListener('dayari:session-expired', expired);
+  }, []);
 
   function navigate(next: Workspace, id = '', lotId = '') {
     if (!mayNavigate()) return;
@@ -150,7 +166,7 @@ export default function DayariInventory() {
         body: JSON.stringify(data),
       });
       setUser(result.user);
-      if (result.user.role === 'PRODUCTION') navigate('qr');
+      if (result.user.role === 'PRODUCTION') navigate('availability');
       await load(result.user);
     } catch (failure) {
       setError((failure as Error).message);

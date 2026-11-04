@@ -3,7 +3,6 @@ import {
   ArrowLeft01Icon,
   ArrowRight01Icon,
   BoxesIcon,
-  Cancel01Icon,
   RefreshIcon,
 } from '@hugeicons/core-free-icons';
 import { useEffect, useRef, useState } from 'react';
@@ -16,7 +15,6 @@ import {
   Badge,
   Breadcrumb,
   Button,
-  CardGrid,
   CardGridSkeleton,
   Code,
   type Column,
@@ -34,13 +32,11 @@ import {
   Page,
   PageHeader,
   Pager,
-  Panel,
   SearchInput,
   Select,
   Stack,
   Tabs,
   card,
-  cardInteractive,
 } from './ui';
 import { IdentityLookup } from './identity-lookup';
 
@@ -127,6 +123,9 @@ export function InventoryWorkspace({
         <>
           <span className="block font-medium">{row.productName}</span>
           <span className="mt-0.5 block font-sans text-xs text-grey-3">{row.variantName}</span>
+          <Code tone="brand" className="mt-0.5 block">
+            {row.productCode ?? 'Code not assigned'}
+          </Code>
         </>
       ),
     },
@@ -177,10 +176,10 @@ export function InventoryWorkspace({
       label: 'Details',
       cell: (row) => (
         <LinkButton
-          aria-label={`Inspect lot ${row.lotCode ?? row.publicCode}`}
+          aria-label={`Details for lot ${row.lotCode ?? row.publicCode}`}
           onClick={() => setSelected(row.lotId)}
         >
-          Inspect
+          Details
           <Icon icon={ArrowRight01Icon} size={14} strokeWidth={2} />
         </LinkButton>
       ),
@@ -396,6 +395,7 @@ export function InventoryWorkspace({
         ) : group === 'lots' ? (
           <DataTable
             bare
+            label="Inventory delivery lots"
             columns={lotColumns}
             rows={lots.slice(start, start + PER_PAGE)}
             rowKey={(row) => row.lotId}
@@ -404,6 +404,7 @@ export function InventoryWorkspace({
         ) : (
           <DataTable
             bare
+            label="Inventory SKU balances"
             columns={skuColumns}
             rows={skus.slice(start, start + PER_PAGE)}
             rowKey={(row) => row.skuId}
@@ -441,7 +442,7 @@ export function InventoryWorkspace({
               {evidence.loading ? (
                 <DetailSkeleton />
               ) : evidence.error ? (
-                <EmptyState title="Provenance unavailable">{evidence.error}</EmptyState>
+                <ErrorNotice message={evidence.error} onRetry={evidence.refresh} />
               ) : evidence.data ? (
                 <>
                   <Footnote>

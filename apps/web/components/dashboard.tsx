@@ -16,8 +16,8 @@ import {
   Button,
   Code,
   type Column,
-  CopyButton,
   DataTable,
+  Disclosure,
   EmptyState,
   ErrorNotice,
   Field,
@@ -281,17 +281,31 @@ export function Dashboard({
               aria-label={`Delivery lots for ${expandedRow.productName} ${expandedRow.variantName}`}
               className="border-t border-black/[0.06] bg-surface-muted/60 px-5 py-4"
             >
-              <ul className="space-y-2.5">
+              <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                 {expandedRow.lots.map((lot) => (
-                  <li key={lot.lotId} className="group flex flex-wrap items-center gap-2">
-                    <Code>{lot.fullCode}</Code>
-                    <CopyButton value={lot.fullCode} label="supplier SKU" />
-                    <Badge tone="usable">{lot.usable} usable</Badge>
-                    <Badge tone="damaged">{lot.damaged} damaged</Badge>
-                    <span className="font-sans text-xs text-grey-3">{lot.supplierName}</span>
-                    <LinkButton onClick={() => onLot(expandedRow.productId, lot.lotId)}>
-                      Open lot
-                    </LinkButton>
+                  <li key={lot.lotId}>
+                    <button
+                      type="button"
+                      onClick={() => onLot(expandedRow.productId, lot.lotId)}
+                      className={cn(
+                        card,
+                        'w-full p-3 text-left transition-shadow hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand',
+                      )}
+                    >
+                      <span className="flex flex-wrap items-center justify-between gap-2">
+                        <strong className="font-mono text-xs font-medium text-brand">
+                          {lot.lotCode ?? lot.publicCode}
+                        </strong>
+                        <span className="flex gap-1.5">
+                          <Badge tone="usable">{lot.usable}</Badge>
+                          <Badge tone="damaged">{lot.damaged}</Badge>
+                        </span>
+                      </span>
+                      <Code className="mt-1.5 block">{lot.fullCode}</Code>
+                      <span className="mt-1 block font-sans text-xs text-grey-3">
+                        {lot.supplierName}
+                      </span>
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -311,6 +325,19 @@ export function Dashboard({
           </Footnote>
         </Panel>
       </div>
+
+      {role === 'MANAGER' ? (
+        <div className="mt-4">
+          <Panel title="Receiving routine" description="Keep every delivery auditable.">
+            <Disclosure summary="A reliable receiving routine" headingLevel={2}>
+              <Footnote>
+                Check the saved supplier/source, review each SKU and separate usable/damaged
+                arrivals. Retry interrupted saves with the same draft. Accept once, then label.
+              </Footnote>
+            </Disclosure>
+          </Panel>
+        </div>
+      ) : null}
 
       <div className="mt-4">
         <Panel
