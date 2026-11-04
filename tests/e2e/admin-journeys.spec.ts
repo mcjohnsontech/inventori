@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { expect, test, type Page } from '@playwright/test';
+import { choose } from './ui.js';
 
 async function login(page: Page) {
   await page.goto('/');
@@ -41,10 +42,10 @@ test('Admin product extension, deep links and complete responsive workspaces use
   await page.setViewportSize({ width: 320, height: 900 });
   await page.getByRole('button', { name: 'Add variants or source', exact: true }).click();
   const dialog = page.getByRole('dialog');
-  await dialog.getByRole('combobox', { name: 'Supplier', exact: true }).selectOption(supplier.supplier.id);
-  await dialog.getByRole('combobox', { name: 'Supplier location', exact: true }).selectOption(supplier.source.id);
+  await choose(dialog, 'Supplier', supplier.supplier.id);
+  await choose(dialog, 'Supplier location', supplier.source.id);
   await dialog.getByRole('button', { name: 'Continue', exact: true }).click();
-  await expect(dialog.getByRole('combobox', { name: 'Product', exact: true })).toHaveValue(product.product.id);
+  await expect(dialog.getByRole('combobox', { name: 'Product', exact: true })).toHaveAttribute('data-value', product.product.id);
   await dialog.getByRole('button', { name: 'Continue', exact: true }).click();
   expect(await dialog.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
   await page.screenshot({ path: 'test-results/admin/variant-selection-320.png' });
@@ -79,8 +80,9 @@ test('Admin product extension, deep links and complete responsive workspaces use
   await page.reload();
   await expect(page.getByRole('combobox', { name: 'Product', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: /Filter stock/ }).click();
-  await expect(page.getByRole('combobox', { name: 'Product', exact: true })).toHaveValue(product.product.id);
-  await page.getByRole('button', { name: `← Back to ${product.product.name}`, exact: true }).click();
+  await expect(page.getByRole('combobox', { name: 'Product', exact: true })).toHaveAttribute('data-value', product.product.id);
+  // The back arrow is an aria-hidden icon now, so it is not part of the name.
+  await page.getByRole('button', { name: `Back to ${product.product.name}`, exact: true }).click();
   await expect(page.getByRole('heading', { name: product.product.name, exact: true })).toBeVisible();
 
   for (const width of [1440, 1024, 768, 390, 320]) {
@@ -104,7 +106,7 @@ test('Admin product extension, deep links and complete responsive workspaces use
       }
       if (key === 'labels') {
         await page.getByLabel('Search label receipts', { exact: true }).fill(receipt.batch.publicCode);
-        await page.getByRole('combobox', { name: 'Accepted receipt', exact: true }).selectOption(receipt.id);
+        await choose(page, 'Accepted receipt', receipt.id);
         await expect(page.getByText(`Label plan · ${receipt.batch.publicCode}`, { exact: true })).toBeVisible();
       }
       if (key === 'settings') await expect(page.getByText('Africa/Lagos', { exact: true })).toBeVisible();
@@ -158,6 +160,7 @@ test('read failures retry safely and changed code input cancels stale results', 
   await navigate(page, 'Account & shop');
   const signedOut = page.waitForResponse(response => response.url().endsWith('/api/sessions/logout') && response.request().method() === 'POST');
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+  // Sign-out is async: await the response, then confirm the signed-out screen.
   expect((await signedOut).status()).toBe(200);
   await expect(page.getByRole('heading', { name: 'Sign in to your shop', exact: true })).toBeVisible();
   expect((await page.request.get('/api/admin/shop')).status()).toBe(401);

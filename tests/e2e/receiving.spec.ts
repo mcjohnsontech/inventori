@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { expect, test } from '@playwright/test';
+import { choose } from './ui.js';
 test('Manager receives a multi-product delivery, retries a lost response and sees separate usable/damaged stock', async ({ page }) => {
  await page.goto('/');
  async function login(email: string) { await page.getByLabel('Email address').fill(email); await page.getByLabel('Password', { exact: true }).fill(process.env.E2E_PASSWORD!); await page.getByRole('button', { name: 'Sign in', exact: true }).click(); if (!email.includes('production')) await page.getByRole('button', { name: 'Catalogue', exact: true }).click(); await expect(page.getByRole('heading', { name: email.includes('production') ? 'Production workspace' : 'Product catalogue' })).toBeVisible(); }
@@ -14,8 +15,8 @@ test('Manager receives a multi-product delivery, retries a lost response and see
  await expect(page.getByRole('button',{name:'Add supplier',exact:true})).toHaveCount(0);
  await page.getByRole('button',{name:'Receiving',exact:true}).click();await page.getByRole('button',{name:'Receive delivery',exact:true}).click();
  const dialog=page.getByRole('dialog');const next=()=>dialog.getByRole('button',{name:'Continue',exact:true}).click();
- await dialog.getByRole('combobox',{name:'Receiving supplier',exact:true}).selectOption(supplier.supplier.id);
- await dialog.getByRole('combobox',{name:'Receiving source',exact:true}).selectOption(supplier.source.id);await next();
+ await choose(dialog,'Receiving supplier',supplier.supplier.id);
+ await choose(dialog,'Receiving source',supplier.source.id);await next();
  for(const sku of skus) await dialog.locator('label').filter({hasText:sku.fullCode}).getByRole('checkbox').check();
  await next();
  const quantities=[[30,2],[20,0],[12,1]];

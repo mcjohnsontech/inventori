@@ -1,12 +1,32 @@
 import type { ButtonHTMLAttributes } from 'react';
-import { cva, type VariantProps } from 'class-variance-authority';
-import { clsx } from 'clsx';
-import { twMerge } from 'tailwind-merge';
-const buttonVariants = cva('inline-flex items-center justify-center gap-2 rounded-lg text-sm font-semibold transition-colors disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700', {
-  variants: { variant: { default: 'bg-emerald-900 text-white hover:bg-emerald-800', outline: 'border border-stone-300 bg-white text-stone-800 hover:bg-stone-100' }, size: { default: 'min-h-10 px-4 py-2', small: 'min-h-8 px-3 py-1.5' } },
-  defaultVariants: { variant: 'default', size: 'default' },
-});
-// shadcn/ui pattern: the component lives in the repository and can be edited locally.
-export function Button({ className, variant, size, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & VariantProps<typeof buttonVariants>) {
-  return <button className={twMerge(clsx(buttonVariants({ variant, size }), className))} {...props} />;
+
+import { cn } from '../../lib/cn';
+
+type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'outline';
+  size?: 'default' | 'compact' | 'small';
+};
+
+const base =
+  'inline-flex items-center justify-center gap-2 rounded-btn font-sans font-semibold tracking-[-0.02em] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60';
+
+const variants = {
+  primary: 'bg-brand text-white hover:bg-brand-dark focus-visible:outline-brand',
+  secondary:
+    'border border-black/15 bg-white text-ink hover:border-black/25 hover:bg-surface-muted focus-visible:outline-brand',
+  ghost: 'text-grey-2 hover:bg-surface-muted hover:text-ink focus-visible:outline-brand',
+  danger: 'bg-danger text-white hover:bg-danger-dark focus-visible:outline-danger',
+  // Legacy alias used by screens not yet ported to the primitives.
+  outline:
+    'border border-black/15 bg-white text-ink hover:border-black/25 hover:bg-surface-muted focus-visible:outline-brand',
+};
+
+const sizes = {
+  default: 'h-11 px-5 text-sm',
+  compact: 'h-9 px-3.5 text-[13px]',
+  small: 'h-9 px-3.5 text-[13px]',
+};
+
+export function Button({ variant = 'primary', size = 'default', className, ...props }: Props) {
+  return <button className={cn(base, variants[variant], sizes[size], className)} {...props} />;
 }

@@ -1,6 +1,6 @@
 'use client';
 import type {Role} from '@dayari/contracts';
-import type {Workspace} from './app-shell';
+import type {Workspace} from './shell/destinations';
 import {Button} from './ui/button';
 import {PageHeader} from './ui/workspace';
 export function HelpWorkspace({role,navigate}:{role:Role;navigate:(workspace:Workspace)=>void}){

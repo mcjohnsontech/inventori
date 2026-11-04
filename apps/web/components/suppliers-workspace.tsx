@@ -1,19 +1,204 @@
 'use client';
+import { Building03Icon, Location01Icon, PlusSignIcon } from '@hugeicons/core-free-icons';
 import { useState } from 'react';
 import type { Catalogue, Role } from '@dayari/contracts';
-import { Building2, Plus, MapPin } from 'lucide-react';
-import { Button } from './ui/button';
-import { Badge, EmptyState, PageHeader, SearchField } from './ui/workspace';
-export function SuppliersWorkspace({ catalogue, role, onSupplier, onProduct }: { catalogue: Catalogue; role: Role; onSupplier: (id?: string) => void; onProduct: (id?: string) => void }) {
+
+import { cn } from '../lib/cn';
+import {
+  Badge,
+  Button,
+  Code,
+  CopyButton,
+  Disclosure,
+  EmptyState,
+  Footnote,
+  Icon,
+  Page,
+  PageHeader,
+  Panel,
+  SearchInput,
+  Stack,
+  card,
+} from './ui';
+
+export function SuppliersWorkspace({
+  catalogue,
+  role,
+  onSupplier,
+  onProduct,
+}: {
+  catalogue: Catalogue;
+  role: Role;
+  onSupplier: (id?: string) => void;
+  onProduct: (id?: string) => void;
+}) {
   const [search, setSearch] = useState('');
-  const suppliers = catalogue.suppliers.filter(item => `${item.name} ${item.code} ${item.sources.map(source => `${source.name} ${source.code}`).join(' ')}`.toLowerCase().includes(search.toLowerCase()));
-  return <div className="page"><PageHeader eyebrow="Where your stock comes from" title="Suppliers & sources" description={role==='ADMIN'?"Register suppliers once. Saved source prefixes connect every sourced product to its supplier and location.":"Inspect approved suppliers, saved source prefixes and sourced SKUs. Ask Admin to register or configure missing entries."} actions={role === 'ADMIN' ? <Button onClick={() => onSupplier()}><Plus size={16} />Add supplier</Button> : undefined} />
-    <div className="mb-5"><SearchField label="Search suppliers" value={search} onChange={setSearch} placeholder="Supplier, source or saved prefix…" /></div>
-    <div className="grid gap-5 xl:grid-cols-2">{suppliers.map(supplier => <section key={supplier.id} className="surface"><div className="surface-heading"><div className="flex items-center gap-3"><Building2 size={20} className="text-emerald-800" /><div><h2>{supplier.name}</h2><p className="mt-1 font-mono text-xs text-stone-500">{supplier.code}</p></div></div><Badge>{supplier.sources.length} sources</Badge></div><div className="space-y-5 p-5">{supplier.sources.map(source => {
-      const skus = catalogue.skus.filter(sku => sku.sourcing.source.id === source.id);
-      const products = catalogue.products.filter(product => catalogue.sourcings.some(sourcing => sourcing.sourceId === source.id && sourcing.productId === product.id));
-      return <div key={source.id} className="rounded-lg border border-stone-200 p-4"><h3 className="flex items-center gap-2 text-sm font-semibold"><MapPin size={15} />{source.name}</h3><p className="mt-2 text-xs text-stone-500">Saved source code <span className="font-mono text-emerald-900">{source.code}</span></p><div className="mt-3 flex flex-wrap gap-2"><Badge>{products.length} sourced products</Badge><Badge>{skus.length} supplier SKUs</Badge><Badge tone={source.skuPrefix ? 'usable' : 'damaged'}>{source.skuPrefix ? `Prefix ${source.skuPrefix.code}` : 'Prefix setup needed'}</Badge></div>{products.length > 0 && <details className="mt-4"><summary className="text-link">Products and saved SKUs</summary><ul className="mt-3 space-y-3">{products.map(product => <li key={product.id}><p className="text-sm font-semibold">{product.name} <span className="font-mono text-xs font-normal text-stone-500">{product.productCode ?? 'Code not assigned'}</span></p><p className="mt-1 break-all font-mono text-xs text-emerald-800">{skus.filter(sku => product.variants.some(variant => variant.id === sku.variantId)).map(sku => sku.fullCode).join(' · ')}</p></li>)}</ul></details>}</div>;
-    })}{!supplier.sources.length && <p className="text-sm text-stone-500">No source locations registered yet.</p>}{role === 'ADMIN' && <div className="flex flex-wrap gap-3"><Button variant="outline" size="small" onClick={() => onSupplier(supplier.id)}>Set up location for {supplier.name}</Button><Button variant="outline" size="small" onClick={() => onProduct()}>Source a product</Button></div>}</div></section>)}</div>
-    {!suppliers.length && <section className="surface"><EmptyState title={search ? 'No matching suppliers' : role==='ADMIN'?'Add your first supplier':'No suppliers registered'}>{search ? 'Try a supplier name, source or prefix.' : role==='ADMIN'?'Add a name, choose a registered location and review the generated prefix.':'Ask Admin to register a supplier and source before receiving.'}</EmptyState></section>}
-    <p className="mt-5 text-xs leading-6 text-stone-500">Supplier codes and allocated SKU prefixes are stable identities. Supplier financial accounts, purchasing, renaming and deletion are not supported in this slice.</p></div>;
+
+  const suppliers = catalogue.suppliers.filter((item) =>
+    `${item.name} ${item.code} ${item.sources
+      .map((source) => `${source.name} ${source.code}`)
+      .join(' ')}`
+      .toLowerCase()
+      .includes(search.toLowerCase()),
+  );
+
+  return (
+    <Page>
+      <PageHeader
+        eyebrow="Where your stock comes from"
+        title="Suppliers & sources"
+        description={
+          role === 'ADMIN'
+            ? 'Register suppliers once. Saved source prefixes connect every sourced product to its supplier and location.'
+            : 'Inspect approved suppliers, saved source prefixes and sourced SKUs. Ask Admin to register or configure missing entries.'
+        }
+        actions={
+          role === 'ADMIN' ? (
+            <Button onClick={() => onSupplier()}>
+              <Icon icon={PlusSignIcon} size={16} strokeWidth={2} />
+              Add supplier
+            </Button>
+          ) : undefined
+        }
+      />
+
+      <div className="mt-8">
+        <SearchInput
+          label="Search suppliers"
+          value={search}
+          onChange={setSearch}
+          placeholder="Supplier, source or saved prefix…"
+          className="w-full sm:w-[360px]"
+        />
+      </div>
+
+      {!suppliers.length ? (
+        <div className={cn(card, 'mt-5')}>
+          <EmptyState
+            title={
+              search
+                ? 'No matching suppliers'
+                : role === 'ADMIN'
+                  ? 'Add your first supplier'
+                  : 'No suppliers registered'
+            }
+            icon={Building03Icon}
+          >
+            {search
+              ? 'Try a supplier name, source or prefix.'
+              : 'Add a name, choose a registered location and review the generated prefix.'}
+          </EmptyState>
+        </div>
+      ) : (
+        <div className="mt-5 grid gap-4 xl:grid-cols-2">
+          {suppliers.map((supplier) => (
+            <Panel
+              key={supplier.id}
+              title={supplier.name}
+              action={<Badge tone="brand">{supplier.sources.length} sources</Badge>}
+            >
+              <Stack gap="tight">
+                <span className="flex items-center gap-2">
+                  <Code tone="brand">{supplier.code}</Code>
+                  <CopyButton value={supplier.code} label="supplier code" />
+                </span>
+
+                {supplier.sources.length ? (
+                  supplier.sources.map((source) => {
+                    const skus = catalogue.skus.filter(
+                      (sku) => sku.sourcing.source.id === source.id,
+                    );
+                    const products = catalogue.products.filter((product) =>
+                      catalogue.sourcings.some(
+                        (sourcing) =>
+                          sourcing.sourceId === source.id && sourcing.productId === product.id,
+                      ),
+                    );
+
+                    return (
+                      <div
+                        key={source.id}
+                        className="rounded-xl border border-black/[0.07] bg-surface-muted/60 p-4"
+                      >
+                        <h3 className="flex items-center gap-2 font-sans text-sm font-semibold tracking-[-0.02em] text-ink">
+                          <Icon icon={Location01Icon} size={15} className="text-brand" />
+                          {source.name}
+                        </h3>
+                        <p className="mt-2 flex flex-wrap items-center gap-1.5 font-sans text-xs tracking-[-0.02em] text-grey-3">
+                          Saved source code
+                          <Code tone="brand">{source.code}</Code>
+                        </p>
+                        <div className="mt-3 flex flex-wrap gap-1.5">
+                          <Badge>{products.length} sourced products</Badge>
+                          <Badge>{skus.length} supplier SKUs</Badge>
+                          <Badge tone={source.skuPrefix ? 'usable' : 'damaged'}>
+                            {source.skuPrefix
+                              ? `Prefix ${source.skuPrefix.code}`
+                              : 'Prefix setup needed'}
+                          </Badge>
+                        </div>
+
+                        {products.length ? (
+                          <Disclosure summary="Products and saved SKUs" className="mt-3">
+                            <ul className="mt-3 space-y-3">
+                              {products.map((product) => (
+                                <li key={product.id}>
+                                  <p className="font-sans text-sm font-medium tracking-[-0.02em] text-ink">
+                                    {product.name}{' '}
+                                    <Code tone="muted">
+                                      {product.productCode ?? 'Code not assigned'}
+                                    </Code>
+                                  </p>
+                                  <p className="mt-1">
+                                    <Code tone="brand">
+                                      {skus
+                                        .filter((sku) =>
+                                          product.variants.some(
+                                            (variant) => variant.id === sku.variantId,
+                                          ),
+                                        )
+                                        .map((sku) => sku.fullCode)
+                                        .join(' · ')}
+                                    </Code>
+                                  </p>
+                                </li>
+                              ))}
+                            </ul>
+                          </Disclosure>
+                        ) : null}
+                      </div>
+                    );
+                  })
+                ) : (
+                  <p className="font-sans text-sm tracking-[-0.02em] text-grey-2">
+                    No source locations registered yet.
+                  </p>
+                )}
+
+                {role === 'ADMIN' ? (
+                  <div className="flex flex-wrap gap-2 border-t border-black/[0.06] pt-4">
+                    <Button
+                      variant="secondary"
+                      size="compact"
+                      onClick={() => onSupplier(supplier.id)}
+                    >
+                      Set up location for {supplier.name}
+                    </Button>
+                    <Button variant="secondary" size="compact" onClick={() => onProduct()}>
+                      Source a product
+                    </Button>
+                  </div>
+                ) : null}
+              </Stack>
+            </Panel>
+          ))}
+        </div>
+      )}
+
+      <Footnote className="mt-5">
+        Supplier codes and allocated SKU prefixes are stable identities. Supplier financial
+        accounts, purchasing, renaming and deletion are not supported in this slice.
+      </Footnote>
+    </Page>
+  );
 }
