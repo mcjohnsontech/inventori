@@ -85,3 +85,7 @@ Owner authorized a complete UX/integration refinement around implemented catalog
 ## Invitation implementation slice — 3 November 2026
 
 Owner authorized implementation after Slices 1–3 and confirmed 24-hour/new-email-only single-use invitations, six-character passwords for all roles, and isolated delivery. Development includes additive migrations 011/012, account acceptance and invitation administration; operational migration and live SMTP rollout remain unapproved. This slice does not implement serialized inventory, V2 QR, unit labels, issuing, closing or synchronization.
+
+## Brick 5B layout refinement — 4 November 2026
+
+Owner authorized a lot-label screen redesign: actual generated-PDF canvas preview and inspector, sheet paging, first-free-slot selection, purpose-separated sheets and data-driven bounds validation. New v2 label layouts preserve DYI:1 identities; historical v1 artifacts/reprints retain their original renderer and hashes. No schema migration or inventory changes. See labels-printing-redesign-report.md for executed checks and browser evidence. Physical printer/media/scan acceptance remains pending; this does not authorize unit serialization, new stock transitions or deployment.

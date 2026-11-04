@@ -87,6 +87,33 @@ describe('QR lookup, A4 labels and immutable stock isolation',()=>{
   expect((await post(`label-print-jobs/${reprint.id}/artifacts/1`,{}).expect(201)).body).toMatchObject({copies:'1',pages:1});await post(`label-print-jobs/${reprint.id}/artifacts/2`,{}).expect(400);
   await post('label-print-jobs',{...body,reason:''}).expect(400);await post('label-print-jobs',{...body,lines:[{lotId:randomUUID(),purpose:'USABLE',copies:'1'}]}).expect(400);await post('label-print-jobs',{...body,lines:[...body.lines,...body.lines]}).expect(400);expect(await stockSnapshot()).toBe(before);
  },90000);
+ it('previews v2 offsets without writes, then freezes the exact same PDF and keeps stock unchanged',async()=>{
+  const before=await stockSnapshot();const native=(await post('label-print-jobs',{kind:'REPRINT',originalJobId:job.id,reason:'Legacy layout reproduction trial',lines:[{lotId:job.lines[0]!.lotId,purpose:'USABLE',copies:'2'}]}).expect(201)).body as LabelJob;
+  // Existing v1 jobs keep their original geometry, regardless of the new UI.
+  await post(`label-print-jobs/${native.id}/preview`,{chunk:'0',layout:{startSlot:1,damagedStartSlot:0}}).expect(400);
+  const source=(await db.stockLot.findUniqueOrThrow({where:{id:receipt.lines[0].lotId}})).sourceId;
+  const delivered=(await post('receipts',{sourceId:source,deliveredOn:'2020-01-01',lines:[{skuId:receipt.lines[0].skuId,usableQuantity:21,damagedQuantity:2,damageReason:'Damaged covers on arrival'}]}).expect(201)).body;
+  const current=(await post('label-print-jobs',{kind:'INITIAL',receiptId:delivered.id,profileId:'a4-70x35-v2'}).expect(201)).body as LabelJob;
+  const stockAfterReceipt=await stockSnapshot(),counts=await Promise.all([db.commandResult.count(),db.auditEvent.count(),db.outboxEvent.count(),db.labelPrintEvent.count()]);
+  const layout={startSlot:5,damagedStartSlot:3};const draft=await post(`label-print-jobs/${current.id}/preview`,{chunk:'0',layout}).expect(200);
+  await post(`label-print-jobs/${current.id}/preview`,{chunk:'0',layout},randomUUID(),production).expect(403);
+  expect(await Promise.all([db.commandResult.count(),db.auditEvent.count(),db.outboxEvent.count(),db.labelPrintEvent.count()])).toEqual(counts);
+  const key=randomUUID(),prepared=(await post(`label-print-jobs/${current.id}/artifacts/0`,layout,key).expect(201)).body;
+  expect(prepared).toMatchObject({pages:3,layout,copies:'23'});expect(prepared.artifactHash).toBe(draft.headers['x-artifact-sha256']);
+  expect((await post(`label-print-jobs/${current.id}/artifacts/0`,layout,key).expect(201)).body).toEqual(prepared);
+  await post(`label-print-jobs/${current.id}/artifacts/0`,{startSlot:6,damagedStartSlot:3}).expect(409);
+  const saved=await get(`label-print-jobs/${current.id}/artifacts/0.pdf`).expect(200);const bytes=(r:typeof saved)=>Buffer.isBuffer(r.body)?r.body:Buffer.from(r.text,'binary');expect(bytes(saved)).toEqual(bytes(draft));
+  const reopened=(await post(`label-print-jobs/${current.id}/artifacts/0`,{}).expect(201)).body;expect(reopened.layout).toEqual(layout);expect(reopened.artifactHash).toBe(prepared.artifactHash);
+  const {getDocument}=await import('pdfjs-dist/legacy/build/pdf.mjs');const loading=getDocument({data:new Uint8Array(bytes(saved)),useSystemFonts:false});try{const pdf=await loading.promise;expect(pdf.numPages).toBe(3);for(let page=1;page<=3;page++){const text=(await(await pdf.getPage(page)).getTextContent()).items.filter((i:any)=>'str'in i).map((i:any)=>i.str).join(' ');expect(text.includes('DAMAGED INTAKE')).toBe(page===3);}}finally{await loading.destroy();}
+  expect(await stockSnapshot()).toBe(stockAfterReceipt);expect(before).not.toBe(stockAfterReceipt); // Only the explicit fixture receipt changed stock.
+ });
+ it('reconstructs retained PDF bytes using the accepted manifest clock despite a changed read timezone',async()=>{
+  const actor=await db.user.findFirstOrThrow({where:{role:'ADMIN',membership:{originId}}});
+  const shifted=db.$extends({query:{labelPrintJob:{async findUnique({args,query}){const value=await query(args);if(value?.createdAt instanceof Date)value.createdAt=new Date(value.createdAt.valueOf()+3600000);return value;}}}});
+  const baseline=await new LabelsService(db,originId,'SHOP').pdf(actor,job.id,'0');
+  const after=await new LabelsService(shifted as unknown as PrismaClient,originId,'SHOP').pdf(actor,job.id,'0');
+  expect(after.hash).toBe(baseline.hash);expect(after.bytes).toEqual(baseline.bytes);
+ });
  it('rejects immutable print evidence edits/deletion and late manifest supplementation',async()=>{
   for(const table of ['LabelPrintJob','LabelPrintJobLine','LabelPrintEvent']){const rows=await db.$queryRawUnsafe<{id:string}[]>(`SELECT id FROM "${table}" LIMIT 1`);await expect(db.$executeRawUnsafe(`UPDATE "${table}" SET id=id WHERE id=$1::uuid`,rows[0]!.id)).rejects.toThrow();await expect(db.$executeRawUnsafe(`DELETE FROM "${table}" WHERE id=$1::uuid`,rows[0]!.id)).rejects.toThrow();}
   const line=await db.labelPrintJobLine.findFirstOrThrow({where:{jobId:job.id}});await expect(db.labelPrintJobLine.create({data:{...line,content:JSON.parse(JSON.stringify(line.content)),id:randomUUID(),ordinal:99}})).rejects.toThrow();

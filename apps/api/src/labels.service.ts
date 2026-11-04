@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { BadRequestException, ConflictException, ForbiddenException, HttpException, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { Prisma, type PrismaClient, type User } from '@prisma/client';
 import { z, type ZodType } from 'zod';
-import { chunkRange, decodeQr, encodeQr, idempotencyKeySchema, labelProfiles, printEventSchema, printJobSchema, qrRequestSchema, QrError, type LabelJob, type LabelLine, type LabelProfile, type QrLookup } from '@dayari/contracts';
+import { defaultSheetCount, defaultSheetStart, planLabelSheets, savedSheetStart, sheetStartSchema, type SheetStart, chunkRange, decodeQr, encodeQr, idempotencyKeySchema, labelProfiles, printEventSchema, printJobSchema, qrRequestSchema, QrError, type LabelJob, type LabelLine, type LabelProfile, type QrLookup } from '@dayari/contracts';
 import { canonical, digest } from './security.js';
 import { ReceivingService } from './receiving.service.js';
 import { renderLabelPdf, rendererVersion } from './label-pdf.js';
@@ -41,7 +41,7 @@ export class LabelsService {
  async readJob(tx:Tx,id:string):Promise<LabelJob>{
   const job=await tx.labelPrintJob.findUnique({where:{id}});if(!job||job.originId!==this.originId)throw new NotFoundException('Print job not found');
   const lines=await tx.labelPrintJobLine.findMany({where:{jobId:id},orderBy:{ordinal:'asc'}});const events=await tx.labelPrintEvent.findMany({where:{jobId:id},orderBy:[{createdAt:'asc'},{id:'asc'}]});const profile=job.profile as unknown as LabelProfile;
-  return {id,receiptId:job.receiptId,originId:job.originId,kind:job.kind,originalJobId:job.originalJobId,reason:job.reason,profile,rendererVersion:job.rendererVersion,createdAt:job.createdAt.toISOString(),manifestHash:job.manifestHash,totalCopies:job.totalCopies.toString(),chunks:((job.totalCopies+499n)/500n).toString(),labelsPerSheet:profile.columns*profile.rows,totalSheets:(job.totalCopies/500n*BigInt(Math.ceil(500/(profile.columns*profile.rows)))+BigInt(Math.ceil(Number(job.totalCopies%500n)/(profile.columns*profile.rows)))).toString(),lines:lines.map(line=>({id:line.id,receiptLineId:line.receiptLineId,lotId:line.lotId,purpose:line.purpose as LabelLine['purpose'],copies:line.copies.toString(),payload:line.payload,content:line.content as unknown as LabelLine['content']})),events:events.map(e=>({id:e.id,kind:e.kind,chunk:e.chunk,attemptId:e.attemptId,copies:e.copies.toString(),artifactHash:e.artifactHash,note:e.note,createdAt:e.createdAt.toISOString()}))};
+  return {id,receiptId:job.receiptId,originId:job.originId,kind:job.kind,originalJobId:job.originalJobId,reason:job.reason,profile,rendererVersion:job.rendererVersion,createdAt:job.createdAt.toISOString(),manifestHash:job.manifestHash,totalCopies:job.totalCopies.toString(),chunks:((job.totalCopies+499n)/500n).toString(),labelsPerSheet:profile.columns*profile.rows,totalSheets:defaultSheetCount(lines.map(l=>({...l,copies:l.copies.toString(),purpose:l.purpose as LabelLine['purpose'],content:l.content as LabelLine['content']})),profile).toString(),lines:lines.map(line=>({id:line.id,receiptLineId:line.receiptLineId,lotId:line.lotId,purpose:line.purpose as LabelLine['purpose'],copies:line.copies.toString(),payload:line.payload,content:line.content as unknown as LabelLine['content']})),events:events.map(e=>({id:e.id,kind:e.kind,chunk:e.chunk,attemptId:e.attemptId,copies:e.copies.toString(),artifactHash:e.artifactHash,note:e.note,createdAt:e.createdAt.toISOString()}))};
  }
  async get(user:User,id:string){this.printRole(user);return this.readJob(this.db,parse(idempotencyKeySchema,id));}
  async list(user:User){this.printRole(user);const jobs=await this.db.labelPrintJob.findMany({where:{originId:this.originId},orderBy:{createdAt:'desc'},take:100});return jobs.map(job=>({id:job.id,receiptId:job.receiptId,kind:job.kind,totalCopies:job.totalCopies.toString(),createdAt:job.createdAt.toISOString(),reason:job.reason}));}
@@ -65,12 +65,12 @@ export class LabelsService {
    // Accepted receipt evidence is immutable. Validate layout outside all write locks before reserving the one initial manifest.
    const receipt=await new ReceivingService(this.db,this.originId,this.mode).get(user,body.receiptId);const profile=labelProfiles.find(p=>p.id===body.profileId)!;const lines:LabelLine[]=[];
    for(const row of receipt.lines)for(const [purpose,count] of [['USABLE',row.usableQuantity],['DAMAGED_INTAKE',row.damagedQuantity]] as const)if(BigInt(count)>0n)lines.push({id:randomUUID(),receiptLineId:row.id,lotId:row.lotId,purpose,copies:'1',payload:encodeQr(this.originId,row.lotId),content:{fullCode:row.fullCode,publicCode:receipt.batch.publicCode,productName:row.productName,variantName:row.variantName,supplierName:receipt.batch.supplierName,sourceName:receipt.batch.sourceName}});
-   await this.render({id:randomUUID(),receiptId:receipt.id,originId:this.originId,kind:'INITIAL',originalJobId:null,reason:'Layout preflight',profile,rendererVersion:rendererVersion(),createdAt:new Date().toISOString(),manifestHash:'preflight',totalCopies:String(lines.length),chunks:'1',labelsPerSheet:profile.columns*profile.rows,totalSheets:String(Math.ceil(lines.length/(profile.columns*profile.rows))),lines,events:[]},'0');
+   await this.render({id:randomUUID(),receiptId:receipt.id,originId:this.originId,kind:'INITIAL',originalJobId:null,reason:'Layout preflight',profile,rendererVersion:rendererVersion(profile),createdAt:new Date().toISOString(),manifestHash:'preflight',totalCopies:String(lines.length),chunks:'1',labelsPerSheet:profile.columns*profile.rows,totalSheets:String(Math.ceil(lines.length/(profile.columns*profile.rows))),lines,events:[]},'0');
   }
   return this.command(user,key,'labels.job.created',body,async(tx,commandId)=>{
   let version=rendererVersion();let receiptId:string,profile:LabelProfile,originalJobId:string|null=null,reason='',lines:Omit<LabelLine,'id'>[]=[];
   if(body.kind==='INITIAL'){
-   receiptId=body.receiptId;profile=labelProfiles.find(p=>p.id===body.profileId)!;
+   receiptId=body.receiptId;profile=labelProfiles.find(p=>p.id===body.profileId)!;version=rendererVersion(profile);
    if(await tx.labelPrintJob.findFirst({where:{receiptId,kind:'INITIAL'}}))throw new ConflictException('An initial label manifest already exists for this receipt');
    const receipt=await new ReceivingService(this.db,this.originId,this.mode).read(tx,receiptId);
    for(const line of receipt.lines)for(const [purpose,copies] of [['USABLE',line.usableQuantity],['DAMAGED_INTAKE',line.damagedQuantity]] as const){if(BigInt(copies)>0n)lines.push({receiptLineId:line.id,lotId:line.lotId,purpose,copies,payload:encodeQr(this.originId,line.lotId),content:{fullCode:line.fullCode,publicCode:receipt.batch.publicCode,productName:line.productName,variantName:line.variantName,supplierName:receipt.batch.supplierName,sourceName:receipt.batch.sourceName}});}
@@ -78,6 +78,7 @@ export class LabelsService {
    const original=await this.readJob(tx,body.originalJobId);receiptId=original.receiptId;profile=original.profile;version=original.rendererVersion;originalJobId=original.id;reason=body.reason;
    const unique=new Set<string>();for(const selection of body.lines){const match=original.lines.find(l=>l.lotId===selection.lotId&&l.purpose===selection.purpose);if(!match)throw new BadRequestException('Reprint must reference a purpose and lot in its original job');const combination=selection.lotId+selection.purpose;if(unique.has(combination))throw new BadRequestException('Duplicate reprint line/purpose');unique.add(combination);const {id:_,...line}=match;lines.push({...line,copies:selection.copies});}
   }
+  if(profile.layoutVersion===2)lines.sort((a,b)=>Number(a.purpose==='DAMAGED_INTAKE')-Number(b.purpose==='DAMAGED_INTAKE'));
   const totalCopies=lines.reduce((n,line)=>n+BigInt(line.copies),0n);const manifestHash=digest(canonical({receiptId,profile,rendererVersion:version,lines}));
   const job=await tx.labelPrintJob.create({data:{receiptId,originId:this.originId,actorId:user.id,commandId,kind:body.kind,originalJobId,reason,profile:json(profile),rendererVersion:version,manifestHash,totalCopies,createdAt:new Date()}});
   for(const [i,line] of lines.entries())await tx.labelPrintJobLine.create({data:{...line,jobId:job.id,copies:BigInt(line.copies),content:json(line.content),ordinal:i+1}});
@@ -85,16 +86,40 @@ export class LabelsService {
   return {...await this.readJob(tx,job.id)};
  });}
  private range(job:LabelJob,chunk:string){try{return chunkRange(job.totalCopies,chunk);}catch{throw new BadRequestException('Chunk outside manifest');}}
- private async render(job:LabelJob,chunk:string){this.range(job,chunk);if(this.activeRenders>=2)throw new ConflictException('PDF generation is busy; retry the same part shortly');this.activeRenders++;try{return await renderLabelPdf(job,chunk);}catch(e){throw new UnprocessableEntityException((e as Error).message);}finally{this.activeRenders--;}}
- async prepare(user:User,id:string,chunk:string,key:unknown){const job=await this.get(user,id);parse(idempotencyKeySchema,key);const pdf=await this.render(job,chunk);const artifactHash=bytesHash(pdf);const range=this.range(job,chunk);
-  return this.command(user,key,'labels.artifact.ready',{id,chunk},async(tx,commandId)=>{
-   const existing=await tx.labelPrintEvent.findFirst({where:{jobId:id,kind:'ARTIFACT_READY',chunk}});
-   if(existing&&existing.artifactHash!==artifactHash)throw new ConflictException('Artifact differs from retained hash');
-   if(!existing)await tx.labelPrintEvent.create({data:{jobId:id,originId:this.originId,actorId:user.id,commandId,kind:'ARTIFACT_READY',chunk,attemptId:randomUUID(),copies:BigInt(range.copies),artifactHash,note:'PDF generated; not printed',createdAt:new Date()}});
-   return {id,chunk,artifactHash,copies:String(range.copies),pages:Math.ceil(range.copies/(job.profile.columns*job.profile.rows)),url:`/api/label-print-jobs/${id}/artifacts/${chunk}.pdf`};
+ private async render(job:LabelJob,chunk:string,layout:SheetStart=defaultSheetStart){
+  this.range(job,chunk);if(this.activeRenders>=2)throw new ConflictException('PDF generation is busy; retry the same part shortly');this.activeRenders++;
+  try{
+   // PDF metadata is a render input too. Preserve the accepted manifest clock across
+   // adapter/session timezone changes; never rewrite history or bypass its hash.
+   const stored=await this.db.labelPrintJob.findUnique({where:{id:job.id},select:{commandId:true}});
+   const command=stored?await this.db.commandResult.findUnique({where:{id:stored.commandId},select:{response:true}}):null;
+   const accepted=command?.response as {id?:unknown;createdAt?:unknown}|undefined;
+   const createdAt=accepted?.id===job.id&&typeof accepted.createdAt==='string'&&Number.isFinite(Date.parse(accepted.createdAt))?accepted.createdAt:job.createdAt;
+   return await renderLabelPdf({...job,createdAt},chunk,layout);
+  }catch(error){throw new UnprocessableEntityException((error as Error).message);}finally{this.activeRenders--;}
+ }
+ async preview(user:User,id:string,input:unknown){
+  const job=await this.get(user,id),body=parse(z.object({chunk:z.string().regex(/^(0|[1-9][0-9]{0,11})$/),layout:sheetStartSchema.default(defaultSheetStart)}).strict(),input);
+  try{planLabelSheets(job,body.chunk,body.layout);}catch(error){throw new BadRequestException((error as Error).message);}
+  const bytes=await this.render(job,body.chunk,body.layout);return {bytes,hash:bytesHash(bytes)};
+ }
+ async prepare(user:User,id:string,chunk:string,key:unknown,input:unknown={}){
+  const job=await this.get(user,id);parse(idempotencyKeySchema,key);
+  const requested=parse(sheetStartSchema,input),existing=job.events.find(e=>e.kind==='ARTIFACT_READY'&&e.chunk===chunk);
+  const saved=existing&&job.profile.layoutVersion===2?savedSheetStart(existing.note):defaultSheetStart;
+  const layout=existing&&Object.keys(input as object).length===0?saved:requested;
+  if(existing&&canonical(layout)!==canonical(saved))throw new ConflictException('This PDF layout is already saved. Create an explicit reprint to choose another start position.');
+  let placement;try{placement=planLabelSheets(job,chunk,layout);}catch(error){throw new BadRequestException((error as Error).message);}
+  const pdf=await this.render(job,chunk,layout),artifactHash=bytesHash(pdf),range=this.range(job,chunk);
+  const request={id,chunk,...(job.profile.layoutVersion===2?{layout}:{})};
+  return this.command(user,key,'labels.artifact.ready',request,async(tx,commandId)=>{
+   const prior=await tx.labelPrintEvent.findFirst({where:{jobId:id,kind:'ARTIFACT_READY',chunk}});
+   if(prior&&prior.artifactHash!==artifactHash)throw new ConflictException('Artifact differs from retained hash');
+   if(!prior)await tx.labelPrintEvent.create({data:{jobId:id,originId:this.originId,actorId:user.id,commandId,kind:'ARTIFACT_READY',chunk,attemptId:randomUUID(),copies:BigInt(range.copies),artifactHash,note:job.profile.layoutVersion===2?canonical({layout,version:2}):'PDF generated; not printed',createdAt:new Date()}});
+   return {id,chunk,artifactHash,copies:String(range.copies),pages:placement.pages,layout,edgeLabels:placement.edgeLabels,url:`/api/label-print-jobs/${id}/artifacts/${chunk}.pdf`};
   });
  }
- async pdf(user:User,id:string,chunk:string){const job=await this.get(user,id);const ready=job.events.find(e=>e.kind==='ARTIFACT_READY'&&e.chunk===chunk);if(!ready)throw new ConflictException('Prepare this PDF artifact first');const bytes=await this.render(job,chunk);if(bytesHash(bytes)!==ready.artifactHash)throw new ConflictException('Reconstructed artifact hash does not match history');return {bytes,hash:ready.artifactHash};}
+ async pdf(user:User,id:string,chunk:string){const job=await this.get(user,id);const ready=job.events.find(e=>e.kind==='ARTIFACT_READY'&&e.chunk===chunk);if(!ready)throw new ConflictException('Prepare this PDF artifact first');const layout=job.profile.layoutVersion===2?savedSheetStart(ready.note):defaultSheetStart;const bytes=await this.render(job,chunk,layout);if(bytesHash(bytes)!==ready.artifactHash)throw new ConflictException('Reconstructed artifact hash does not match history');return {bytes,hash:ready.artifactHash};}
  async event(user:User,id:string,key:unknown,input:unknown){this.printRole(user);id=parse(idempotencyKeySchema,id);const body=parse(printEventSchema,input);return this.command(user,key,'labels.event.recorded',{id,...body},async(tx,commandId)=>{
   const job=await this.readJob(tx,id);const range=this.range(job,body.chunk);const events=job.events.filter(e=>e.attemptId===body.attemptId);
   if(events.some(e=>e.chunk!==body.chunk))throw new ConflictException('Attempt belongs to another chunk');

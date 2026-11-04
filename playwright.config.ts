@@ -12,6 +12,6 @@ export default defineConfig({
   use: { baseURL: 'http://127.0.0.1:3101', channel: process.env.PLAYWRIGHT_CHANNEL, trace: 'retain-on-failure', screenshot: 'only-on-failure' },
   webServer: [
     { command: 'node apps/api/dist/main.js', url: 'http://127.0.0.1:4101/v1/health', reuseExistingServer: false, env: { DATABASE_URL: testUrl, SHOP_NODE_ID: process.env.E2E_NODE_ID, AUTHORITY_MODE: 'SHOP', PORT: '4101', INVITATION_TRANSPORT:'isolated', INVITATION_ENCRYPTION_KEY:process.env.E2E_INVITATION_KEY!, APP_PUBLIC_URL:'http://127.0.0.1:3101/' } },
-    { command: 'npm exec --workspace @dayari/web -- next dev --webpack --hostname 127.0.0.1 --port 3101', url: 'http://127.0.0.1:3101', reuseExistingServer: false, timeout: 120000, env: { API_URL: 'http://127.0.0.1:4101', APP_ORIGIN: 'http://127.0.0.1:3101', DAYARI_E2E: '1' } },
+    { command: 'npm exec --workspace @dayari/web -- next dev --webpack --hostname 127.0.0.1 --port 3101', url: 'http://127.0.0.1:3101', reuseExistingServer: false, timeout: 240000, env: { API_URL: 'http://127.0.0.1:4101', APP_ORIGIN: 'http://127.0.0.1:3101', DAYARI_E2E: '1' } },
   ],
 });

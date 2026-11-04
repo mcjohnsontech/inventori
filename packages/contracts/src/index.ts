@@ -106,3 +106,4 @@ export * from './public-identities.js';
 // Bounded operational provenance: no security/audit snapshots or valuation fields.
 export type LotEvidence = { lotId: string; receiptId: string; deliveredOn: string; acceptedAt: string; originSequence: string; movements: { id: string; fromState: string; toState: string; quantity: string }[] };
 export * from './invitations.js';
+export * from './label-layout.js';

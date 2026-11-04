@@ -179,3 +179,7 @@ Actual final results and limitations are recorded in admin-experience-implementa
 | Staff chooses password, six characters all roles | shared accounts/invitation Zod contracts and acceptance page | unit/account/browser tests |
 | No real email before verification | injected isolated transport only, encrypted queue | delivery/failure/redaction tests |
 | No stock side effects | no ledger/receipt/catalogue mutation in invitation services | existing integration regressions |
+
+## Label layout / preview refinement — 4 November 2026
+
+FR-02/FR-20/PRD 15.4: versioned v2 layout makes SKU largest, separates damaged sheets and marks damage in monochrome; local PDF.js renders actual PDF and crop inspector. FR-12/FR-14: immutable prepared layout/hash, read-only preview, unchanged print roles and no inventory effects. Tests: label-layout unit, labels integration, public-identities UTC rehearsal, labels browser workflow. Hardware/physical scan acceptance remains open; no QR payload change.

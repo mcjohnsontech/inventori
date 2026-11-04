@@ -154,7 +154,7 @@ export function ReceiptDetails({
         )}
       </Panel>
 
-      <Panel level={3} title="Labels" description="Printing never changes inventory.">
+      <Panel className="overflow-visible" level={3} title="Labels" description="Printing never changes inventory.">
         <Disclosure
           summary="Print labels for this receipt"
           onOpen={() => setLabelsOpen(true)}

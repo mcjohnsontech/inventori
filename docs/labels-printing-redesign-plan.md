@@ -1,0 +1,15 @@
+# Labels & printing redesign — implementation plan
+
+Owner request, 4 November 2026. Scope: existing lot labels only, no stock changes or QR changes. Wireframe is a layout guide; no separate brief file was supplied.
+
+1. Add versioned sheet layout contracts: explicit gaps/margins, independent usable/damaged first-sheet start slots, deterministic per-part placement and bounds diagnostics. Retain v1 profiles and renderer unchanged for historical jobs/reprints. New profiles use the existing A4 trial dimensions; these are not new hardware certifications.
+2. Render new PDFs with SKU as the largest text, separate purpose sheets and high-contrast damaged marking. Save the paper profile in the immutable manifest and freeze start positions in the immutable ARTIFACT_READY note when preparing each PDF part. Draft previews are read-only and freely adjustable before preparation. No database/schema migration: existing JSON profile snapshots and artifact hashes retain evidence.
+3. Bundle PDF.js and its worker locally. Paint the actual authenticated generated PDF to canvas; crop the selected physical label from that same page for a 100% CSS-mm inspector. Sheet pager and clickable selection; no CDN, remote fonts or external preview services.
+4. Compose a left queue/settings column, sticky right preview/inspector and bottom print actions. Keep explicit reprints, idempotency, attempt/outcome reporting and draft guards. Changing layout after acceptance requires a new explicit reprint, never rewriting an accepted job. Initial manifests retain all accepted quantities; editable quantities remain the existing explicit reprint workflow.
+5. Tests: deterministic offsets/purpose separation/gaps/bounds; actual PDF page count/text and QR decoding; artifact stability, role/idempotency/stock regressions; browser canvas preview, paging, selection, retry and responsive screenshots; typecheck/build.
+
+Printable area: physical printer margins are unknown. Profiles describe page bounds; UI flags edge-touching cells and explains printer compatibility is unverified. Explicit printable insets in profile data are validated as hard bounds, and out-of-bounds output is rejected rather than clipped. Physical alignment/scan trials remain owner/hardware acceptance. Screen CSS mm is layout scale, not a calibration guarantee.
+
+Printing: hand off the same generated PDF bytes to native browser PDF printing; retain download/open fallback. A requested dialog never confirms physical output. Alignment test uses ordinary paper and the first generated sheet (no special stock or QR identities); any real label output still belongs to the original attempt/evidence.
+
+Historical v1 jobs and reprints retain their fixed layout and original renderer; they gain the in-page PDF preview, but offsets and separate sheets apply to new v2 manifests. Existing database provenance guards require historical reprints to retain the original profile/renderer; this redesign does not weaken those guards or run an operational migration.

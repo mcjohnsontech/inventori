@@ -1,18 +1,25 @@
 'use client';
 import { PrinterIcon } from '@hugeicons/core-free-icons';
 import { useEffect, useRef, useState } from 'react';
-import type { LabelJob, LabelProfile } from '@dayari/contracts';
+import {
+  chunkRange,
+  defaultSheetStart,
+  planLabelSheets,
+  savedSheetStart,
+  type LabelJob,
+  type LabelProfile,
+  type SheetStart,
+} from '@dayari/contracts';
+import { PdfSheetPreview } from './pdf-sheet-preview';
+import { SheetStartPicker } from './sheet-start-picker';
 
 import { notifyAuthFailure } from '../../lib/api';
-import { cn } from '../../lib/cn';
 import { formatDate, formatDateTime } from '../../lib/format';
 import {
   Badge,
   Button,
   Checkbox,
   Code,
-  type Column,
-  DataTable,
   Disclosure,
   EmptyState,
   ErrorNotice,
@@ -27,8 +34,6 @@ import {
   Stack,
   SuccessNotice,
   Textarea,
-  WarningNotice,
-  card,
 } from '../ui';
 
 async function read(path: string, signal?: AbortSignal) {
@@ -98,7 +103,7 @@ export function LabelWorkspace({
   >([]);
   const [receiptId, setReceiptId] = useState(initialReceiptId);
   const [plan, setPlan] = useState<Plan | null>(null);
-  const [profile, setProfile] = useState('a4-70x35-v1');
+  const [profile, setProfile] = useState('a4-70x35-v2');
 
   const [jobs, setJobs] = useState<JobSummary[]>([]);
   const [job, setJob] = useState<LabelJob | null>(null);
@@ -111,6 +116,8 @@ export function LabelWorkspace({
     chunk: string;
     artifactHash: string;
   } | null>(null);
+  const [sheetStart, setSheetStart] = useState<SheetStart>(defaultSheetStart);
+  const [previewHash, setPreviewHash] = useState('');
   const [attempt, setAttempt] = useState('');
   const [ack, setAck] = useState(false);
   const [reported, setReported] = useState('');
@@ -151,7 +158,8 @@ export function LabelWorkspace({
 
   // Reprint selections and outcome notes are unsaved work; warn before losing them.
   const dirty = Boolean(
-    reason.trim() ||
+    (!artifact && (sheetStart.startSlot > 0 || sheetStart.damagedStartSlot > 0)) ||
+      reason.trim() ||
       Object.values(selected).some((value) => value.trim()) ||
       (attempt && note.trim()),
   );
@@ -159,7 +167,7 @@ export function LabelWorkspace({
   function mayDiscard() {
     return (
       !busy &&
-      (!dirty || window.confirm('Discard unsaved reprint selections or print-outcome notes?'))
+      (!dirty || window.confirm('Discard unsaved label positions, reprint selections or print-outcome notes?'))
     );
   }
 
@@ -217,7 +225,9 @@ export function LabelWorkspace({
 
   function showJob(next: LabelJob) {
     setJob(next);
-    setArtifact(null);
+    loadPart(next, '0');
+    setReceiptId(next.receiptId);
+    setPreviewHash('');
     setAttempt('');
     setPart('1');
     setSelected({});
@@ -226,6 +236,24 @@ export function LabelWorkspace({
     setAck(false);
   }
 
+  function loadPart(next: LabelJob, chunk: string) {
+    const ready = next.events.find((e) => e.kind === 'ARTIFACT_READY' && e.chunk === chunk);
+    const layout =
+      ready && next.profile.layoutVersion === 2 ? savedSheetStart(ready.note) : defaultSheetStart;
+    setSheetStart(layout);
+    setPreviewHash('');
+    setArtifact(
+      ready
+        ? {
+            url: `/api/label-print-jobs/${next.id}/artifacts/${chunk}.pdf`,
+            copies: String(chunkRange(next.totalCopies, chunk).copies),
+            pages: planLabelSheets(next, chunk, layout).pages,
+            chunk,
+            artifactHash: ready.artifactHash!,
+          }
+        : null,
+    );
+  }
   async function createInitial() {
     await action(async () => {
       showJob(await write('label-print-jobs', { kind: 'INITIAL', receiptId, profileId: profile }));
@@ -238,7 +266,7 @@ export function LabelWorkspace({
     if (job) setJob(await read(`label-print-jobs/${job.id}`));
   }
 
-  async function event(kind: string, id = attempt) {
+  async function event(kind: string, id = attempt, printNote?: string) {
     if (!job || !artifact) return;
 
     await write(`label-print-jobs/${job.id}/events`, {
@@ -246,7 +274,7 @@ export function LabelWorkspace({
       chunk: artifact.chunk,
       attemptId: id,
       ...(kind === 'OPERATOR_REPORTED_PRINTED' ? { copies: reported } : {}),
-      note,
+      note: printNote ?? note,
     });
 
     await refreshJob();
@@ -262,54 +290,90 @@ export function LabelWorkspace({
     );
   }
 
+  const validPart = Boolean(
+    job && /^([1-9][0-9]*)$/.test(part) && BigInt(part) <= BigInt(job.chunks),
+  );
+  const chunk = validPart ? (BigInt(part) - 1n).toString() : '0';
+  async function ensureArtifact() {
+    if (!job || !validPart) throw new Error('Choose a valid PDF part');
+    const next =
+      artifact ?? (await write(`label-print-jobs/${job.id}/artifacts/${chunk}`, sheetStart));
+    if (previewHash && next.artifactHash !== previewHash)
+      throw new Error('The prepared PDF differs from the preview. Reload it before printing.');
+    setArtifact(next);
+    await refreshJob();
+    return next;
+  }
   async function prepare() {
     await action(async () => {
-      if (!job || !/^([1-9][0-9]*)$/.test(part) || BigInt(part) > BigInt(job.chunks)) {
-        throw new Error('Choose a valid PDF part');
-      }
-      const chunk = (BigInt(part) - 1n).toString();
-      setArtifact(await write(`label-print-jobs/${job.id}/artifacts/${chunk}`, {}));
+      await ensureArtifact();
       setAttempt('');
       setAck(false);
-      await refreshJob();
     });
   }
-
-  async function print() {
-    if (working.current || !artifact || !job) return;
-
-    const previous = job.events.some(
-      (entry) => entry.kind === 'HANDOFF_REQUESTED' && entry.chunk === artifact.chunk,
-    );
-
-    if (previous && !ack) {
+  async function print(alignment = false) {
+    if (working.current || !job || !previewHash || !validPart) return;
+    if (job.events.some((e) => e.kind === 'HANDOFF_REQUESTED' && e.chunk === chunk) && !ack) {
       setError('Check previous physical output and acknowledge before starting another attempt.');
       return;
     }
-
-    // Open the window synchronously, before any await, or the popup blocker stops it.
     const windowRef = window.open('about:blank', '_blank');
     if (!windowRef) {
-      setError('Popup blocked. Allow the PDF window and try explicitly again. No print was confirmed.');
+      setError('Print window blocked. Allow it and retry explicitly.');
       return;
     }
     windowRef.opener = null;
-
     await action(async () => {
       try {
-        const id = crypto.randomUUID();
-        await event('HANDOFF_REQUESTED', id);
+        const ready = await ensureArtifact(),
+          id = crypto.randomUUID();
+        // The artifact may have just been prepared: record against its exact immutable part.
+        await write(`label-print-jobs/${job.id}/events`, {
+          kind: 'HANDOFF_REQUESTED',
+          chunk: ready.chunk,
+          attemptId: id,
+          note: alignment
+            ? 'Alignment trial: plain paper; select page 1 only in the native print dialog. Output is not confirmed.'
+            : 'Operator requested printing of the saved PDF; physical output is not confirmed.',
+        });
         setAttempt(id);
-        setReported(artifact.copies);
+        setReported(ready.copies);
         setAck(false);
-        windowRef.location.href = artifact.url;
+        await refreshJob();
+        setNotice(
+          'Print requested for the generated PDF. Check physical output and report the result.',
+        );
+        const document = windowRef.document;
+        document.title = 'Dayari label printing';
+        document.body.style.margin = '0';
+        const instruction = document.createElement('p');
+        instruction.textContent = alignment
+          ? 'Alignment trial: use plain paper and select page 1 only. Print at actual size / 100%.'
+          : 'Print at actual size / 100%. If the dialog does not open, use the PDF Print control.';
+        instruction.style.cssText = 'font:14px system-ui;padding:12px;margin:0';
+        document.body.append(instruction);
+        let printRequested = false;
+        const frame = document.createElement('iframe');
+        frame.title = 'Print-ready PDF';
+        frame.style.cssText = 'width:100%;height:calc(100vh - 60px);border:0';
+        frame.onload = () => {
+          if (printRequested) return;
+          printRequested = true;
+          try {
+            frame.contentWindow?.focus();
+            frame.contentWindow?.print();
+          } catch {
+            /* Native PDF controls remain available as fallback; no false dialog/output event. */
+          }
+        };
+        frame.src = ready.url;
+        document.body.append(frame);
       } catch (failure) {
         windowRef.close();
         throw failure;
       }
     });
   }
-
   async function reprint() {
     await action(async () => {
       if (!job) return;
@@ -332,249 +396,328 @@ export function LabelWorkspace({
     });
   }
 
-  const manifestColumns: Column<NonNullable<typeof job>['lines'][number]>[] = [
-    {
-      key: 'sku',
-      label: 'Saved SKU / batch',
-      wide: true,
-      cell: (line) => (
-        <>
-          <Code className="block">{line.content.fullCode}</Code>
-          <Code tone="muted" className="mt-0.5 block">
-            {line.content.publicCode}
-          </Code>
-        </>
-      ),
-    },
-    {
-      key: 'purpose',
-      label: 'Purpose',
-      cell: (line) =>
-        line.purpose === 'USABLE' ? (
-          <Badge tone="usable">Usable</Badge>
-        ) : (
-          <Badge tone="damaged">Damaged intake — not for production</Badge>
-        ),
-    },
-    { key: 'copies', label: 'Copies', align: 'right', cell: (line) => line.copies },
-  ];
-
+  const layout = job && validPart ? planLabelSheets(job, chunk, sheetStart) : null;
+  const queue =
+    job?.lines ??
+    plan?.lines.flatMap((line) =>
+      (['USABLE', 'DAMAGED_INTAKE'] as const).flatMap((purpose) => {
+        const copies = purpose === 'USABLE' ? line.usableQuantity : line.damagedQuantity;
+        return BigInt(copies) > 0n
+          ? [
+              {
+                id: line.lotId + purpose,
+                purpose,
+                copies,
+                content: { fullCode: line.fullCode, publicCode: plan.batch.publicCode },
+              },
+            ]
+          : [];
+      }),
+    ) ??
+    [];
+  const receiptControls = (
+    <div className="grid gap-4 sm:grid-cols-2">
+      <SearchInput
+        label="Search label receipts"
+        value={receiptSearch}
+        onChange={setReceiptSearch}
+        placeholder="Batch or supplier…"
+      />
+      <Field label="Accepted receipt">
+        {(id) => (
+          <Select
+            id={id}
+            label="Accepted receipt"
+            placeholder="Choose receipt"
+            disabled={busy}
+            value={receiptId}
+            onChange={(value) => {
+              if (!mayDiscard()) return;
+              setReceiptId(value);
+              setJob(null);
+              setArtifact(null);
+              setSheetStart(defaultSheetStart);
+              setError('');
+              setNotice('');
+            }}
+            options={receipts
+              .filter((r) =>
+                `${r.publicCode} ${r.supplierName}`
+                  .toLowerCase()
+                  .includes(receiptSearch.toLowerCase()),
+              )
+              .map((r) => ({ value: r.id, label: `${r.publicCode} · ${r.supplierName}` }))}
+          />
+        )}
+      </Field>
+    </div>
+  );
   const body = (
     <Stack>
-      {notice ? <SuccessNotice message={notice} /> : null}
-      {error ? (
+      {notice && <SuccessNotice message={notice} />}
+      {error && (
         <ErrorNotice message={`${error} Retry the unchanged request after a lost response.`} />
-      ) : null}
-
-      {!compact ? (
-        <Panel
-          title="1. Choose an accepted delivery"
-          description="Latest 100 receipts. Choose a receipt or reopen an existing print job below."
-        >
-          <Stack gap="tight">
-            <SearchInput
-              label="Search label receipts"
-              value={receiptSearch}
-              onChange={setReceiptSearch}
-              placeholder="Filter recent batches or suppliers…"
-            />
-            <Field label="Accepted receipt">
-              {(id) => (
-                <Select
-                  id={id}
-                  label="Accepted receipt"
-                  placeholder="Choose receipt"
-                  disabled={busy}
-                  value={receiptId}
-                  onChange={(value) => {
-                    setReceiptId(value);
-                    setJob(null);
-                    setArtifact(null);
-                    setNotice('');
-                    setError('');
-                  }}
-                  options={receipts
-                    .filter((item) =>
-                      `${item.publicCode} ${item.supplierName}`
-                        .toLowerCase()
-                        .includes(receiptSearch.toLowerCase()),
-                    )
-                    .map((item) => ({
-                      value: item.id,
-                      label: `${item.publicCode} · ${item.supplierName}`,
-                    }))}
-                />
-              )}
-            </Field>
-          </Stack>
-        </Panel>
-      ) : null}
-
-      {plan ? (
-        <Panel
-          title={`Label plan · ${plan.batch.publicCode}`}
-          description="Includes every delivered unit. Damaged goods must be labelled and segregated by staff."
-        >
-          <Stack gap="tight">
-            <p className="font-sans text-sm tracking-[-0.02em] text-ink">
-              Usable copies <strong className="font-semibold text-usable">{plan.totals.usable}</strong>
-              {' · '}Damaged-intake copies{' '}
-              <strong className="font-semibold text-damaged">{plan.totals.damaged}</strong>
-              {' · '}Total <strong className="font-semibold">{plan.totals.delivered}</strong>
-            </p>
-
-            <ul className="space-y-1.5 border-t border-black/[0.06] pt-4">
-              {plan.lines.map((line) => (
-                <li key={line.lotId} className="font-sans text-xs tracking-[-0.02em] text-grey-2">
-                  <Code>{line.fullCode}</Code> — {line.usableQuantity} usable /{' '}
-                  {line.damagedQuantity} damaged
-                </li>
-              ))}
-            </ul>
-
-            {plan.initialJobId ? (
-              <Button
-                variant="secondary"
-                disabled={busy}
-                onClick={() =>
-                  action(async () => showJob(await read(`label-print-jobs/${plan.initialJobId}`)))
-                }
+      )}
+      {!compact &&
+        (job ? (
+          <Disclosure summary={`Delivery · ${job.lines[0]?.content.publicCode ?? 'saved job'}`}>
+            {receiptControls}
+          </Disclosure>
+        ) : (
+          <Panel
+            title="Choose an accepted delivery"
+            description="Latest 100 receipts. Printing and reprinting never change stock."
+          >
+            {receiptControls}
+          </Panel>
+        ))}
+      {(plan || job) && (
+        <>
+          <div className="grid items-start gap-5 xl:grid-cols-[minmax(280px,0.85fr)_minmax(0,1.35fr)]">
+            <Stack>
+              <Panel
+                title="1. Print queue"
+                description={plan ? `Batch ${plan.batch.publicCode}` : 'Saved manifest'}
               >
-                Open initial label job
-              </Button>
-            ) : (
-              <>
-                <Field label="Print profile">
-                  {(id) => (
-                    <Select
-                      id={id}
-                      label="Print profile"
-                      disabled={busy}
-                      value={profile}
-                      onChange={setProfile}
-                      options={plan.profiles.map((item) => ({
-                        value: item.id,
-                        label: `${item.labelWidthMm} × ${item.labelHeightMm} mm · ${item.columns} × ${item.rows} per A4 sheet · trial v1`,
-                      }))}
-                    />
-                  )}
-                </Field>
-                <Button disabled={busy} onClick={createInitial}>
-                  {busy ? 'Working…' : 'Create full-receipt label job'}
-                </Button>
-              </>
-            )}
-          </Stack>
-        </Panel>
-      ) : null}
-
-      {job ? (
-        <Panel
-          title={job.kind === 'INITIAL' ? 'Initial label manifest' : 'Reprint manifest'}
-          description={`${job.totalCopies} copies · ${job.chunks} PDF part(s), at most 500 copies each · ${job.labelsPerSheet} labels per sheet · ${job.totalSheets} A4 sheets across all parts`}
-          action={<Badge tone="brand">{job.kind}</Badge>}
-        >
-          <Stack gap="tight">
-            <Footnote>
-              Profile {job.profile.labelWidthMm} × {job.profile.labelHeightMm} mm, A4.{' '}
-              <Code tone="muted">Origin {job.originId}</Code>
-            </Footnote>
-
-            <DataTable
-              columns={manifestColumns}
-              rows={job.lines}
-              rowKey={(line) => line.id}
-              emptyMessage="This manifest has no lines."
-            />
-
-            <div className="flex flex-wrap items-end gap-3 border-t border-black/[0.06] pt-4">
-              <Field label="PDF part" className="w-28">
-                {(id) => (
-                  <Input
-                    id={id}
-                    type="number"
-                    min="1"
-                    max={job.chunks}
-                    disabled={busy}
-                    value={part}
-                    onChange={(changeEvent) => {
-                      setPart(changeEvent.target.value);
-                      setArtifact(null);
-                      setAttempt('');
-                    }}
-                  />
+                {(['USABLE', 'DAMAGED_INTAKE'] as const).map((purpose) => {
+                  const rows = queue.filter((l) => l.purpose === purpose);
+                  return (
+                    rows.length > 0 && (
+                      <div key={purpose} className="mb-5 last:mb-0">
+                        <Badge tone={purpose === 'USABLE' ? 'usable' : 'damaged'}>
+                          {purpose === 'USABLE'
+                            ? 'Usable'
+                            : job && job.profile.layoutVersion !== 2
+                              ? 'Damaged intake · historical sheet order'
+                              : 'Damaged intake · separate sheets'}
+                        </Badge>
+                        <ul className="mt-2 max-h-64 divide-y divide-black/[0.06] overflow-y-auto">
+                          {rows.map((line) => (
+                            <li
+                              key={line.id}
+                              className="flex items-center justify-between gap-3 py-1.5"
+                            >
+                              <div className="min-w-0">
+                                <Code className="break-all text-xs">{line.content.fullCode}</Code>
+                              </div>
+                              <span className="shrink-0 rounded-lg border border-black/10 bg-white px-2.5 py-0.5 text-sm font-semibold tabular-nums">
+                                {line.copies}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )
+                  );
+                })}
+                <div className="flex flex-wrap justify-between gap-2 border-t border-black/[0.06] pt-3 text-sm">
+                  <span>
+                    <strong>{job?.totalCopies ?? plan?.totals.delivered}</strong> labels
+                  </span>
+                  {layout && <span>{layout.pages} sheets in this part</span>}
+                </div>
+                {plan && !job && (
+                  <p className="mt-2 text-xs text-grey-2">
+                    Usable {plan.totals.usable} · Damaged {plan.totals.damaged} · Total{' '}
+                    {plan.totals.delivered}
+                  </p>
                 )}
-              </Field>
-              <Button disabled={busy} onClick={prepare}>
-                {busy ? 'Working…' : 'Prepare PDF'}
-              </Button>
+                {!job &&
+                  plan &&
+                  (plan.initialJobId ? (
+                    <Button
+                      className="mt-4"
+                      variant="secondary"
+                      disabled={busy}
+                      onClick={() =>
+                        action(async () =>
+                          showJob(await read(`label-print-jobs/${plan.initialJobId}`)),
+                        )
+                      }
+                    >
+                      Open initial label job
+                    </Button>
+                  ) : (
+                    <div className="mt-4 space-y-3">
+                      <Field label="Print profile">
+                        {(id) => (
+                          <Select
+                            id={id}
+                            label="Print profile"
+                            value={profile}
+                            onChange={setProfile}
+                            options={plan.profiles
+                              .filter((p) => p.layoutVersion === 2)
+                              .map((p) => ({
+                                value: p.id,
+                                label: `${p.labelWidthMm} × ${p.labelHeightMm} mm · ${p.columns} × ${p.rows} · A4 trial`,
+                              }))}
+                          />
+                        )}
+                      </Field>
+                      <Button disabled={busy} onClick={createInitial}>
+                        Create full-receipt label job
+                      </Button>
+                    </div>
+                  ))}
+                {job && (
+                  <div className="mt-3 space-y-3 border-t border-black/[0.06] pt-3">
+                    {job.kind === 'REPRINT' && (
+                      <h3 className="text-sm font-semibold">Reprint manifest</h3>
+                    )}
+                    {BigInt(job.chunks) > 1n && (
+                      <Field label="PDF part">
+                        {(id) => (
+                          <Input
+                            id={id}
+                            type="number"
+                            min="1"
+                            max={job.chunks}
+                            value={part}
+                            disabled={busy}
+                            onChange={(e) => {
+                              if (!mayDiscard()) return;
+                              const next = e.target.value;
+                              setPart(next);
+                              setAttempt('');
+                              setAck(false);
+                              if (/^[1-9][0-9]*$/.test(next) && BigInt(next) <= BigInt(job.chunks))
+                                loadPart(job, (BigInt(next) - 1n).toString());
+                              else {
+                                setArtifact(null);
+                                setPreviewHash('');
+                              }
+                            }}
+                          />
+                        )}
+                      </Field>
+                    )}
+                    <Disclosure
+                      summary={`${job.profile.labelWidthMm} × ${job.profile.labelHeightMm} mm · Paper settings`}
+                    >
+                      <Footnote>
+                        {job.totalCopies} copies · {job.chunks} PDF part(s), at most 500 copies
+                        each. {job.totalSheets} sheets at default start positions across all parts.
+                        Grid {job.profile.columns} × {job.profile.rows}; gaps{' '}
+                        {job.profile.gapXmm ?? 0}/{job.profile.gapYmm ?? 0} mm; margins{' '}
+                        {job.profile.marginXmm}/{job.profile.marginYmm} mm.
+                      </Footnote>
+                    </Disclosure>
+                  </div>
+                )}
+              </Panel>
+              {job && (
+                <Panel
+                  title="2. First free label"
+                  description={
+                    job.profile.layoutVersion === 2
+                      ? undefined
+                      : 'Historical layout — fixed start and original sheet order.'
+                  }
+                >
+                  <SheetStartPicker
+                    profile={job.profile}
+                    value={sheetStart}
+                    onChange={(next) => {
+                      setSheetStart(next);
+                      setPreviewHash('');
+                    }}
+                    disabled={busy || Boolean(artifact) || job.profile.layoutVersion !== 2}
+                    hasDamaged={job.lines.some((l) => l.purpose === 'DAMAGED_INTAKE')}
+                  />
+                </Panel>
+              )}
+            </Stack>
+            <div className="min-w-0 xl:sticky xl:top-24">
+              <Panel
+                title="3. Preview & inspect"
+                description="Rendered from the same generated PDF used for printing."
+              >
+                {job && validPart ? (
+                  <PdfSheetPreview
+                    job={job}
+                    chunk={chunk}
+                    layout={sheetStart}
+                    artifact={artifact}
+                    onReady={setPreviewHash}
+                  />
+                ) : (
+                  <EmptyState title="Your sheet preview appears here" icon={PrinterIcon}>
+                    Create or open a label job, then choose the first free position. Labels are
+                    generated from the accepted delivery.
+                  </EmptyState>
+                )}
+              </Panel>
             </div>
-
-            {artifact ? (
-              <Stack gap="tight" className="border-t border-black/[0.06] pt-4">
+          </div>
+          {job && (
+            <>
+              {artifact && (
                 <SuccessNotice
                   message={`PDF ready: ${artifact.copies} labels on ${artifact.pages} A4 sheet(s). Not yet confirmed printed.`}
                 />
-
-                <WarningNotice>
-                  Use A4, actual size / 100%. Disable Fit to page and headers/footers. Print one
-                  alignment trial first. Ordinary paper is for cut-and-attach trials; adhesive
-                  sheets and physical scan reliability are not certified.
-                </WarningNotice>
-
-                <div className="flex flex-wrap gap-4">
+              )}
+              <div className="sticky bottom-3 z-10 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-black/10 bg-white/95 p-4 shadow-lg backdrop-blur-sm">
+                <div className="text-xs leading-5 text-grey-2">
+                  <strong className="block text-ink">
+                    {previewHash ? 'Ready · output not confirmed' : 'Preparing preview…'}
+                  </strong>
+                  Print at actual size / 100%.
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="secondary"
+                    disabled={busy || !previewHash || !validPart}
+                    onClick={() => void print(true)}
+                  >
+                    Print alignment test
+                  </Button>
+                  {!artifact && (
+                    <Button
+                      variant="secondary"
+                      disabled={busy || !previewHash || !validPart}
+                      onClick={prepare}
+                    >
+                      Prepare PDF
+                    </Button>
+                  )}
+                  <Button
+                    disabled={busy || !previewHash || !validPart}
+                    onClick={() => void print()}
+                  >
+                    Print {layout?.pages ?? 0} sheets
+                  </Button>
+                </div>
+              </div>
+              {job.events.some((e) => e.kind === 'HANDOFF_REQUESTED' && e.chunk === chunk) && (
+                <label className="flex items-start gap-2 text-sm">
+                  <Checkbox checked={ack} onChange={(e) => setAck(e.target.checked)} />I checked
+                  previous output before starting another print attempt.
+                </label>
+              )}
+              {artifact && (
+                <div className="flex flex-wrap gap-5 text-sm">
                   <a
                     href={artifact.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="font-sans text-[13px] font-semibold tracking-[-0.02em] text-brand underline underline-offset-4 hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                    className="text-brand underline"
                   >
-                    Preview PDF
+                    Open print-ready PDF
                   </a>
-                  <a
-                    href={artifact.url}
-                    download
-                    className="font-sans text-[13px] font-semibold tracking-[-0.02em] text-brand underline underline-offset-4 hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-                  >
+                  <a href={artifact.url} download className="text-brand underline">
                     Download PDF
                   </a>
                 </div>
-
-                <iframe
-                  title="A4 label PDF preview"
-                  src={artifact.url}
-                  className="h-80 w-full rounded-xl border border-black/[0.07] bg-white"
-                />
-
-                {job.events.some(
-                  (entry) =>
-                    entry.kind === 'HANDOFF_REQUESTED' && entry.chunk === artifact.chunk,
-                ) ? (
-                  <label className="flex cursor-pointer items-start gap-2.5 font-sans text-sm leading-[1.6] tracking-[-0.02em] text-ink">
-                    <Checkbox
-                      className="mt-0.5"
-                      checked={ack}
-                      onChange={(changeEvent) => setAck(changeEvent.target.checked)}
-                    />
-                    I checked previous output before starting another print attempt.
-                  </label>
-                ) : null}
-
-                <Button disabled={busy} onClick={print}>
-                  Open PDF to print
-                </Button>
-
-                <Footnote>
-                  The PDF viewer opens; use its Print control. Opening a dialog or downloading a
-                  PDF does not prove physical output. Dayari cannot observe printing outside the
-                  app.
-                </Footnote>
-
-                {attempt ? (
-                  <div className={cn(card, 'space-y-3 p-4')}>
-                    <h3 className="font-sans text-sm font-semibold tracking-[-0.02em] text-ink">
-                      Report this print attempt
-                    </h3>
+              )}
+              <Footnote>
+                Use plain paper for the alignment trial and select a single page in the device
+                dialog. Profile bounds are not a certification of your printer margins. Printing,
+                downloading and opening a dialog do not prove physical output.
+              </Footnote>
+              {attempt && artifact && (
+                <Panel title="Report this print attempt">
+                  <div className="grid gap-4 sm:grid-cols-2">
                     <Field label="Operator-reported copies">
                       {(id) => (
                         <Input
@@ -583,7 +726,7 @@ export function LabelWorkspace({
                           min="1"
                           max={artifact.copies}
                           value={reported}
-                          onChange={(changeEvent) => setReported(changeEvent.target.value)}
+                          onChange={(e) => setReported(e.target.value)}
                         />
                       )}
                     </Field>
@@ -593,195 +736,170 @@ export function LabelWorkspace({
                           id={id}
                           maxLength={1000}
                           value={note}
-                          onChange={(changeEvent) => setNote(changeEvent.target.value)}
+                          onChange={(e) => setNote(e.target.value)}
                         />
                       )}
                     </Field>
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        variant="secondary"
-                        size="compact"
-                        disabled={busy}
-                        onClick={() => action(() => event('OPERATOR_REPORTED_PRINTED'))}
-                      >
-                        Report printed
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        size="compact"
-                        disabled={busy}
-                        onClick={() => action(() => event('OUTCOME_UNKNOWN'))}
-                      >
-                        Output uncertain
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        size="compact"
-                        disabled={busy}
-                        onClick={() => action(() => event('FAILED'))}
-                      >
-                        Report failed
-                      </Button>
-                    </div>
-                    <Footnote>
-                      For partial output, report only the copies you observed. Check physical
-                      output after a jam or cancellation, then use an explicit reprint for spoiled
-                      or missing labels. Duplicate stickers retain the same lot QR; they never
-                      represent extra stock. Nothing prints again automatically.
-                    </Footnote>
                   </div>
-                ) : (
-                  <Button
-                    variant="secondary"
-                    disabled={busy}
-                    onClick={() => action(() => event('CANCELLED_BEFORE_HANDOFF', crypto.randomUUID()))}
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Button
+                      variant="secondary"
+                      disabled={busy}
+                      onClick={() => action(() => event('OPERATOR_REPORTED_PRINTED'))}
+                    >
+                      Report printed
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      disabled={busy}
+                      onClick={() => action(() => event('OUTCOME_UNKNOWN'))}
+                    >
+                      Output uncertain
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      disabled={busy}
+                      onClick={() => action(() => event('FAILED'))}
+                    >
+                      Report failed
+                    </Button>
+                  </div>
+                  <Footnote className="mt-3">
+                    For partial output, report only observed copies. Check physical output after a
+                    jam or cancellation before explicitly reprinting missing labels. Duplicate
+                    stickers retain the same lot identity and never add stock.
+                  </Footnote>
+                </Panel>
+              )}
+              <Panel title="Reprints & evidence">
+                <Stack>
+                  <Disclosure
+                    summary="Explicit reprint"
+                    className="border-t border-black/[0.06] pt-4"
                   >
-                    Cancel before handoff
-                  </Button>
-                )}
-              </Stack>
-            ) : null}
+                    <Stack gap="tight" className="mt-4">
+                      {job.lines.map((line) => (
+                        <div key={line.id} className="flex flex-wrap items-end gap-3">
+                          <label className="flex flex-1 cursor-pointer items-center gap-2.5 font-sans text-sm tracking-[-0.02em] text-ink">
+                            <Checkbox
+                              checked={Boolean(selected[line.id])}
+                              onChange={(changeEvent) =>
+                                setSelected((previous) => ({
+                                  ...previous,
+                                  [line.id]: changeEvent.target.checked ? '1' : '',
+                                }))
+                              }
+                            />
+                            <span className="min-w-0">
+                              <Code>{line.content.fullCode}</Code> · {line.purpose}
+                            </span>
+                          </label>
+                          {selected[line.id] ? (
+                            <Field label="Reprint copies" className="w-32">
+                              {(id) => (
+                                <Input
+                                  id={id}
+                                  type="number"
+                                  min="1"
+                                  max="10000"
+                                  aria-label={`${line.content.fullCode} ${line.purpose} reprint copies`}
+                                  value={selected[line.id]}
+                                  onChange={(changeEvent) =>
+                                    setSelected((previous) => ({
+                                      ...previous,
+                                      [line.id]: changeEvent.target.value,
+                                    }))
+                                  }
+                                />
+                              )}
+                            </Field>
+                          ) : null}
+                        </div>
+                      ))}
 
-            <Disclosure summary="Explicit reprint" className="border-t border-black/[0.06] pt-4">
-              <Stack gap="tight" className="mt-4">
-                {job.lines.map((line) => (
-                  <div key={line.id} className="flex flex-wrap items-end gap-3">
-                    <label className="flex flex-1 cursor-pointer items-center gap-2.5 font-sans text-sm tracking-[-0.02em] text-ink">
-                      <Checkbox
-                        checked={Boolean(selected[line.id])}
-                        onChange={(changeEvent) =>
-                          setSelected((previous) => ({
-                            ...previous,
-                            [line.id]: changeEvent.target.checked ? '1' : '',
-                          }))
-                        }
-                      />
-                      <span className="min-w-0">
-                        <Code>{line.content.fullCode}</Code> · {line.purpose}
-                      </span>
-                    </label>
-                    {selected[line.id] ? (
-                      <Field label="Reprint copies" className="w-32">
+                      <Field label="Reprint reason">
                         {(id) => (
-                          <Input
+                          <Textarea
                             id={id}
-                            type="number"
-                            min="1"
-                            max="10000"
-                            aria-label={`${line.content.fullCode} ${line.purpose} reprint copies`}
-                            value={selected[line.id]}
-                            onChange={(changeEvent) =>
-                              setSelected((previous) => ({
-                                ...previous,
-                                [line.id]: changeEvent.target.value,
-                              }))
-                            }
+                            minLength={10}
+                            maxLength={1000}
+                            value={reason}
+                            onChange={(changeEvent) => setReason(changeEvent.target.value)}
                           />
                         )}
                       </Field>
-                    ) : null}
-                  </div>
-                ))}
 
-                <Field label="Reprint reason">
-                  {(id) => (
-                    <Textarea
-                      id={id}
-                      minLength={10}
-                      maxLength={1000}
-                      value={reason}
-                      onChange={(changeEvent) => setReason(changeEvent.target.value)}
-                    />
-                  )}
-                </Field>
+                      <Button disabled={busy || reason.trim().length < 10} onClick={reprint}>
+                        Create explicit reprint
+                      </Button>
+                    </Stack>
+                  </Disclosure>
 
-                <Button disabled={busy || reason.trim().length < 10} onClick={reprint}>
-                  Create explicit reprint
-                </Button>
-              </Stack>
-            </Disclosure>
-
-            <Disclosure summary="Print attempt history">
-              <ul className="mt-3 space-y-1.5">
-                {job.events.map((entry) => (
-                  <li
-                    key={entry.id}
-                    className="font-sans text-xs leading-[1.7] tracking-[-0.02em] text-grey-2"
-                  >
-                    {formatDateTime(entry.createdAt)} · {entry.kind.replaceAll('_', ' ')} ·{' '}
-                    {entry.copies} reported/requested copies
-                    {entry.note ? ` · ${entry.note}` : ''}
-                  </li>
-                ))}
-              </ul>
-              <Footnote className="mt-2">
-                Manifest counts, handed-off counts and operator reports are separate evidence,
-                never verified affixed units.
-              </Footnote>
-            </Disclosure>
-          </Stack>
-        </Panel>
-      ) : null}
-
-      {!compact ? (
-        <Panel
-          title="Recent label jobs"
-          description="Latest 100 manifests. Reopening a job never sends it to a printer."
-          flush
-        >
-          {!jobs.length ? (
-            <EmptyState title="No label jobs yet" icon={PrinterIcon}>
-              Select an accepted receipt to create its label plan.
-            </EmptyState>
-          ) : (
-            <div className="grid gap-3 p-5 sm:grid-cols-2">
-              {jobs.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  disabled={busy}
-                  onClick={() =>
-                    action(async () => showJob(await read(`label-print-jobs/${item.id}`)))
-                  }
-                  className={cn(
-                    card,
-                    'p-4 text-left transition-shadow hover:shadow-[0_10px_30px_rgba(0,0,0,0.06)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:opacity-60',
-                  )}
-                >
-                  <span className="flex items-center justify-between gap-2">
-                    <Badge tone={item.kind === 'INITIAL' ? 'brand' : 'neutral'}>{item.kind}</Badge>
-                    <span className="font-sans text-xs tracking-[-0.02em] text-grey-3">
-                      {formatDate(item.createdAt)}
-                    </span>
-                  </span>
-                  <span className="mt-2.5 block font-sans text-sm font-semibold tracking-[-0.02em] text-ink">
-                    {item.totalCopies} copies
-                  </span>
-                </button>
-              ))}
-            </div>
+                  <Disclosure summary="Print attempt history">
+                    <ul className="mt-3 space-y-1.5">
+                      {job.events.map((entry) => (
+                        <li
+                          key={entry.id}
+                          className="font-sans text-xs leading-[1.7] tracking-[-0.02em] text-grey-2"
+                        >
+                          {formatDateTime(entry.createdAt)} · {entry.kind.replaceAll('_', ' ')} ·{' '}
+                          {entry.copies} reported/requested copies
+                          {entry.note ? ` · ${entry.note}` : ''}
+                        </li>
+                      ))}
+                    </ul>
+                    <Footnote className="mt-2">
+                      Manifest counts, handed-off counts and operator reports are separate evidence,
+                      never verified affixed units.
+                    </Footnote>
+                  </Disclosure>
+                </Stack>
+              </Panel>
+            </>
           )}
-        </Panel>
-      ) : null}
+        </>
+      )}
+      {!compact && (
+        <Disclosure summary="Recent label jobs">
+          <div className="mt-3 divide-y divide-black/[0.06]">
+            {jobs.length ? (
+              jobs.map((item) => (
+                <button
+                  type="button"
+                  key={item.id}
+                  disabled={busy}
+                  className="flex w-full items-center justify-between gap-3 py-1.5 text-left text-sm"
+                  onClick={() => {
+                    if (mayDiscard())
+                      void action(async () => showJob(await read(`label-print-jobs/${item.id}`)));
+                  }}
+                >
+                  <span>
+                    {item.kind} · {item.totalCopies} copies
+                  </span>
+                  <span className="text-xs text-grey-2">{formatDate(item.createdAt)}</span>
+                </button>
+              ))
+            ) : (
+              <p className="text-sm text-grey-2">No label jobs yet.</p>
+            )}
+          </div>
+        </Disclosure>
+      )}
     </Stack>
   );
-
-  if (compact) {
-    return (
-      <section aria-label="Label printing" className="mt-5 border-t border-black/[0.06] pt-5">
-        {body}
-      </section>
-    );
-  }
-
-  return (
+  return compact ? (
+    <section aria-label="Label printing" className="mt-5 border-t border-black/[0.06] pt-5">
+      {body}
+    </section>
+  ) : (
     <Page>
       <PageHeader
         eyebrow="Delivery identification"
         title="Labels & printing"
-        description="Create an immutable label manifest from an accepted receipt. Inspect the A4 PDF, print explicitly, then report the outcome. Printing never changes inventory."
+        description="Choose a delivery, position your labels, inspect the PDF and print."
       />
-      <section aria-label="Label printing" className="mt-8">
+      <section aria-label="Label printing" className="mt-6">
         {body}
       </section>
     </Page>

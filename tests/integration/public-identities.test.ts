@@ -140,7 +140,7 @@ it('rehearses legacy migration and resumable mapping backfill without touching o
   await pg.query('COMMIT');
   const legacy=await pg.query('SELECT count(*)::int AS n FROM "StockLot"');expect(legacy.rows[0].n).toBeGreaterThan(0);
   for(const name of migrations.filter(n=>n>='202611030007'))await pg.query(await readFile(`prisma/migrations/${name}/migration.sql`,'utf8'));
-  isolated=new PrismaClient({adapter:new PrismaPg({connectionString:url,options:`-c search_path=${schema},public`},{schema})});
+  isolated=new PrismaClient({adapter:new PrismaPg({connectionString:url,options:`-c search_path=${schema},public -c timezone=UTC`},{schema})});
   expect(await isolated.productPublicIdentity.count()).toBe(0);expect(await isolated.lotPublicIdentity.count()).toBe(0);
   const before=await snapshot(isolated),actor=await isolated.user.findUniqueOrThrow({where:{id:adminId}}),labels=new LabelsService(isolated,originId,'SHOP');
   const pdfBefore=(await labels.pdf(actor,job.id,'0')).bytes;const qr=encodeQr(originId,receipt.lines[0].lotId);

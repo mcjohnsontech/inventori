@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
-const allowed = /^(invitations\/accept|admin\/invitations(?:\/[0-9a-fA-F-]{36}\/(?:resend|revoke))?|inventory\/(products|lots)\/by-code\/[A-Za-z0-9]{6}|qr\/(resolve|manual|manual-sources)|label-print-jobs(?:\/[0-9a-fA-F-]{36}(?:\/events|\/artifacts\/[0-9]{1,12}(?:\.pdf)?)?)?|receipts\/[0-9a-fA-F-]{36}\/label-plan|receiving\/options|receipts(?:\/[0-9a-fA-F-]{36})?|stock(?:\/lots\/[0-9a-fA-F-]{36})?|sessions|sessions\/logout|me|availability|account(?:\/password)?|admin\/users(?:\/[0-9a-fA-F-]{36}(?:\/(?:update|revoke))?)?|admin\/shop|catalogue|catalogue\/(products|suppliers|sources|attributes|values|variants|skus|supplier-setups|product-setups))$/;
+const allowed = /^(invitations\/accept|admin\/invitations(?:\/[0-9a-fA-F-]{36}\/(?:resend|revoke))?|inventory\/(products|lots)\/by-code\/[A-Za-z0-9]{6}|qr\/(resolve|manual|manual-sources)|label-print-jobs(?:\/[0-9a-fA-F-]{36}(?:\/preview|\/events|\/artifacts\/[0-9]{1,12}(?:\.pdf)?)?)?|receipts\/[0-9a-fA-F-]{36}\/label-plan|receiving\/options|receipts(?:\/[0-9a-fA-F-]{36})?|stock(?:\/lots\/[0-9a-fA-F-]{36})?|sessions|sessions\/logout|me|availability|account(?:\/password)?|admin\/users(?:\/[0-9a-fA-F-]{36}(?:\/(?:update|revoke))?)?|admin\/shop|catalogue|catalogue\/(products|suppliers|sources|attributes|values|variants|skus|supplier-setups|product-setups))$/;
 async function handle(request: NextRequest, context: { params: Promise<{ path: string[] }> }) {
   const path = (await context.params).path.join('/');
   if (path.startsWith('invitations/') && request.nextUrl.search) return NextResponse.json({message:'Query credentials rejected'},{status:400});

@@ -107,7 +107,8 @@ test('Admin product extension, deep links and complete responsive workspaces use
       if (key === 'labels') {
         await page.getByLabel('Search label receipts', { exact: true }).fill(receipt.batch.publicCode);
         await choose(page, 'Accepted receipt', receipt.id);
-        await expect(page.getByText(`Label plan · ${receipt.batch.publicCode}`, { exact: true })).toBeVisible();
+        await expect(page.getByRole('heading', { name: '1. Print queue', exact: true })).toBeVisible();
+        await expect(page.getByText(`Batch ${receipt.batch.publicCode}`, { exact: true })).toBeVisible();
       }
       if (key === 'settings') await expect(page.getByText('Africa/Lagos', { exact: true })).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${key} at ${width}px`).toBe(true);

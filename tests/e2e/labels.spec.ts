@@ -1,8 +1,9 @@
+import { mkdir } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { expect,test } from '@playwright/test';
 import { choose } from './ui.js';
 test('A4 label workflow, explicit reprint, uncertain output and Production read-only lookup',async({page})=>{
- test.setTimeout(120000);
+ test.setTimeout(180000);
  // Local-only assets and APIs: simulate unavailable internet while retaining shop access.
  await page.route('**/*',route=>{const url=new URL(route.request().url());return ['127.0.0.1','localhost'].includes(url.hostname)||url.protocol==='blob:'?route.continue():route.abort();});
  await page.addInitScript(()=>{Object.defineProperty(navigator,'mediaDevices',{configurable:true,value:{getUserMedia:()=>Promise.reject(new DOMException('Denied for browser test','NotAllowedError'))}});});
@@ -17,11 +18,22 @@ test('A4 label workflow, explicit reprint, uncertain output and Production read-
  await page.getByText('Print labels for this receipt',{exact:true}).click();
  const labels=page.getByRole('region',{name:'Label printing',exact:true});await expect(labels.getByText('Total 65',{exact:false})).toBeVisible();
  const created=page.waitForResponse(r=>r.url().endsWith('/api/label-print-jobs')&&r.request().method()==='POST');await labels.getByRole('button',{name:'Create full-receipt label job',exact:true}).click();const job=await(await created).json();expect(job.totalCopies).toBe('65');
- await labels.getByRole('button',{name:'Prepare PDF',exact:true}).click();await expect(labels.getByRole('status')).toContainText('65 labels on 4 A4 sheet(s)');
+ await labels.getByRole('button',{name:'Start at label 6',exact:true}).click();
+ await labels.getByRole('button',{name:'Damaged start',exact:true}).click();await labels.getByRole('button',{name:'Start at label 4',exact:true}).click();
+ await expect(labels.getByRole('button',{name:'Prepare PDF',exact:true})).toBeEnabled({timeout:60000});
+ await expect(labels.locator('iframe')).toHaveCount(0);
+ await expect(labels.getByLabel('Selected label from generated PDF')).toBeVisible();
+ await expect(labels.getByText('Sheet 1 of 5',{exact:true})).toBeVisible();
+ await labels.getByRole('button',{name:'Next sheet',exact:true}).click();await expect(labels.getByText('Sheet 2 of 5',{exact:true})).toBeVisible();await labels.getByRole('button',{name:'Previous sheet',exact:true}).click();
+ await labels.getByRole('button',{name:'Prepare PDF',exact:true}).click();await expect(labels.getByRole('status')).toContainText('65 labels on 5 A4 sheet(s)');
+ await expect(labels.getByRole('button',{name:'Start at label 4',exact:true})).toBeDisabled();
  const pdf=await page.request.get(`/api/label-print-jobs/${job.id}/artifacts/0.pdf`);expect(pdf.status()).toBe(200);expect(pdf.headers()['content-type']).toContain('application/pdf');expect((await pdf.body()).subarray(0,4).toString()).toBe('%PDF');
  const download=page.waitForEvent('download');await labels.getByRole('link',{name:'Download PDF',exact:true}).click();await(await download).saveAs('test-results/qr-labels/browser-initial.pdf');
+ await labels.getByRole('button',{name:'Print 5 sheets',exact:true}).waitFor({state:'visible'});
+ const visual=await page.context().newPage();
+ try{await visual.route('**/*',route=>{const url=new URL(route.request().url());return ['127.0.0.1','localhost'].includes(url.hostname)||url.protocol==='blob:'?route.continue():route.abort();});await visual.goto(`/#labels/${job.id}`);await expect(visual.getByRole('button',{name:'Print 5 sheets',exact:true})).toBeEnabled({timeout:60000});await mkdir('docs/images/labels-redesign',{recursive:true});for(const width of [320,390,768,1024,1440]){await visual.setViewportSize({width,height:1000});expect(await visual.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`page overflow at ${width}`).toBe(true);await visual.screenshot({path:`docs/images/labels-redesign/workspace-${width}.png`,fullPage:true});}await visual.getByRole('button',{name:'Next sheet',exact:true}).click();await expect(visual.getByText('Sheet 2 of 5',{exact:true})).toBeVisible();await visual.screenshot({path:'docs/images/labels-redesign/second-sheet.png',fullPage:true});}finally{await visual.close();}
  await page.screenshot({path:'test-results/labels-desktop.png'});await page.setViewportSize({width:390,height:844});await page.screenshot({path:'test-results/labels-mobile.png'});await page.setViewportSize({width:1280,height:900});
- const popup=page.waitForEvent('popup');await labels.getByRole('button',{name:'Open PDF to print',exact:true}).click();const preview=await popup;await expect(labels.getByText('Report this print attempt',{exact:true})).toBeVisible();await preview.close();
+ const popup=page.waitForEvent('popup');await labels.getByRole('button',{name:'Print 5 sheets',exact:true}).click();const preview=await popup;await expect(labels.getByText('Report this print attempt',{exact:true})).toBeVisible();await preview.close();
  await labels.getByLabel('Print outcome note',{exact:true}).fill('Output uncertain after simulated cancellation');await labels.getByRole('button',{name:'Output uncertain',exact:true}).click();
  await labels.getByText('Explicit reprint',{exact:true}).click();const first=job.lines.find((line:any)=>line.purpose==='USABLE');await labels.getByRole('checkbox',{name:`${first.content.fullCode} · USABLE`,exact:true}).check();await labels.getByRole('spinbutton',{name:`${first.content.fullCode} USABLE reprint copies`,exact:true}).fill('501');await labels.getByLabel('Reprint reason',{exact:true}).fill('Printer jam spoiled the intended labels');await expect(labels.getByRole('button',{name:'Create explicit reprint',exact:true})).toBeEnabled();let discardWarning=false;page.once('dialog',async dialog=>{discardWarning=true;await dialog.dismiss();});await page.getByRole('button',{name:'QR lookup',exact:true}).click();expect(discardWarning).toBe(true);await expect(page).toHaveURL(/#receipts\//);await expect(labels.getByRole('spinbutton',{name:`${first.content.fullCode} USABLE reprint copies`,exact:true})).toHaveValue('501');await expect(labels.getByLabel('Reprint reason',{exact:true})).toHaveValue('Printer jam spoiled the intended labels');await labels.getByRole('button',{name:'Create explicit reprint',exact:true}).click();await expect(labels.getByRole('heading',{name:'Reprint manifest',exact:true})).toBeVisible();
  await labels.getByLabel('PDF part',{exact:true}).fill('2');await labels.getByRole('button',{name:'Prepare PDF',exact:true}).click();await expect(labels.getByRole('status')).toContainText('1 labels on 1 A4 sheet(s)');
