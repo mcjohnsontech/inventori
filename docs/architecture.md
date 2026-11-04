@@ -140,3 +140,6 @@ Only the injected isolated transport exists in this release. No SMTP adapter or 
 ## Local PDF preview and versioned sheet layouts — 4 November 2026
 
 A read-only authenticated preview renders the same local PDF generator used for accepted artifacts. The frontend bundles PDF.js and its worker; page canvases and label crops never regenerate QR artwork. New v2 profiles add gap/bounds and separate purpose-sheet planning. Start positions freeze in immutable ARTIFACT_READY metadata per bounded PDF part. Preparing/handoff reuses existing command/audit/outbox patterns and never touches stock. Historical v1 rendering stays available; accepted manifest timestamps are stable PDF metadata inputs independent of connection-timezone changes. See labels-printing-redesign-report.md.
+
+## SMTP invitation adapter — 4 November 2026
+The existing encrypted invitation queue now supports an explicit SMTP adapter alongside isolated tests. STARTTLS/certificate checks, bounded network deadlines and sanitized provider errors apply. Delivery happens outside transactions; payload mode fencing prevents sending isolated messages after cutover. Stable message identity and single-use tokens tolerate uncertain retries. Live readiness fails closed without verified configuration. Local migrations 011/012 applied with owner approval; no production rollout.

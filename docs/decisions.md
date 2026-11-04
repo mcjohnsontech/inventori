@@ -194,3 +194,6 @@ CONFIRMED owner request: in-page rendering of the same PDF used for printing, pa
 ## Printing workflow correction — 4 November 2026
 
 CONFIRMED owner direction supersedes the earlier operator-outcome UI: no printed/failed/uncertain form and no acknowledgement checkbox before another print request. Operators use existing selective reprints for replacements. Print handoff requests continue to be recorded automatically; no physical-success event is fabricated. Existing historical operator reports and backend compatibility remain immutable. Reprint manifest validation, reason, authorization, idempotency and no-stock-effects rules remain unchanged. UI layout corrections require no schema or operational migration.
+
+## Invitation SMTP and local upgrade — 4 November 2026
+CONFIRMED: owner approved applying local migrations 011/012 after private backup; applied and preservation verified. A real SMTP adapter is implemented but live delivery remains gated on verified sender, private credentials and employee-accessible HTTPS URL. Isolated transport remains for tests; it never claims real email. Existing accounts cannot be recovered through invitations. See invitation-email-implementation-report.md.

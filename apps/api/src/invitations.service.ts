@@ -20,7 +20,7 @@ export class InvitationsService {
   const tables=await this.db.$queryRaw<{ready:boolean}[]>`SELECT to_regclass('public."StaffInvitation"') IS NOT NULL AS ready`;
   if(!tables[0]?.ready)throw new ServiceUnavailableException('Invitation database upgrade requires owner approval. Existing account provisioning remains available.');
  }
- async list(user:User){requireCapability(user,'STAFF_ADMIN');await this.ready();const rows=await this.db.staffInvitation.findMany({where:{originId:this.originId},include:{state:true,mail:true},orderBy:[{createdAt:'desc'},{id:'asc'}],take:100});return {mode:'isolated',invitations:rows.map(i=>this.dto(i))};}
+ async list(user:User){requireCapability(user,'STAFF_ADMIN');await this.ready();const rows=await this.db.staffInvitation.findMany({where:{originId:this.originId},include:{state:true,mail:true},orderBy:[{createdAt:'desc'},{id:'asc'}],take:100});return {mode:this.config!.transport.mode,invitations:rows.map(i=>this.dto(i))};}
  private dto(i:Prisma.StaffInvitationGetPayload<{include:{state:true;mail:true}}>):InvitationSummary{return {id:i.id,name:i.name,email:i.email,role:i.role,status:i.state?.status==='PENDING'&&i.expiresAt<=new Date()?'EXPIRED':i.state?.status??'UNAVAILABLE',delivery:i.mail?.status??'UNAVAILABLE',expiresAt:i.expiresAt.toISOString(),createdAt:i.createdAt.toISOString()};}
  private async lock(tx:Prisma.TransactionClient){const nodes=await tx.$queryRaw<{mode:string}[]>`SELECT mode FROM "OriginNode" WHERE id=${this.originId}::uuid FOR UPDATE`;if(nodes[0]?.mode!=='SHOP')throw new ForbiddenException();}
  private async evidence(tx:Prisma.TransactionClient,actor:User,id:string,type:string,key:string,hash:string,response:object,commandId:string){
@@ -52,7 +52,7 @@ export class InvitationsService {
    const pending=await tx.staffInvitation.findFirst({where:{originId:this.originId,email:details.email,state:{status:'PENDING'},expiresAt:{gt:new Date()}}});
    if(pending)throw new ConflictException('A pending invitation already exists. Resend or revoke it first.');
    const token=randomBytes(32).toString('base64url'),newId=randomUUID(),now=new Date(),url=new URL('/accept-invitation',this.config!.publicUrl);url.searchParams.set('token',token);
-   const created=await tx.staffInvitation.create({data:{id:newId,originId:this.originId,creatorId:actor.id,creatorVersion:actor.authVersion,name:details.name,email:details.email,role:details.role,tokenHash:digest(token),createdAt:now,expiresAt:new Date(now.valueOf()+86400000),commandId,state:{create:{}},events:{create:{type:'CREATED',commandId}},mail:{create:{encryptedPayload:encryptInvitation({to:details.email,name:details.name,url:url.toString()},this.config!.key)}}},include:{state:true,mail:true}});
+   const created=await tx.staffInvitation.create({data:{id:newId,originId:this.originId,creatorId:actor.id,creatorVersion:actor.authVersion,name:details.name,email:details.email,role:details.role,tokenHash:digest(token),createdAt:now,expiresAt:new Date(now.valueOf()+86400000),commandId,state:{create:{}},events:{create:{type:'CREATED',commandId}},mail:{create:{encryptedPayload:encryptInvitation({to:details.email,name:details.name,url:url.toString(),invitationId:newId,deliveryMode:this.config!.transport.mode},this.config!.key)}}},include:{state:true,mail:true}});
    const response=this.dto(created);await this.evidence(tx,actor,newId,type,key,hash,response,commandId);return response;
   },{timeout:15000,maxWait:10000});
  }
@@ -86,7 +86,7 @@ export class InvitationsService {
    return tx.invitationMail.update({where:{invitationId:i.id},data:{leaseId,leaseUntil:new Date(Date.now()+60000),attempts:{increment:1}}});
   });
   if(!claim?.encryptedPayload)return false;let sent=false;
-  try{await this.config!.transport.send(decryptInvitation(claim.encryptedPayload,this.config!.key));sent=true;}catch{/* Never log transport error: it can contain recipient credentials or links. */}
+  try{const message=decryptInvitation(claim.encryptedPayload,this.config!.key);if((message.deliveryMode??'isolated')!==this.config!.transport.mode)throw new Error('Delivery mode changed');await this.config!.transport.send(message);sent=true;}catch{/* Never log transport error: it can contain recipient credentials or links. */}
   await this.db.$transaction(async tx=>{
    await this.lock(tx);const current=await tx.invitationMail.findUnique({where:{invitationId:claim.invitationId}});if(current?.leaseId!==leaseId||current.status!=='PENDING')return;
    await tx.invitationMail.update({where:{invitationId:claim.invitationId},data:{status:sent?'SENT':claim.attempts>=5?'FAILED':'PENDING',...(sent||claim.attempts>=5?{encryptedPayload:null}:{}),leaseId:null,leaseUntil:null,availableAt:new Date(Date.now()+60000*2**claim.attempts),updatedAt:new Date()}});

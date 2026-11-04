@@ -51,4 +51,27 @@ describe('secure isolated staff invitations',()=>{
   await accept(token).expect(200);
  });
  it('database rejects immutable invitation/event mutation and terminal-state reuse',async()=>{const i=await issued(),token=await secret(i.id);await accept(token).expect(200);await expect(db.staffInvitation.update({where:{id:i.id},data:{email:'changed@example.test'}})).rejects.toThrow();await expect(db.invitationState.update({where:{invitationId:i.id},data:{status:'PENDING',userId:null}})).rejects.toThrow();await expect(db.invitationEvent.deleteMany({where:{invitationId:i.id}})).rejects.toThrow();});
+ it('queues SMTP work atomically, exposes the real mode and activates only after explicit acceptance',async()=>{
+  const origin=randomUUID();await db.originNode.create({data:{id:origin,mode:'SHOP'}});
+  const admin=await db.user.create({data:{email:`${randomUUID()}@smtp.test`,name:'Mail Admin',role:'ADMIN',passwordHash:passwordHash(password),membership:{create:{originId:origin}}}});
+  const captured:import('../../apps/api/src/invitation-mail.js').InvitationMessage[]=[];
+  const smtpConfig={publicUrl:'https://mail-fixture.example',key:randomBytes(32),transport:{mode:'smtp' as const,async send(mail:import('../../apps/api/src/invitation-mail.js').InvitationMessage){captured.push(mail);}}};
+  const smtp=new InvitationsService(db,origin,'SHOP',smtpConfig),data=body(),key=randomUUID();
+  const invited=await smtp.command(admin,'create',null,key,data) as {id:string};
+  expect((await smtp.list(admin)).mode).toBe('smtp');expect(await db.user.findUnique({where:{email:data.email}})).toBeNull();
+  expect((await smtp.command(admin,'create',null,key,data) as {id:string}).id).toBe(invited.id);
+  await smtp.deliverOne();expect(captured).toHaveLength(1);expect(captured[0]?.deliveryMode).toBe('smtp');expect(captured[0]?.invitationId).toBe(invited.id);
+  const mail=await db.invitationMail.findUniqueOrThrow({where:{invitationId:invited.id}});expect(mail.status).toBe('SENT');expect(mail.encryptedPayload).toBeNull();
+  expect(await db.user.findUnique({where:{email:data.email}})).toBeNull();
+  await smtp.accept({token:new URL(captured[0]!.url).searchParams.get('token'),password:'abc789',confirmation:'abc789'},randomUUID());
+  const enrolled=await db.user.findUniqueOrThrow({where:{email:data.email},include:{membership:true}});expect(enrolled.role).toBe('MANAGER');expect(enrolled.membership?.originId).toBe(origin);
+ });
+ it('never sends previously isolated queue payloads after SMTP is enabled',async()=>{
+  const origin=randomUUID();await db.originNode.create({data:{id:origin,mode:'SHOP'}});
+  const admin=await db.user.create({data:{email:`${randomUUID()}@cutover.test`,name:'Cutover Admin',role:'ADMIN',passwordHash:passwordHash(password),membership:{create:{originId:origin}}}});
+  const localConfig={...config,transport:new IsolatedInvitationTransport()};
+  const local=new InvitationsService(db,origin,'SHOP',localConfig),invited=await local.command(admin,'create',null,randomUUID(),body()) as {id:string};
+  let sends=0;const smtp=new InvitationsService(db,origin,'SHOP',{...localConfig,transport:{mode:'smtp',async send(){sends++;}}});
+  expect(await smtp.deliverOne()).toBe(false);expect(sends).toBe(0);expect((await db.invitationMail.findUniqueOrThrow({where:{invitationId:invited.id}})).status).toBe('PENDING');
+ });
 });

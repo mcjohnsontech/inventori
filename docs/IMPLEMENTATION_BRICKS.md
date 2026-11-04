@@ -89,3 +89,6 @@ Owner authorized implementation after Slices 1–3 and confirmed 24-hour/new-ema
 ## Brick 5B layout refinement — 4 November 2026
 
 Owner authorized a lot-label screen redesign: actual generated-PDF canvas preview and inspector, sheet paging, first-free-slot selection, purpose-separated sheets and data-driven bounds validation. New v2 label layouts preserve DYI:1 identities; historical v1 artifacts/reprints retain their original renderer and hashes. No schema migration or inventory changes. See labels-printing-redesign-report.md for executed checks and browser evidence. Physical printer/media/scan acceptance remains pending; this does not authorize unit serialization, new stock transitions or deployment.
+
+## Staff invitation SMTP slice — 4 November 2026
+SMTP implementation and isolated verification complete; local 011/012 upgrade approved/applied with preservation checks. Live email not enabled pending verified sender/URL/private credentials. No stock effects or future inventory phases. See invitation-email-implementation-report.md.

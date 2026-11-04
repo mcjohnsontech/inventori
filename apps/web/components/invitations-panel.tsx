@@ -6,7 +6,19 @@ import { Button } from './ui/button';
 import { Badge } from './ui/workspace';
 import { Disclosure } from './ui/disclosure';
 export function InvitationsPanel() {
-  const list = useApiRead<{ mode: string; invitations: InvitationSummary[] }>('admin/invitations');
+  type Directory = { mode: 'isolated' | 'smtp'; invitations: InvitationSummary[] };
+  const list = useApiRead<Directory>('admin/invitations');
+  const previous = useRef<Directory | null>(null);
+  const directory = list.data ?? previous.current;
+  const [lastId, setLastId] = useState('');
+  const latest = directory?.invitations.find(invitation => invitation.id === lastId);
+  useEffect(() => { if (list.data) previous.current = list.data; }, [list.data]);
+  const pendingDelivery = directory?.invitations.some(invitation => invitation.status === 'PENDING' && invitation.delivery === 'PENDING');
+  useEffect(() => {
+    if (!pendingDelivery || list.error) return;
+    const timer = setInterval(list.refresh, 6000);
+    return () => clearInterval(timer);
+  }, [pendingDelivery, list.error, list.refresh]);
   const [open, setOpen] = useState(false),
     [busy, setBusy] = useState(false),
     [dirty, setDirty] = useState(false),
@@ -40,7 +52,7 @@ export function InvitationsPanel() {
     setBusy(true);
     setError('');
     try {
-      await api(path, {
+      const result = await api<{ id: string }>(path, {
         method: 'POST',
         headers: { 'Idempotency-Key': pending.current.key },
         body: JSON.stringify(body),
@@ -50,7 +62,10 @@ export function InvitationsPanel() {
       setOpen(false);
       form.reset();
       list.refresh();
-      setNotice('Invitation saved in the isolated transport. No real email was sent.');
+      setLastId(result.id);
+      setNotice(path.endsWith('/revoke') ? 'Invitation revoked. Its setup link no longer works.' :
+        directory?.mode === 'smtp' ? 'Invitation queued for email. Delivery status will update automatically.' :
+        'Test invitation saved. No real email was sent.');
     } catch (failure) {
       setError((failure as Error).message);
     } finally {
@@ -62,15 +77,14 @@ export function InvitationsPanel() {
     <section className="surface mb-5 p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold">Staff invitations</h2>
+          <h2 className="text-lg font-semibold">Add staff by email</h2>
           <p className="mt-1 text-sm text-stone-500">
-            Employees choose their own password. Live email remains disabled pending sender and URL
-            verification.
+            {directory?.mode === 'smtp' ? 'Send a secure setup link. The employee chooses their own password; the link expires after 24 hours.' :
+             'Employees choose their own password. Email delivery is not enabled in this environment.'}
           </p>
         </div>
         <Button
-          variant="outline"
-          disabled={busy || !list.data}
+          disabled={busy || !directory || Boolean(list.error)}
           onClick={() => {
             if (open && dirty && !confirm('Discard the unsaved invitation?')) return;
             setOpen(!open);
@@ -87,6 +101,12 @@ export function InvitationsPanel() {
           {notice}
         </p>
       )}
+      {latest && <p className="mt-2 text-sm text-grey-2" aria-live="polite">
+        {latest.email} · {latest.status === 'ACCEPTED' ? 'Account activated' : latest.delivery === 'SENT' ?
+          directory?.mode === 'smtp' ? 'Accepted by email server — awaiting staff setup' : 'Captured by test transport — no email sent' :
+          latest.delivery === 'FAILED' ? 'Email delivery failed. Check mail settings, then resend the invitation.' :
+          latest.delivery === 'CANCELLED' ? 'Delivery cancelled' : 'Email queued — waiting for delivery'}
+      </p>}
       {open && (
         <form
           onSubmit={send}
@@ -142,13 +162,13 @@ export function InvitationsPanel() {
             Retry invitation service
           </Button>
         </div>
-      ) : list.data?.invitations.length ? (
+      ) : directory?.invitations.length ? (
         <Disclosure
-          summary={`Invitation history (${list.data.invitations.length})`}
+          summary={`Invitation history (${directory.invitations.length})`}
           className="mt-4"
         >
           <div className="max-h-96 divide-y overflow-y-auto">
-            {list.data.invitations.map((i) => (
+            {directory.invitations.map((i) => (
               <div key={i.id} className="py-3">
                 <div className="flex flex-wrap justify-between gap-2">
                   <span>

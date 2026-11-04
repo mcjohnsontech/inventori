@@ -183,3 +183,6 @@ Actual final results and limitations are recorded in admin-experience-implementa
 ## Label layout / preview refinement — 4 November 2026
 
 FR-02/FR-20/PRD 15.4: versioned v2 layout makes SKU largest, separates damaged sheets and marks damage in monochrome; local PDF.js renders actual PDF and crop inspector. FR-12/FR-14: immutable prepared layout/hash, read-only preview, unchanged print roles and no inventory effects. Tests: label-layout unit, labels integration, public-identities UTC rehearsal, labels browser workflow. Hardware/physical scan acceptance remains open; no QR payload change.
+
+## Staff email delivery — 4 November 2026
+Approved secure staff onboarding maps to SMTP adapter/configuration, delivery status UI, isolated TLS unit tests, queue/activation integration tests and invitation/account browser checks. No plaintext password email or account recovery. Local invitation migration approved/applied; live SMTP configuration remains gated. See invitation-email-implementation-report.md.
