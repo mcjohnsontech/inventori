@@ -1,0 +1,9 @@
+import {expect,it} from 'vitest';
+import type {Catalogue,OperationalStock} from '@dayari/contracts';
+import {stockOverview} from '../../apps/web/lib/stock-overview.js';
+it('aggregates only exact variants across source SKUs/batches, retains provenance and safe BIGINT quantities',()=>{
+ const catalogue={products:[{id:'p',name:'Milk',attributes:[],variants:[{id:'v1',name:'Small',combinationKey:''},{id:'v2',name:'Large',combinationKey:''},{id:'v3',name:'Never',combinationKey:''}]},{id:'p2',name:'Pen',attributes:[],variants:[{id:'v4',name:'Small',combinationKey:''}]}],skus:[{id:'s1',variantId:'v1'},{id:'s2',variantId:'v1'},{id:'s3',variantId:'v2'},{id:'s4',variantId:'v4'}]} as unknown as Catalogue;
+ const stock={lots:[{lotId:'l1',skuId:'s1',usable:'9007199254740993',damaged:'1'},{lotId:'l2',skuId:'s1',usable:'5',damaged:'0'},{lotId:'l3',skuId:'s2',usable:'2',damaged:'3'},{lotId:'l4',skuId:'s3',usable:'0',damaged:'8'}]} as OperationalStock;
+ const rows=stockOverview(catalogue,stock);expect(rows).toHaveLength(4);expect(rows[0]).toMatchObject({usable:'9007199254741000',damaged:'4',status:'available'});expect(rows[0]!.lots.map(l=>l.lotId)).toEqual(['l1','l2','l3']);expect(rows[1]).toMatchObject({usable:'0',damaged:'8',status:'empty'});expect(rows[2]).toMatchObject({usable:'0',status:'unreceived'});expect(rows[3]).toMatchObject({productId:'p2',usable:'0',status:'unreceived'});expect(stock.lots[0]!.usable).toBe('9007199254740993');
+});
+it('does not show unused default placeholder as a configured variant',()=>{const cat={products:[{id:'p',name:'Notebook',attributes:[{id:'colour'}],variants:[{id:'default',name:'Default',combinationKey:''},{id:'red',name:'Red',combinationKey:'red'}]}],skus:[]} as unknown as Catalogue;expect(stockOverview(cat,{lots:[]} as unknown as OperationalStock).map(r=>r.variantId)).toEqual(['red']);});

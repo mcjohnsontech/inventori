@@ -1,3 +1,4 @@
+import { requireCapability } from './permissions.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { BadRequestException, ConflictException, ForbiddenException, HttpException, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { Prisma, type PrismaClient, type User } from '@prisma/client';
@@ -14,8 +15,8 @@ export class LabelsService {
  private activeRenders=0;
  private reads=new Map<string,{at:number;count:number}>();
  constructor(readonly db:PrismaClient,readonly originId:string,readonly mode:string){}
- private printRole(user:User){if(!user.active||!['ADMIN','MANAGER'].includes(user.role))throw new ForbiddenException('Label administration requires Admin or Manager');}
- private lookupRole(user:User){if(!user.active||!['ADMIN','MANAGER','PRODUCTION'].includes(user.role))throw new ForbiddenException();const now=Date.now();if(this.reads.size>10000)for(const [id,row] of this.reads)if(now-row.at>60000)this.reads.delete(id);const prior=this.reads.get(user.id);const row=prior&&now-prior.at<60000?prior:{at:now,count:0};if(++row.count>120)throw new HttpException('Too many lookup requests; try again shortly',429);this.reads.set(user.id,row);}
+ private printRole(user:User){requireCapability(user,'PRINT_ADMIN');}
+ private lookupRole(user:User){requireCapability(user,'IDENTIFY');const now=Date.now();if(this.reads.size>10000)for(const [id,row] of this.reads)if(now-row.at>60000)this.reads.delete(id);const prior=this.reads.get(user.id);const row=prior&&now-prior.at<60000?prior:{at:now,count:0};if(++row.count>120)throw new HttpException('Too many lookup requests; try again shortly',429);this.reads.set(user.id,row);}
  async resolve(user:User,input:unknown){this.lookupRole(user);const body=parse(qrRequestSchema,input);let identity;try{identity=decodeQr(body.payload);}catch(e){if(e instanceof QrError){if(e.kind==='UNSUPPORTED_QR_VERSION')throw new UnprocessableEntityException(e.kind);throw new BadRequestException(e.kind);}throw e;}return this.lookup(user,identity.originId,identity.lotId);}
  private async lookup(user:User,originId:string,lotId:string):Promise<QrLookup>{
   if(originId!==this.originId)throw new NotFoundException('LOT_NOT_AVAILABLE');
@@ -49,7 +50,7 @@ export class LabelsService {
   this.printRole(user);if(this.mode!=='SHOP')throw new ForbiddenException('Print metadata writes belong to the shop');const key=parse(idempotencyKeySchema,keyInput),requestHash=digest(canonical(input));
   for(let attempt=0;;attempt++)try{return await this.db.$transaction(async tx=>{
    const nodes=await tx.$queryRaw<{mode:string}[]>`SELECT mode FROM "OriginNode" WHERE id=${this.originId}::uuid FOR UPDATE`;if(nodes[0]?.mode!=='SHOP')throw new ForbiddenException();
-   await tx.$queryRaw`SELECT id FROM "User" WHERE id=${user.id}::uuid FOR SHARE`;const actor=await tx.user.findUniqueOrThrow({where:{id:user.id}});this.printRole(actor);
+   await tx.$queryRaw`SELECT id FROM "User" WHERE id=${user.id}::uuid FOR SHARE`;const actor=await tx.user.findUniqueOrThrow({where:{id:user.id}});this.printRole(actor);if(actor.authVersion!==user.authVersion||actor.mustChangePassword)throw new ForbiddenException('Session security state changed');
    const prior=await tx.commandResult.findUnique({where:{originId_actorId_commandType_key:{originId:this.originId,actorId:user.id,commandType:type,key}}});if(prior){if(prior.requestHash!==requestHash)throw new ConflictException('Idempotency key reused with different label request');return prior.response;}
    const commandId=randomUUID(),response=json(await work(tx,commandId));const node=await tx.originNode.update({where:{id:this.originId},data:{nextSequence:{increment:1}}});const subjectId=(response as {id:string}).id;const payload=json({subject:response,actorId:user.id,actorRole:actor.role,commandId});
    await tx.auditEvent.create({data:{originId:this.originId,actorId:user.id,actorRole:actor.role,commandId,action:type,subjectId,snapshot:payload}});

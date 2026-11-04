@@ -8,14 +8,10 @@ import { workspaceOrder, type Workspace } from '../components/shell/destinations
 import { LoginPage } from '../components/login-page';
 import { WorkspaceRouter } from '../components/workspace-router';
 import { ProductWizard, SupplierWizard } from '../components/catalogue/setup-wizards';
-import {
-  DetailSkeleton,
-  ErrorNotice,
-  Page,
-  SuccessNotice,
-} from '../components/ui';
+import { PasswordForm } from '../components/account-security';
+import { Button, ErrorNotice, SuccessNotice } from '../components/ui';
 
-type Actor = { id: string; name: string; role: Role };
+type Actor = { id: string; name: string; role: Role; mustChangePassword?: boolean };
 
 const EMPTY_CATALOGUE: Catalogue = {
   products: [],
@@ -27,7 +23,7 @@ const EMPTY_CATALOGUE: Catalogue = {
 
 const UUID = /^[0-9a-f-]{36}$/i;
 
-const PRODUCTION_WORKSPACES: Workspace[] = ['qr', 'settings'];
+const PRODUCTION_WORKSPACES: Workspace[] = ['availability', 'qr', 'settings', 'help'];
 
 export default function DayariInventory() {
   const [workspace, setWorkspace] = useState<Workspace>('dashboard');
@@ -44,7 +40,15 @@ export default function DayariInventory() {
   const [supplierContext, setSupplierContext] = useState('');
   const [productContext, setProductContext] = useState('');
 
-  const [detail, setDetail] = useState({ catalogue: '', stock: '', receipt: '' });
+  const [detail, setDetail] = useState({
+    catalogue: '',
+    stock: '',
+    lot: '',
+    receipt: '',
+    labelJob: '',
+    qrCode: '',
+  });
+  const [missing, setMissing] = useState(false);
 
   const acceptedHash = useRef('');
 
@@ -54,12 +58,14 @@ export default function DayariInventory() {
     [],
   );
 
-  const applyDetail = useCallback((key: Workspace, id: string) => {
+  const applyDetail = useCallback((key: Workspace, id: string, lotId = '') => {
     setDetail((previous) => ({
       ...previous,
       ...(key === 'catalogue' ? { catalogue: id } : {}),
-      ...(key === 'inventory' ? { stock: id } : {}),
+      ...(key === 'inventory' ? { stock: id, lot: lotId } : {}),
       ...(key === 'receipts' ? { receipt: id } : {}),
+      ...(key === 'labels' ? { labelJob: id } : {}),
+      ...(key === 'qr' ? { qrCode: id } : {}),
     }));
   }, []);
 
@@ -71,12 +77,24 @@ export default function DayariInventory() {
       }
 
       acceptedHash.current = location.hash;
-      const [key = '', detailId = ''] = location.hash.slice(1).split('/');
+      const [key = '', detailId = '', lotDetail = ''] = location.hash.slice(1).split('/');
+      const known = workspaceOrder.includes(key as Workspace);
 
-      if (workspaceOrder.includes(key as Workspace)) {
-        const id = UUID.test(detailId) ? detailId : '';
-        setWorkspace(key as Workspace);
-        applyDetail(key as Workspace, id);
+      setMissing(Boolean(key) && !known);
+
+      if (known) {
+        const workspaceKey = key as Workspace;
+        // QR takes a printed code; everything else takes a record id.
+        const id =
+          workspaceKey === 'qr'
+            ? /^[PL][A-Z0-9]{5}$/.test(detailId)
+              ? detailId
+              : ''
+            : UUID.test(detailId)
+              ? detailId
+              : '';
+        setWorkspace(workspaceKey);
+        applyDetail(workspaceKey, id, UUID.test(lotDetail) ? lotDetail : '');
       }
     };
 
@@ -106,16 +124,17 @@ export default function DayariInventory() {
       .finally(() => setLoading(false));
   }, [load]);
 
-  function navigate(next: Workspace, id = '') {
+  function navigate(next: Workspace, id = '', lotId = '') {
     if (!mayNavigate()) return;
 
-    const hash = `#${next}${id ? `/${id}` : ''}`;
+    const hash = `#${next}${id ? `/${id}` : ''}${next === 'inventory' && id && lotId ? `/${lotId}` : ''}`;
     acceptedHash.current = hash;
     location.hash = hash;
 
     setWorkspace(next);
+    setMissing(false);
     setNotice('');
-    applyDetail(next, id);
+    applyDetail(next, id, lotId);
   }
 
   async function login(event: FormEvent<HTMLFormElement>) {
@@ -157,7 +176,7 @@ export default function DayariInventory() {
       setUser(null);
       setCatalogue(EMPTY_CATALOGUE);
       setCatalogueReady(false);
-      setDetail({ catalogue: '', stock: '', receipt: '' });
+      setDetail({ catalogue: '', stock: '', lot: '', receipt: '', labelJob: '', qrCode: '' });
       setFlow(null);
       setError('');
       setNotice('');
@@ -166,6 +185,11 @@ export default function DayariInventory() {
     } finally {
       setBusy(false);
     }
+  }
+
+  function passwordChanged() {
+    setUser((previous) => (previous ? { ...previous, mustChangePassword: false } : previous));
+    setNotice('Password updated.');
   }
 
   function openSupplier(id = '') {
@@ -209,11 +233,23 @@ export default function DayariInventory() {
     return <LoginPage onSubmit={login} busy={busy} error={error} />;
   }
 
+  if (user.mustChangePassword) {
+    return (
+      <main className="mx-auto grid min-h-dvh max-w-lg content-center gap-5 p-5">
+        <p className="font-sans text-xs font-semibold tracking-[0.1em] text-brand uppercase">
+          Dayari · Account setup
+        </p>
+        <PasswordForm required onChanged={passwordChanged} />
+        <Button variant="secondary" onClick={logout} disabled={busy}>
+          Sign out
+        </Button>
+      </main>
+    );
+  }
+
   const available =
     user.role === 'PRODUCTION' ? PRODUCTION_WORKSPACES : [...workspaceOrder];
-  const current =
-    user.role === 'PRODUCTION' && workspace !== 'settings' ? 'qr' : workspace;
-  const awaitingCatalogue = user.role !== 'PRODUCTION' && !catalogueReady;
+  const current = workspace;
 
   return (
     <AppShell
@@ -240,27 +276,19 @@ export default function DayariInventory() {
         </div>
       ) : null}
 
-      {awaitingCatalogue ? (
-        <Page>
-          {error ? (
-            <p className="font-sans text-sm tracking-[-0.02em] text-grey-2">
-              Catalogue data is unavailable. Reload it above before continuing.
-            </p>
-          ) : (
-            <DetailSkeleton rows={4} />
-          )}
-        </Page>
-      ) : (
-        <WorkspaceRouter
-          workspace={current}
-          catalogue={catalogue}
-          user={user}
-          detail={detail}
-          navigate={navigate}
-          onSupplierFlow={openSupplier}
-          onProductFlow={openProduct}
-        />
-      )}
+      <WorkspaceRouter
+        workspace={current}
+        catalogue={catalogue}
+        catalogueReady={catalogueReady}
+        user={user}
+        detail={detail}
+        missing={missing}
+        error={error}
+        navigate={navigate}
+        onSupplierFlow={openSupplier}
+        onProductFlow={openProduct}
+        onPasswordChanged={passwordChanged}
+      />
 
       {flow === 'supplier' && user.role === 'ADMIN' ? (
         <SupplierWizard

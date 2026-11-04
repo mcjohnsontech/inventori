@@ -1,3 +1,4 @@
+import { shopToken } from './shop-fixture.js';
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import request from 'supertest';
@@ -21,7 +22,7 @@ describe('catalogue vertical slice against PostgreSQL (FR-01,17–19,23–24)', 
     db = database(url);
     await db.originNode.create({ data: { id: originId, mode: 'SHOP' } });
     for (const role of ['ADMIN', 'MANAGER', 'PRODUCTION'] as const) {
-      const user = await db.user.create({ data: { email: role === 'ADMIN' ? email : `${role.toLowerCase()}-${email}`, name: role, role, passwordHash: passwordHash(password) } });
+      const user = await db.user.create({ data: { email: role === 'ADMIN' ? email : `${role.toLowerCase()}-${email}`, name: role, role, passwordHash: passwordHash(password), membership:{create:{originId}} } });
       if (role === 'ADMIN') userId = user.id;
     }
     app = await createApp(db, originId, 'SHOP');
@@ -53,7 +54,9 @@ describe('catalogue vertical slice against PostgreSQL (FR-01,17–19,23–24)', 
     await db.originNode.create({ data: { id: foreignOrigin, mode: 'SHOP' } });
     const foreignApp = await createApp(db, foreignOrigin, 'SHOP');
     try {
-      const response = await request(foreignApp.getHttpServer()).post('/v1/catalogue/products').set('Authorization', `Bearer ${token}`).set('Idempotency-Key', randomUUID()).send({ name: `Foreign ${foreignOrigin}` }).expect(201);
+      const foreignToken=await shopToken(db,foreignApp,foreignOrigin);
+      await request(foreignApp.getHttpServer()).get('/v1/catalogue').set('Authorization',`Bearer ${token}`).expect(401);
+      const response = await request(foreignApp.getHttpServer()).post('/v1/catalogue/products').set('Authorization', `Bearer ${foreignToken}`).set('Idempotency-Key', randomUUID()).send({ name: `Foreign ${foreignOrigin}` }).expect(201);
       const local = await request(app.getHttpServer()).get('/v1/catalogue').set('Authorization', `Bearer ${token}`).expect(200);
       expect(JSON.stringify(local.body)).not.toMatch(/"commandId"|"actorId"|"publicIdentity"|"passwordHash"/);
       expect(local.body.products.some((product: {id:string}) => product.id === response.body.id)).toBe(false);

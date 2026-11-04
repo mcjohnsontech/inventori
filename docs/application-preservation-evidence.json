@@ -1,0 +1,216 @@
+{
+  "baseline": "b7172d351650374108380be1d3d29714c7e5d232",
+  "scope": "Source preservation only; no operational database comparison or writes performed. User/Session and new ShopMembership are approved additive changes.",
+  "checks": [
+    {
+      "file": "prisma/migrations/202611020001_catalogue_foundation/migration.sql",
+      "unchanged": true,
+      "sha256": "4e0795c6670c9f4288b43fbb44477f264dc05675b13e6ec33c4c016791688a35"
+    },
+    {
+      "file": "prisma/migrations/202611020002_supplier_code_identity/migration.sql",
+      "unchanged": true,
+      "sha256": "b653e4e877125bf707a2388dc046989034ecaf8c52c80fce82f238068c8da0dd"
+    },
+    {
+      "file": "prisma/migrations/202611020003_progressive_catalogue/migration.sql",
+      "unchanged": true,
+      "sha256": "184961c7a4478d87b33cfa50e6c9d1f0c24f1d86950b3d62a16c3f58e7fc15aa"
+    },
+    {
+      "file": "prisma/migrations/202611020004_receiving_ledger/migration.sql",
+      "unchanged": true,
+      "sha256": "f8ea087ff693573a3b56e41bf6c632d2df6a9255020237b00400747fee893bca"
+    },
+    {
+      "file": "prisma/migrations/202611030005_qr_labels/migration.sql",
+      "unchanged": true,
+      "sha256": "bbb394ff4a89a5c0ad8cabd05b3b0bb21d547f01a300bc499ed659d5800311bc"
+    },
+    {
+      "file": "prisma/migrations/202611030006_label_evidence_guards/migration.sql",
+      "unchanged": true,
+      "sha256": "a39ee419650247444cdd3b60682d00d2d2a4077cdf9175ec08cc6eaaa85ebd74"
+    },
+    {
+      "file": "prisma/migrations/202611030007_public_identities/migration.sql",
+      "unchanged": true,
+      "sha256": "1f0899609c872a783632063a8649d6ca0d2c7e7a0c72127c29ba1b46524731ef"
+    },
+    {
+      "file": "prisma/migrations/202611030008_public_identity_guard_record/migration.sql",
+      "unchanged": true,
+      "sha256": "0074124d028e5f8415aa1ecaa463ff95d48d58ccb1e157c2427dfa27bbee084f"
+    },
+    {
+      "file": "package.json",
+      "unchanged": true,
+      "sha256": "2b70456d9928d06c288b1bd29aff53832893177e60a8f8f844e55dc343e177ae"
+    },
+    {
+      "file": "package-lock.json",
+      "unchanged": true,
+      "sha256": "e1b97fc65e5c080ec5495b5553cd84929100970d9894c11560857e166d6326ce"
+    },
+    {
+      "file": "apps/api/src/security.ts",
+      "unchanged": true,
+      "sha256": "b58b6751ef651f0ac72d8c5f552060138565d77844e6f7208dd43d59724aaa95"
+    },
+    {
+      "file": "apps/api/src/public-code.ts",
+      "unchanged": true,
+      "sha256": "911e9adf9a074d562890720cbf25b47969c0f22111b06a1a641db529661cda17"
+    },
+    {
+      "file": "apps/api/src/product-code.ts",
+      "unchanged": true,
+      "sha256": "704cd786c7d048bad342921ad35cf609656da014b267f68528611d5c61ea018d"
+    },
+    {
+      "file": "apps/api/src/catalogue-setup.ts",
+      "unchanged": true,
+      "sha256": "fd11f8d277beca64e6af4bca72cd81d5b13da033456f113eb622d70e0368255e"
+    },
+    {
+      "file": "apps/api/src/label-pdf.ts",
+      "unchanged": true,
+      "sha256": "69d37a0a2485e468c3baa8c68482b49d722a8c0613e0da9e81a9f80889478fb2"
+    },
+    {
+      "file": "apps/api/src/identity-backfill.ts",
+      "unchanged": true,
+      "sha256": "83b29e54e9d775d05c263ba95232883d6053ead777d75ae5dd29e668659a09a1"
+    },
+    {
+      "file": "packages/contracts/src/labels.ts",
+      "unchanged": true,
+      "sha256": "2c874b844cec4152c2be9a98f83fb64537a2cb6fda1bc2aad31a5322fd9b677f"
+    },
+    {
+      "file": "packages/contracts/src/public-identities.ts",
+      "unchanged": true,
+      "sha256": "c0e7c744c26a5461fb01c7019b04310afbf02b68b6a3082d46c4bd13606559a7"
+    },
+    {
+      "model": "OriginNode",
+      "unchanged": true
+    },
+    {
+      "model": "LoginAttempt",
+      "unchanged": true
+    },
+    {
+      "model": "Supplier",
+      "unchanged": true
+    },
+    {
+      "model": "SourceLocation",
+      "unchanged": true
+    },
+    {
+      "model": "SupplierSource",
+      "unchanged": true
+    },
+    {
+      "model": "LocationRegistry",
+      "unchanged": true
+    },
+    {
+      "model": "SupplierLocationPrefix",
+      "unchanged": true
+    },
+    {
+      "model": "Product",
+      "unchanged": true
+    },
+    {
+      "model": "Attribute",
+      "unchanged": true
+    },
+    {
+      "model": "AttributeValue",
+      "unchanged": true
+    },
+    {
+      "model": "Variant",
+      "unchanged": true
+    },
+    {
+      "model": "VariantSelection",
+      "unchanged": true
+    },
+    {
+      "model": "ProductSourcing",
+      "unchanged": true
+    },
+    {
+      "model": "SupplierVariantSku",
+      "unchanged": true
+    },
+    {
+      "model": "CommandResult",
+      "unchanged": true
+    },
+    {
+      "model": "AuditEvent",
+      "unchanged": true
+    },
+    {
+      "model": "OutboxEvent",
+      "unchanged": true
+    },
+    {
+      "model": "InboxEvent",
+      "unchanged": true
+    },
+    {
+      "model": "DeliveryBatch",
+      "unchanged": true
+    },
+    {
+      "model": "StockTransaction",
+      "unchanged": true
+    },
+    {
+      "model": "Receipt",
+      "unchanged": true
+    },
+    {
+      "model": "StockLot",
+      "unchanged": true
+    },
+    {
+      "model": "ReceiptLine",
+      "unchanged": true
+    },
+    {
+      "model": "StockMovement",
+      "unchanged": true
+    },
+    {
+      "model": "StockBalance",
+      "unchanged": true
+    },
+    {
+      "model": "LabelPrintJob",
+      "unchanged": true
+    },
+    {
+      "model": "LabelPrintJobLine",
+      "unchanged": true
+    },
+    {
+      "model": "LabelPrintEvent",
+      "unchanged": true
+    },
+    {
+      "model": "ProductPublicIdentity",
+      "unchanged": true
+    },
+    {
+      "model": "LotPublicIdentity",
+      "unchanged": true
+    }
+  ]
+}

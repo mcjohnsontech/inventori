@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { publicCodeSchema, type PublicIdentityLookup } from '@dayari/contracts';
 
+import { notifyAuthFailure } from '../lib/api';
 import { formatDateTime } from '../lib/format';
 import {
   Badge,
@@ -14,8 +15,8 @@ import {
   Panel,
 } from './ui';
 
-export function IdentityLookup() {
-  const [code, setCode] = useState('');
+export function IdentityLookup({ initialCode = '' }: { initialCode?: string }) {
+  const [code, setCode] = useState(initialCode);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState<PublicIdentityLookup | null>(null);
@@ -40,6 +41,13 @@ export function IdentityLookup() {
     setResult(null);
     setError('');
   }
+
+  useEffect(() => {
+    clearPending();
+    setCode(initialCode);
+    // clearPending only touches refs and setState, so it is stable enough here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialCode]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -67,6 +75,7 @@ export function IdentityLookup() {
         `/api/inventory/${kind === 'PRODUCT' ? 'products' : 'lots'}/by-code/${parsed.data}`,
         { cache: 'no-store', signal: controller.signal },
       );
+      notifyAuthFailure(response);
       const data = await response.json();
       if (!response.ok) {
         throw new Error(

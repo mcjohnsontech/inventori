@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { QrLookup } from '@dayari/contracts';
 
+import { notifyAuthFailure } from '../../lib/api';
 import { cn } from '../../lib/cn';
 import { formatDateTime } from '../../lib/format';
 import {
@@ -25,7 +26,7 @@ import { IdentityLookup } from '../identity-lookup';
 
 type Source = { id: string; name: string; code: string; originId: string };
 
-export function QrWorkspace() {
+export function QrWorkspace({ initialCode = '' }: { initialCode?: string }) {
   const [payload, setPayload] = useState('');
   const [prefix, setPrefix] = useState('');
   const [result, setResult] = useState<QrLookup | null>(null);
@@ -74,6 +75,7 @@ export function QrWorkspace() {
 
     fetch('/api/qr/manual-sources', { signal: controller.signal })
       .then(async (response) => {
+        notifyAuthFailure(response);
         if (response.ok) setSources(await response.json());
       })
       .catch(() => {});
@@ -110,6 +112,7 @@ export function QrWorkspace() {
         body: JSON.stringify(body),
         signal: controller.signal,
       });
+      notifyAuthFailure(response);
       const data = await response.json();
       if (!response.ok) {
         throw new Error(typeof data.message === 'string' ? data.message : 'Lot lookup failed');
@@ -262,7 +265,7 @@ export function QrWorkspace() {
       />
 
       <div className="mt-8 space-y-4">
-        <IdentityLookup />
+        <IdentityLookup initialCode={initialCode} />
 
         <Panel title="Scan a lot QR" description="Camera, connected scanner, or pasted payload.">
           <form

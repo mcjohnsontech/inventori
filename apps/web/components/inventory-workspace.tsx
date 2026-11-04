@@ -22,6 +22,7 @@ import {
   type Column,
   CopyButton,
   DataTable,
+  DetailsDrawer,
   DetailSkeleton,
   Disclosure,
   EmptyState,
@@ -50,12 +51,14 @@ type Group = 'lots' | 'sku';
 export function InventoryWorkspace({
   catalogue,
   initialProductId = '',
+  initialLotId = '',
   onReceipt,
   onProductDetail,
   onProductFilter,
 }: {
   catalogue: Catalogue;
   initialProductId?: string;
+  initialLotId?: string;
   onReceipt: (id: string) => void;
   onProductDetail: (id: string) => void;
   onProductFilter: (id: string) => void;
@@ -65,13 +68,14 @@ export function InventoryWorkspace({
   const [search, setSearch] = useState('');
   const [state, setState] = useState('all');
   const [group, setGroup] = useState<Group>('lots');
-  const [selected, setSelected] = useState('');
+  const [selected, setSelected] = useState(initialLotId);
   const [page, setPage] = useState(1);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const details = useRef<HTMLElement>(null);
 
   useEffect(() => setProductId(initialProductId), [initialProductId]);
+  useEffect(() => setSelected(initialLotId), [initialLotId]);
 
   useEffect(() => {
     if (selected) {
@@ -93,7 +97,10 @@ export function InventoryWorkspace({
       `${lot.productName} ${lot.variantName} ${lot.fullCode} ${lot.publicCode} ${lot.productCode ?? ''} ${lot.lotCode ?? ''} ${lot.supplierName} ${lot.sourceName}`
         .toLowerCase()
         .includes(search.toLowerCase()) &&
-      (state === 'all' || isPositive(state === 'usable' ? lot.usable : lot.damaged)),
+      (state === 'all' ||
+        (state === 'out'
+          ? !isPositive(lot.usable)
+          : isPositive(state === 'usable' ? lot.usable : lot.damaged))),
   );
 
   const skus = (stock.data?.bySku ?? []).filter((sku) =>
@@ -110,6 +117,75 @@ export function InventoryWorkspace({
     setPage(1);
     setSelected('');
   }
+
+  const lotColumns: Column<(typeof lots)[number]>[] = [
+    {
+      key: 'product',
+      label: 'Product / variant',
+      wide: true,
+      cell: (row) => (
+        <>
+          <span className="block font-medium">{row.productName}</span>
+          <span className="mt-0.5 block font-sans text-xs text-grey-3">{row.variantName}</span>
+        </>
+      ),
+    },
+    {
+      key: 'sku',
+      label: 'Supplier SKU / source',
+      wide: true,
+      cell: (row) => (
+        <>
+          <span className="flex items-start gap-2">
+            <Code>{row.fullCode}</Code>
+            <CopyButton value={row.fullCode} label="supplier SKU" />
+          </span>
+          <span className="mt-0.5 block font-sans text-xs text-grey-3">
+            {row.supplierName} · {row.sourceName}
+          </span>
+        </>
+      ),
+    },
+    {
+      key: 'lot',
+      label: 'Lot / batch',
+      cell: (row) => (
+        <>
+          <Code tone="brand" className="block">
+            {row.lotCode ?? 'Code not assigned'}
+          </Code>
+          <Code tone="muted" className="mt-0.5 block">
+            {row.publicCode}
+          </Code>
+        </>
+      ),
+    },
+    {
+      key: 'usable',
+      label: 'Usable',
+      align: 'right',
+      cell: (row) => <Badge tone="usable">{row.usable}</Badge>,
+    },
+    {
+      key: 'damaged',
+      label: 'Damaged',
+      align: 'right',
+      cell: (row) => <Badge tone="damaged">{row.damaged}</Badge>,
+    },
+    {
+      key: 'details',
+      label: 'Details',
+      cell: (row) => (
+        <LinkButton
+          aria-label={`Inspect lot ${row.lotCode ?? row.publicCode}`}
+          onClick={() => setSelected(row.lotId)}
+        >
+          Inspect
+          <Icon icon={ArrowRight01Icon} size={14} strokeWidth={2} />
+        </LinkButton>
+      ),
+    },
+  ];
 
   const skuColumns: Column<(typeof skus)[number]>[] = [
     {
@@ -166,7 +242,7 @@ export function InventoryWorkspace({
       <PageHeader
         eyebrow="Authoritative shop stock"
         title="Inventory"
-        description="Explore usable and damaged stock by exact supplier SKU and delivery batch. Every lot retains its provenance."
+        description="Find products, compare saved SKUs and inspect each delivery lot."
         actions={
           <Button variant="secondary" onClick={stock.refresh}>
             <Icon icon={RefreshIcon} size={15} />
@@ -273,6 +349,7 @@ export function InventoryWorkspace({
                     { value: 'all', label: 'All stock lots' },
                     { value: 'usable', label: 'Has usable stock' },
                     { value: 'damaged', label: 'Has damaged stock' },
+                  { value: 'out', label: 'No usable stock' },
                   ]}
                 />
               )}
@@ -317,47 +394,13 @@ export function InventoryWorkspace({
             delivery.
           </EmptyState>
         ) : group === 'lots' ? (
-          <CardGrid>
-            {lots.slice(start, start + PER_PAGE).map((item) => (
-              <button
-                key={item.lotId}
-                type="button"
-                onClick={() => setSelected(item.lotId)}
-                aria-pressed={selected === item.lotId}
-                className={cn(
-                  card,
-                  cardInteractive,
-                  'flex flex-col p-5',
-                  selected === item.lotId && 'ring-2 ring-brand ring-offset-2',
-                )}
-              >
-                <span className="flex flex-wrap items-center justify-between gap-2">
-                  <Code tone="brand">{item.lotCode ?? 'Code not assigned'}</Code>
-                  <Code tone="muted">{item.publicCode}</Code>
-                </span>
-                <h2 className="mt-3 font-sans text-sm leading-snug font-semibold tracking-[-0.02em] break-words text-ink">
-                  {item.productName} · {item.variantName}
-                </h2>
-                <span className="mt-1.5 block">
-                  <Code tone="muted">{item.productCode ?? 'Code not assigned'}</Code>
-                </span>
-                <span className="mt-2 block">
-                  <Code>{item.fullCode}</Code>
-                </span>
-                <span className="mt-2 block font-sans text-xs tracking-[-0.02em] text-grey-3">
-                  {item.supplierName} · {item.sourceName}
-                </span>
-                <span className="mt-4 flex flex-wrap gap-1.5">
-                  <Badge tone="usable">{item.usable} usable</Badge>
-                  <Badge tone="damaged">{item.damaged} damaged</Badge>
-                </span>
-                <span className="mt-4 flex items-center gap-1.5 font-sans text-[13px] font-semibold tracking-[-0.02em] text-brand">
-                  Inspect lot provenance
-                  <Icon icon={ArrowRight01Icon} size={14} strokeWidth={2} />
-                </span>
-              </button>
-            ))}
-          </CardGrid>
+          <DataTable
+            bare
+            columns={lotColumns}
+            rows={lots.slice(start, start + PER_PAGE)}
+            rowKey={(row) => row.lotId}
+            emptyMessage="No delivery lots match this view."
+          />
         ) : (
           <DataTable
             bare
@@ -372,26 +415,19 @@ export function InventoryWorkspace({
       </section>
 
       {lot ? (
-        <section
-          ref={details}
-          tabIndex={-1}
-          aria-label="Lot provenance"
-          className="mt-4 outline-none"
+        <DetailsDrawer
+          title={`${lot.productName} · ${lot.variantName}`}
+          onClose={() => setSelected('')}
         >
-          <Panel
-            title={`${lot.lotCode ?? 'Stock lot'} · ${lot.variantName}`}
-            description={`${lot.productName} · ${lot.productCode ?? 'Code not assigned'}`}
-            action={
-              <button
-                type="button"
-                aria-label="Close lot details"
-                onClick={() => setSelected('')}
-                className="grid size-9 place-items-center rounded-lg text-grey-3 transition-colors hover:bg-surface-muted hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-              >
-                <Icon icon={Cancel01Icon} size={17} />
-              </button>
-            }
-          >
+          <section aria-label="Lot provenance">
+            <p className="font-sans text-sm tracking-[-0.02em] text-grey-2">
+              {lot.supplierName} · {lot.sourceName}
+            </p>
+            <p className="mt-2 font-sans text-sm tracking-[-0.02em] text-ink">
+              Product {lot.productCode ?? 'Code not assigned'} · Lot{' '}
+              {lot.lotCode ?? 'Code not assigned'} · Batch {lot.publicCode}
+            </p>
+            <div className="mt-4">
             <Stack gap="tight">
               <span className="flex items-start gap-2">
                 <Code className="text-sm">{lot.fullCode}</Code>
@@ -447,8 +483,9 @@ export function InventoryWorkspace({
                 </Footnote>
               </Disclosure>
             </Stack>
-          </Panel>
-        </section>
+            </div>
+          </section>
+        </DetailsDrawer>
       ) : null}
 
       <Disclosure summary="Exact Product or Lot Code lookup" className="mt-5">

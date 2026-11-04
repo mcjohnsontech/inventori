@@ -1,9 +1,10 @@
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
-const allowed = /^(inventory\/(products|lots)\/by-code\/[A-Za-z0-9]{6}|qr\/(resolve|manual|manual-sources)|label-print-jobs(?:\/[0-9a-fA-F-]{36}(?:\/events|\/artifacts\/[0-9]{1,12}(?:\.pdf)?)?)?|receipts\/[0-9a-fA-F-]{36}\/label-plan|receiving\/options|receipts(?:\/[0-9a-fA-F-]{36})?|stock(?:\/lots\/[0-9a-fA-F-]{36})?|sessions|sessions\/logout|me|admin\/shop|catalogue|catalogue\/(products|suppliers|sources|attributes|values|variants|skus|supplier-setups|product-setups))$/;
+const allowed = /^(invitations\/accept|admin\/invitations(?:\/[0-9a-fA-F-]{36}\/(?:resend|revoke))?|inventory\/(products|lots)\/by-code\/[A-Za-z0-9]{6}|qr\/(resolve|manual|manual-sources)|label-print-jobs(?:\/[0-9a-fA-F-]{36}(?:\/events|\/artifacts\/[0-9]{1,12}(?:\.pdf)?)?)?|receipts\/[0-9a-fA-F-]{36}\/label-plan|receiving\/options|receipts(?:\/[0-9a-fA-F-]{36})?|stock(?:\/lots\/[0-9a-fA-F-]{36})?|sessions|sessions\/logout|me|availability|account(?:\/password)?|admin\/users(?:\/[0-9a-fA-F-]{36}(?:\/(?:update|revoke))?)?|admin\/shop|catalogue|catalogue\/(products|suppliers|sources|attributes|values|variants|skus|supplier-setups|product-setups))$/;
 async function handle(request: NextRequest, context: { params: Promise<{ path: string[] }> }) {
   const path = (await context.params).path.join('/');
+  if (path.startsWith('invitations/') && request.nextUrl.search) return NextResponse.json({message:'Query credentials rejected'},{status:400});
   if (!allowed.test(path)) return NextResponse.json({ message: 'Not found' }, { status: 404 });
   const expectedOrigin = process.env.APP_ORIGIN ?? (process.env.NODE_ENV === 'production' ? null : 'http://127.0.0.1:3000');
   if (request.method === 'POST' && !expectedOrigin) return NextResponse.json({ message: 'Shop sign-in is unavailable. Contact your administrator.' }, { status: 503 });
@@ -24,7 +25,7 @@ async function handle(request: NextRequest, context: { params: Promise<{ path: s
       jar.set('dayari_session', data.token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', path: '/', maxAge: 8 * 60 * 60 });
       return NextResponse.json({ user: data.user }, { headers: { 'Cache-Control': 'no-store' } });
     }
-    if (path === 'sessions/logout' || upstream.status === 401) jar.delete('dayari_session');
+    if (path === 'sessions/logout' || (path === 'account/password' && upstream.ok) || upstream.status === 401) jar.delete('dayari_session');
     return NextResponse.json(data, { status: upstream.status, headers: { 'Cache-Control': 'no-store' } });
   } catch {
     return NextResponse.json({ message: 'The shop service is unavailable. Reconnect and retry the same action.' }, { status: 503 });

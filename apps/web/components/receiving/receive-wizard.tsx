@@ -20,6 +20,7 @@ import {
   Textarea,
   card,
 } from '../ui';
+import { notifyAuthFailure } from '../../lib/api';
 import { cn } from '../../lib/cn';
 import { WizardShell } from '../wizard/wizard-shell';
 import { Totals } from './totals';
@@ -33,6 +34,7 @@ type DraftLine = {
 
 async function post(path: string, init?: RequestInit) {
   const response = await fetch(`/api/${path}`, init);
+  notifyAuthFailure(response);
   const result = await response.json();
   if (!response.ok) {
     throw new Error(

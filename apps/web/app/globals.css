@@ -73,3 +73,97 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* The stock overview strip is a layout hook the overview spec asserts against. */
+.stock-summary-strip strong {
+  overflow-wrap: anywhere;
+}
+
+/*
+ * Compatibility layer for screens not yet rebuilt on the primitives
+ * (reports, production, users, invitations, help, account security).
+ * Defined in tokens so they match the design system; delete each rule as its
+ * call sites move to Page / Panel / Card.
+ */
+.page {
+  max-width: 1480px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+@media (min-width: 640px) {
+  .page { padding: 2rem 1.5rem; }
+}
+
+@media (min-width: 1024px) {
+  .page { padding: 2.5rem; }
+}
+
+.surface {
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  border-radius: 1rem;
+  background: var(--color-surface);
+  overflow: hidden;
+}
+
+.surface-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1.25rem 1.25rem 0;
+}
+
+.surface-heading h2 {
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  color: var(--color-ink);
+}
+
+.pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.625rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  padding: 0.9375rem 1.25rem;
+  font-size: 0.75rem;
+  color: var(--color-grey-3);
+}
+
+.tab-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.tab-list button {
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--color-grey-2);
+}
+
+.tab-list button[aria-pressed='true'] {
+  background: var(--color-brand-tint);
+  color: var(--color-brand);
+}
+
+.text-link {
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--color-brand);
+  text-underline-offset: 4px;
+}
+
+.text-link:hover {
+  text-decoration: underline;
+}

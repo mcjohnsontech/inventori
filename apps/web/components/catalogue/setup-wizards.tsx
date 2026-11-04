@@ -9,6 +9,7 @@ import {
 } from '@dayari/contracts';
 
 import { cn } from '../../lib/cn';
+import { notifyAuthFailure } from '../../lib/api';
 import {
   Badge,
   Button,
@@ -45,6 +46,7 @@ async function saveSetup(type: string, body: unknown) {
     headers: { 'Content-Type': 'application/json', 'Idempotency-Key': key },
     body: fingerprint,
   });
+  notifyAuthFailure(response);
   const result = await response.json();
 
   if (!response.ok) {

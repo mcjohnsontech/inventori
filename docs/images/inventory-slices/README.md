@@ -1,0 +1,3 @@
+# Inventory slice screenshot evidence
+
+Synthetic isolated Playwright fixtures only. No operational accounts/stock, credentials, traces, database backups or PDFs are included. navigation-admin/manager/production-1440 show role-aware navigation; inventory-{320,1440} show the sheet; drawer-{320,1440} show modal details; overview-{320,1440} show per-variant quantities. Viewports tested:320/390/768/1024/1440 at900px height, plus short-height navigation. Actual screenshots were visually inspected; mobile summary wrapping/readability was corrected and the mobile overview was reordered to prioritize stock rows. Physical printer/scanner certification is outside these slices.

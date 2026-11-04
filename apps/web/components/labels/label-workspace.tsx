@@ -3,6 +3,7 @@ import { PrinterIcon } from '@hugeicons/core-free-icons';
 import { useEffect, useRef, useState } from 'react';
 import type { LabelJob, LabelProfile } from '@dayari/contracts';
 
+import { notifyAuthFailure } from '../../lib/api';
 import { cn } from '../../lib/cn';
 import { formatDate, formatDateTime } from '../../lib/format';
 import {
@@ -32,6 +33,7 @@ import {
 
 async function read(path: string, signal?: AbortSignal) {
   const response = await fetch(`/api/${path}`, { signal });
+  notifyAuthFailure(response);
   const body = await response.json();
   if (!response.ok) {
     throw new Error(typeof body.message === 'string' ? body.message : 'Label service unavailable');
@@ -53,6 +55,7 @@ async function write(path: string, body: unknown) {
     headers: { 'Content-Type': 'application/json', 'Idempotency-Key': key },
     body: fingerprint,
   });
+  notifyAuthFailure(response);
   const data = await response.json();
 
   if (!response.ok) {
@@ -76,9 +79,11 @@ type JobSummary = { id: string; kind: string; totalCopies: string; createdAt: st
 
 export function LabelWorkspace({
   receiptId: initialReceiptId = '',
+  initialJobId = '',
   compact = false,
 }: {
   receiptId?: string;
+  initialJobId?: string;
   compact?: boolean;
 }) {
   const working = useRef(false);
@@ -144,6 +149,55 @@ export function LabelWorkspace({
     return () => controller.abort();
   }, [receiptId]);
 
+  // Reprint selections and outcome notes are unsaved work; warn before losing them.
+  const dirty = Boolean(
+    reason.trim() ||
+      Object.values(selected).some((value) => value.trim()) ||
+      (attempt && note.trim()),
+  );
+
+  function mayDiscard() {
+    return (
+      !busy &&
+      (!dirty || window.confirm('Discard unsaved reprint selections or print-outcome notes?'))
+    );
+  }
+
+  useEffect(() => {
+    const guard = (event: Event) => {
+      if (!mayDiscard()) event.preventDefault();
+    };
+    const unload = (event: BeforeUnloadEvent) => {
+      if (busy || dirty) event.preventDefault();
+    };
+
+    window.addEventListener('dayari:before-navigate', guard);
+    window.addEventListener('beforeunload', unload);
+    return () => {
+      window.removeEventListener('dayari:before-navigate', guard);
+      window.removeEventListener('beforeunload', unload);
+    };
+  });
+
+  useEffect(() => {
+    if (!initialJobId) return;
+    const controller = new AbortController();
+
+    read(`label-print-jobs/${initialJobId}`, controller.signal)
+      .then((next) => {
+        if (!controller.signal.aborted) {
+          showJob(next);
+          setReceiptId(next.receiptId);
+        }
+      })
+      .catch((failure) => {
+        if (!controller.signal.aborted) setError(failure.message);
+      });
+
+    return () => controller.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialJobId]);
+
   async function action(task: () => Promise<void>) {
     if (working.current) return;
     working.current = true;
@@ -168,6 +222,7 @@ export function LabelWorkspace({
     setPart('1');
     setSelected({});
     setReason('');
+    setNote('');
     setAck(false);
   }
 

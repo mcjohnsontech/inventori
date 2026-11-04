@@ -1,0 +1,65 @@
+[
+  {
+    "file": "drawer-1440.png",
+    "width": 1440,
+    "height": 900,
+    "sha256": "2d42e85dfa9aa9e64b65187e94bee00db67cd3f88d1bd31e04b0e26f432c133a",
+    "data": "isolated synthetic browser fixtures"
+  },
+  {
+    "file": "drawer-320.png",
+    "width": 320,
+    "height": 900,
+    "sha256": "68886dd2d2025ed4a3d0e9c64e8e7378ebe9cace2e711510b553c533dbbba9dc",
+    "data": "isolated synthetic browser fixtures"
+  },
+  {
+    "file": "inventory-1440.png",
+    "width": 1440,
+    "height": 900,
+    "sha256": "a90a9490abb744f968ef5a647897805ed70b8bedcecc15fe13c50e97b84785d5",
+    "data": "isolated synthetic browser fixtures"
+  },
+  {
+    "file": "inventory-320.png",
+    "width": 320,
+    "height": 900,
+    "sha256": "2f6ba4f321c48c2db50953d5cc3e31d68efef740bbf5e75fbc6a1e38618a0e02",
+    "data": "isolated synthetic browser fixtures"
+  },
+  {
+    "file": "navigation-admin-1440.png",
+    "width": 1440,
+    "height": 900,
+    "sha256": "b57dea432af6523d49696ea756ddb234c6408ab35493fab1858806818b83965a",
+    "data": "isolated synthetic browser fixtures"
+  },
+  {
+    "file": "navigation-manager-1440.png",
+    "width": 1440,
+    "height": 900,
+    "sha256": "39187ea8962363d4f6cd769bf0de4a1f7c8c110aa4c94311638419fa915a883a",
+    "data": "isolated synthetic browser fixtures"
+  },
+  {
+    "file": "navigation-production-1440.png",
+    "width": 1440,
+    "height": 900,
+    "sha256": "85217314606a4cda48ece4395f29c2057f994923494c2bb03bffa0303cf7e708",
+    "data": "isolated synthetic browser fixtures"
+  },
+  {
+    "file": "overview-1440.png",
+    "width": 1440,
+    "height": 900,
+    "sha256": "637523175dcc3fbb7286345f6ac92262a5035653f9e34b3e963b18a949ec585e",
+    "data": "isolated synthetic browser fixtures"
+  },
+  {
+    "file": "overview-320.png",
+    "width": 320,
+    "height": 900,
+    "sha256": "bd42286c9d5a6a3a015655203668f1a0aa190d142f576bf8feb0f89500cf5adf",
+    "data": "isolated synthetic browser fixtures"
+  }
+]

@@ -47,7 +47,11 @@ export function SuppliersWorkspace({
       <PageHeader
         eyebrow="Where your stock comes from"
         title="Suppliers & sources"
-        description="Register suppliers once. Saved source prefixes connect every sourced product to its supplier and location."
+        description={
+          role === 'ADMIN'
+            ? 'Register suppliers once. Saved source prefixes connect every sourced product to its supplier and location.'
+            : 'Inspect approved suppliers, saved source prefixes and sourced SKUs. Ask Admin to register or configure missing entries.'
+        }
         actions={
           role === 'ADMIN' ? (
             <Button onClick={() => onSupplier()}>
@@ -71,7 +75,13 @@ export function SuppliersWorkspace({
       {!suppliers.length ? (
         <div className={cn(card, 'mt-5')}>
           <EmptyState
-            title={search ? 'No matching suppliers' : 'Add your first supplier'}
+            title={
+              search
+                ? 'No matching suppliers'
+                : role === 'ADMIN'
+                  ? 'Add your first supplier'
+                  : 'No suppliers registered'
+            }
             icon={Building03Icon}
           >
             {search

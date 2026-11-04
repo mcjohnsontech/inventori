@@ -1,0 +1,83 @@
+{
+  "scope": "Final passing Playwright run, synthetic isolated fixtures only. No operational screenshots or physical printing/scan certification.",
+  "images": [
+    {
+      "file": "manager-320.png",
+      "width": 320,
+      "height": 900,
+      "sha256": "0368f70bce66e25dfd30578579de3eda6ec55e8d7cef8e9a6da864aff20902c6"
+    },
+    {
+      "file": "manager-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "b78537a420d929408b499e661b2b8f40b894caed617b71400139f277f45fd41a"
+    },
+    {
+      "file": "production-320.png",
+      "width": 320,
+      "height": 900,
+      "sha256": "46a7dc8ac0edcf6e993157447d031dd7f312d4a019b30c4c7ab54fe13850efc4"
+    },
+    {
+      "file": "production-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "75bd82be3ef04a9000473c67b3cce6073ddd0e6eb12d66ad76cfb7f93ec11f2a"
+    },
+    {
+      "file": "reports-320.png",
+      "width": 320,
+      "height": 900,
+      "sha256": "82bef701259f8d6784612e4ad82d46a3dff0c0df151ab13692a679289767c3fc"
+    },
+    {
+      "file": "reports-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "b908c0512280d91194998f4e47c97d1c5465a518d571b6c374c2d77408a6a2c0"
+    },
+    {
+      "file": "users-320.png",
+      "width": 320,
+      "height": 900,
+      "sha256": "aa07f8168cd41c7278b0968d0361bf524346751024668f7d07243d132426b085"
+    },
+    {
+      "file": "users-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "5fbfbaa3896eba8eb13931351345d89952908442300774dc102f02655585d880"
+    },
+    {
+      "file": "account-320.png",
+      "width": 320,
+      "height": 900,
+      "sha256": "13d3ace1bdf61cde1e4af75ebd66d214de214c1fdf80d6d2a3547f0c7a8f23b1"
+    },
+    {
+      "file": "account-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "9a912c7be9b80d2832fe6e65e8106160f9b1daa02a63a62bbf75082dc14a7b9a"
+    },
+    {
+      "file": "help-320.png",
+      "width": 320,
+      "height": 900,
+      "sha256": "4aaaf69a7e5665d98f8a7120b8b57aefa9d09ad9e4290d57a7e5ba1a68fc6c04"
+    },
+    {
+      "file": "help-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "0c7c2dd0eff32dcc69ed68b5397868fee9ef9cad11cf43be82b74731a197ac20"
+    },
+    {
+      "file": "user-form-320.png",
+      "width": 320,
+      "height": 900,
+      "sha256": "b4aea602ae93b2ab8c703c6f56bcee91949aa5358f08c86bd8a4e4c3f60ee957"
+    }
+  ]
+}

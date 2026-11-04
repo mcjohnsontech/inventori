@@ -14,7 +14,7 @@ import { roleLabel } from '../../lib/format';
 import { Icon } from '../ui/icon';
 import { Tooltip } from '../ui/tooltip';
 import { BrandLockup } from './brand-lockup';
-import { destinations, type Workspace } from './destinations';
+import { destinations, navGroups, type Workspace } from './destinations';
 
 type Account = { name: string; role: string };
 
@@ -30,36 +30,55 @@ function Items({
   onNavigate: (workspace: Workspace) => void;
 }) {
   return (
-    <ul className="space-y-1">
-      {available.map((key) => {
-        const item = destinations[key];
-        const active = current === key;
-
-        const button = (
-          <button
-            type="button"
-            aria-current={active ? 'page' : undefined}
-            onClick={() => onNavigate(key)}
-            className={cn(
-              'flex w-full items-center rounded-xl font-sans text-sm font-medium tracking-[-0.02em] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand',
-              collapsed ? 'h-11 w-11 justify-center' : 'h-11 gap-3 px-3.5',
-              active
-                ? 'bg-brand-tint font-semibold text-brand'
-                : 'text-grey-2 hover:bg-surface-muted hover:text-ink',
-            )}
-          >
-            <Icon icon={item.icon} size={20} />
-            {collapsed ? <span className="sr-only">{item.label}</span> : <span className="truncate">{item.label}</span>}
-          </button>
-        );
+    <div className="space-y-4">
+      {navGroups.map((group) => {
+        const keys = group.keys.filter((key) => available.includes(key));
+        if (!keys.length) return null;
 
         return (
-          <li key={key} className={collapsed ? 'flex justify-center' : undefined}>
-            {collapsed ? <Tooltip label={item.label}>{button}</Tooltip> : button}
-          </li>
+          <div key={group.name}>
+            {collapsed ? (
+              <span className="sr-only">{group.name}</span>
+            ) : (
+              <p className="px-3.5 pb-1 font-sans text-[10px] font-semibold tracking-[0.09em] text-grey-3 uppercase">
+                {group.name}
+              </p>
+            )}
+            <ul className="space-y-1">
+              {keys.map((key) => {
+                const item = destinations[key];
+                const active = current === key;
+
+                const button = (
+                  <button
+                    type="button"
+                    aria-current={active ? 'page' : undefined}
+                    aria-label={item.label}
+                    onClick={() => onNavigate(key)}
+                    className={cn(
+                      'flex w-full items-center rounded-xl font-sans text-sm font-medium tracking-[-0.02em] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand',
+                      collapsed ? 'h-11 w-11 justify-center' : 'h-10 gap-3 px-3.5',
+                      active
+                        ? 'bg-brand-tint font-semibold text-brand'
+                        : 'text-grey-2 hover:bg-surface-muted hover:text-ink',
+                    )}
+                  >
+                    <Icon icon={item.icon} size={19} />
+                    {collapsed ? null : <span className="truncate">{item.label}</span>}
+                  </button>
+                );
+
+                return (
+                  <li key={key} className={collapsed ? 'flex justify-center' : undefined}>
+                    {collapsed ? <Tooltip label={item.label}>{button}</Tooltip> : button}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
         );
       })}
-    </ul>
+    </div>
   );
 }
 
@@ -217,11 +236,6 @@ export function Sidebar({
           aria-label="Workspace"
           className={cn('flex-1 overflow-y-auto py-4', collapsed ? 'px-3' : 'px-3')}
         >
-          {collapsed ? null : (
-            <p className="px-3.5 pb-1.5 font-sans text-xs font-semibold tracking-[0.08em] text-grey-3 uppercase">
-              Menu
-            </p>
-          )}
           <Items
             available={available}
             current={current}
@@ -277,9 +291,6 @@ export function Sidebar({
               className="fixed top-[68px] bottom-0 left-0 z-50 flex w-[288px] max-w-[85vw] flex-col bg-white pt-5 shadow-header lg:hidden"
             >
               <nav aria-label="Workspace" className="flex-1 overflow-y-auto px-3">
-                <p className="px-3.5 pb-1.5 font-sans text-xs font-semibold tracking-[0.08em] text-grey-3 uppercase">
-                  Menu
-                </p>
                 <Items
                   available={available}
                   current={current}

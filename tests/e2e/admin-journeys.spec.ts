@@ -11,10 +11,13 @@ async function login(page: Page) {
   expect((await response).status()).toBe(200);
   await expect(page.getByRole('heading', { name: 'Welcome, Test' })).toBeVisible();
 }
-async function navigate(page: Page, label: string) {
+async function navigate(page: Page, label: string, expectedStatus=200) {
   const menu = page.getByRole('button', { name: 'Open navigation', exact: true });
   if (await menu.isVisible()) await menu.click();
+  const reads:Record<string,string>={'Inventory':'/api/stock','Receiving':'/api/receiving/options','Receipts & activity':'/api/receipts','Labels & printing':'/api/receipts','Account & shop':'/api/account'};
+  const response=reads[label]?page.waitForResponse(r=>new URL(r.url()).pathname===reads[label]&&r.request().method()==='GET'&&r.status()===expectedStatus):null;
   await page.getByRole('navigation', { name: 'Workspace' }).getByRole('button', { name: label, exact: true }).click();
+  if(response){const result=await response;expect(result.status()).toBe(expectedStatus);await result.finished();}
 }
 async function post(page: Page, path: string, body: unknown) {
   const response = await page.request.post(`/api/${path}`, { headers: { Origin: 'http://127.0.0.1:3101', 'Idempotency-Key': randomUUID() }, data: body });
@@ -93,7 +96,7 @@ test('Admin product extension, deep links and complete responsive workspaces use
       if (key === 'inventory') {
         await expect(page.getByRole('combobox', { name: 'Product', exact: true })).toHaveCount(width < 640 ? 0 : 1);
         await page.getByLabel('Search inventory', { exact: true }).fill(receipt.lines[0].lotCode);
-        await expect(page.getByRole('button').filter({ hasText: receipt.lines[0].lotCode }).filter({ hasText: 'Inspect lot provenance' })).toBeVisible();
+        await expect(page.getByRole('row').filter({ hasText: receipt.lines[0].lotCode })).toBeVisible();
       }
       if (key === 'receiving') await expect(page.getByText('Ready to receive', { exact: true })).toBeVisible();
       if (key === 'receipts') {
@@ -127,7 +130,7 @@ test('read failures retry safely and changed code input cancels stale results', 
   await login(page);
   const stockRoute = /\/api\/stock(?:\?|$)/;
   await page.route(stockRoute, route => route.fulfill({ status: 503, json: { message: 'Shop connection interrupted' } }));
-  await navigate(page, 'Inventory');
+  await navigate(page, 'Inventory',503);
   await expect(page.locator('#workspace-content').getByRole('alert')).toContainText('Shop connection interrupted');
   await page.unroute(stockRoute);
   await page.getByRole('button', { name: 'Try again', exact: true }).click();
@@ -155,8 +158,10 @@ test('read failures retry safely and changed code input cancels stale results', 
   await expect(lookup.getByRole('status')).toHaveCount(0);
   // Real endpoint denial is still enforced independently of navigation.
   await navigate(page, 'Account & shop');
+  const signedOut = page.waitForResponse(response => response.url().endsWith('/api/sessions/logout') && response.request().method() === 'POST');
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
-  // Sign-out is async; wait for the signed-out screen before probing the API.
+  // Sign-out is async: await the response, then confirm the signed-out screen.
+  expect((await signedOut).status()).toBe(200);
   await expect(page.getByRole('heading', { name: 'Sign in to your shop', exact: true })).toBeVisible();
   expect((await page.request.get('/api/admin/shop')).status()).toBe(401);
 });

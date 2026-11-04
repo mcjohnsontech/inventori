@@ -1,5 +1,30 @@
 # Requirements traceability
 
+## Inventory experience authorization and unit-code correction — 3 November2026
+
+| Requirement | Scope / evidence |
+| --- | --- |
+| Compact grouped role navigation, preserve all destinations | Slice1; compact-navigation/access browser tests |
+| Inventory sheet, Product/Lot identity, exact U/D quantities, modal detail/context | Slice2; inventory-sheet/receiving/public-identities browser tests |
+| Stock-first per-variant overview, lot/batch drilldown, no incompatible grand totals | Slice3; stock-overview unit/browser and existing receiving/RBAC regressions |
+| Exactly six readable permanent unit characters, secure collision handling, exact origin-safe manual lookup and unique unit QR | Approved design correction only; six-character-unit-code-design.md; no Phase2 implementation |
+| Secure single-use email invitation and employee-set password | Approved direction only; staff-invitation-design.md; no endpoints, account policy or schema changes |
+
+Test names describe planned/executed coverage; actual results are recorded only in inventory-experience-slices-1-3-report.md.
+
+
+## Phase B — current application coverage
+
+| Source | Delivered boundary | Evidence |
+| --- | --- | --- |
+| PRD2/7/10, FR14 and approved Phase B account policy | Origin-bound active sessions, explicit immutable shop membership, fixed roles, staff administration, compulsory password change, persistent throttles, revoked-session generation fences | accounts/authentication/rbac integration suites; shared permission and schema-readiness unit tests; accounts/access browser scenarios |
+| PRD6/15, Phase B operational workspaces | Admin and Manager retain catalogue/stock/receipt/printing workflows; Production receives only minimal usable discovery and exact code/QR identities | availability/receiving/catalogue/public-identities/labels integration suites; manager/production/shared browser scenarios |
+| PRD4/15.2–15.4, immutable evidence | No new stock mutation or identity-allocation rule; historical ledger, codes, QR and printing remain | 48 source checks in application-preservation-evidence.json; existing ledger/QR/printing regressions |
+| Phase B UX/account/history | Scoped Users & Access, own sessions/security, help, bounded operational reports, missing/forbidden/expired/unavailable states | application-visual and shared/access browser scenarios across320/390/768/1024/1440 |
+| Phase B migration exclusion | No operational migration/enrollment;009/010 preserve existing users/sessions in an isolated rehearsal without implicit membership | accounts-migration integration test and implementation report |
+
+These boundaries do not complete production issues, recovery, closing, cloud synchronization, unit serialization, reset delivery or physical hardware acceptance. Final actual test counts are in the Phase B report.
+
 ## Phase1 identity implementation status
 
 Owner authorization received: Product/Lot codes, immutable origin-qualified allocation/new-subject guards, exact authenticated role-safe lookup and minimal existing-workspace display/entry implemented. New unit tests cover grammar/random-candidate collision bounds; integration tests cover real collisions, concurrent/idempotent catalogue/receipt writes, rollback/immutability, origin scoping/allowlists, restored-fixture backfill and unchanged legacy stock/QR/PDF/commands. Final actual results in phase-1-implementation-report.md. This does not complete universal discovery, StockUnit/DYI:2, print redesign, verification, physical hardware acceptance or operational migration.
@@ -143,3 +168,14 @@ FR-02/20: local genuine QR, accepted-quantity per-item PDF labels, exact origin/
 | Honest supported administration | Read-only account and Admin-only minimal shop info | catalogue integration admin/shop allowlist; admin.spec.ts |
 
 Actual final results and limitations are recorded in admin-experience-implementation-report.md. This adds no StockUnit, DYI:2, production mutation, closing or cloud transport.
+
+## Staff invitations — owner-confirmed implementation
+
+| Requirement | Implementation boundary | Evidence |
+|---|---|---|
+| Admin-only, shop-scoped invitations | InvitationsService + existing actor/proof/permission gates | invitations integration / browser tests |
+| 24-hour expiry, revoke/resend, fixed approved roles | immutable StaffInvitation + guarded InvitationState + append-only events | expiry/concurrent acceptance/revocation tests |
+| New email only, no account recovery | reject existing/disabled emails, unique User.email | takeover/duplicate tests |
+| Staff chooses password, six characters all roles | shared accounts/invitation Zod contracts and acceptance page | unit/account/browser tests |
+| No real email before verification | injected isolated transport only, encrypted queue | delivery/failure/redaction tests |
+| No stock side effects | no ledger/receipt/catalogue mutation in invitation services | existing integration regressions |

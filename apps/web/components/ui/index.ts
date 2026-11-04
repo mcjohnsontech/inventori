@@ -5,6 +5,7 @@ export { Code } from './code';
 export { CopyButton } from './copy-button';
 export { DataTable, type Column } from './data-table';
 export { DetailList, type DetailRow } from './detail-list';
+export { DetailsDrawer } from './details-drawer';
 export { Disclosure } from './disclosure';
 export {
   Checkbox,

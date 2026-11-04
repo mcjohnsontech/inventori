@@ -3,6 +3,7 @@ import { DatabaseIcon, SecurityCheckIcon } from '@hugeicons/core-free-icons';
 import type { Role } from '@dayari/contracts';
 
 import { useApiRead } from '../lib/api';
+import { AccountSecurity } from './account-security';
 import { formatDateTime, roleLabel } from '../lib/format';
 import {
   Badge,
@@ -26,6 +27,15 @@ type ShopInfo = {
   observedAt: string;
 };
 
+const descriptions: Record<Role, string> = {
+  ADMIN:
+    'Manage your account and sessions. Shop staff administration is available in Users & access.',
+  MANAGER:
+    'Your account supports receiving, operational stock, receipts and lot labels. Catalogue registration remains Admin-only.',
+  PRODUCTION:
+    'Your account supports usable stock discovery and exact identification. Receiving and print administration are restricted.',
+};
+
 const permissions: Record<Role, string> = {
   ADMIN:
     'Catalogue registration and extension, operational receiving, inventory lookup and lot-label administration.',
@@ -35,7 +45,13 @@ const permissions: Record<Role, string> = {
     'Identify supported Product and Lot Codes and QR labels, with usable availability. Receiving and print administration are restricted.',
 };
 
-export function SettingsWorkspace({ user }: { user: { name: string; role: Role } }) {
+export function SettingsWorkspace({
+  user,
+  onPasswordChanged,
+}: {
+  user: { name: string; role: Role };
+  onPasswordChanged: () => void;
+}) {
   const shop = useApiRead<ShopInfo>(user.role === 'ADMIN' ? 'admin/shop' : null);
 
   return (
@@ -43,14 +59,14 @@ export function SettingsWorkspace({ user }: { user: { name: string; role: Role }
       <PageHeader
         eyebrow="Your workspace"
         title="Account & shop"
-        description="Current account permissions and local shop authority. Settings shown here are read-only."
+        description={descriptions[user.role]}
+        actions={<Badge tone="brand">{roleLabel(user.role)}</Badge>}
       />
 
       <div className="mt-8 grid gap-4 lg:grid-cols-2">
-        <Panel
-          title="Your account"
-          action={<Badge tone="brand">{roleLabel(user.role)}</Badge>}
-        >
+        <AccountSecurity onChanged={onPasswordChanged} />
+
+        <Panel title="Your account">
           <Stack gap="tight">
             <div className="flex items-center gap-3">
               <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-brand-tint text-brand">

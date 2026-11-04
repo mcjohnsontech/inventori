@@ -1,5 +1,18 @@
 # Architecture and API boundaries
 
+## Owner correction — six-character unit identities and inventory UX
+
+Slices1–3 authorize compact role-aware navigation, inventory-sheet/drawer and stock-focused overview only. Existing service/ledger/QR/print/account mutation authority is unchanged. Future StockUnit human codes are exactly six random readable characters without a fixed U prefix, origin-scoped unique and immutable; UUID remains primary and DYI:2 encodes UUID. Earlier U+7 is superseded. See [six-character-unit-code-design.md](six-character-unit-code-design.md) for database/contract/search/label/collision rules. No unit implementation/cutover is authorized. Secure staff email invitations are approved future direction only; [staff-invitation-design.md](staff-invitation-design.md) describes separately gated trust and delivery boundaries. Current password policy remains unchanged.
+
+
+## Phase B — shop account boundary
+
+The owner approved SHOP-local staff administration, supervised initial passwords with compulsory change, and explicit isolated membership. User UUIDs remain global historical actors, but one immutable ShopMembership assigns an account to one origin. Sessions carry that origin and require matching active membership. Existing accounts/sessions are preserved without implicit enrollment; null-origin historical sessions fail authentication. New migrations009/010 are isolated-test only until separate operational authorization.
+
+AccountsService adds bounded Admin directory/detail and idempotent create/update/revoke commands, plus own profile/password change. Existing same-origin Next proxy uses explicit route allowlists and HttpOnly Strict cookies. Capability allowlists are shared in contracts; service guards still enforce active roles. Compulsory-change sessions can only read minimal me/change password/logout. User authentication generation changes fence stale in-flight writes under origin-first locks; password/role/status changes revoke all sessions. Persisted login/proof failure limits use PostgreSQL advisory locks. No credential/proof in audit/outbox/command responses; no reset delivery, account deletion, public registration, cloud user writes or sync authority is introduced.
+
+Phase B operational UI reuses the existing stock/receipt/label read contracts for Admin/Manager reports. AvailabilityService adds bounded positive-U-only identity discovery with repeatable-read pagination and strict current-origin filtering, without reading damage/invoice/audit/printing rows. It is not the future universal fuzzy search/hierarchy. Native account/label draft guards preserve unfinished edits on canceled navigation; ordinary printing retains the original PDF renderer and immutable evidence. API process startup validates the required account columns and stops with a clear upgrade gate when missing; it never migrates or enrolls accounts automatically.
+
 ## Phase1 public identity boundary
 
 Two immutable typed sidecars add origin-qualified alternate keys without changing UUID/SKU/lot authority. Backend allocation shares existing catalogue/receiving command transactions; deferred INSERT guards reject new unmapped products/lots. PublicIdentitiesService provides authenticated exact typed reads with role DTOs, no fuzzy search or stock writes. Minimal existing-workspace code form; old PDF/QR infrastructure unchanged. Backfill engine/CLI is isolated *_test-only, dry-run/saved-plan/replay with separate audited metadata. Operational migration/deployment is not performed. See phase-1-implementation-report.md.
@@ -117,3 +130,9 @@ LabelsService adds strict origin/StockLot read-only resolution and task-scoped m
 The owner-authorized Admin experience composes existing domain commands into nine client workspaces: overview, catalogue/details, suppliers/sources, inventory/lots, receiving, receipt history, QR lookup, lot-label printing and account/shop. A shared shell, view fragments with optional UUID context, UI state components and cancellable read hook preserve the existing Next.js/same-origin architecture. Fragments are view state, never authorization.
 
 Two additive reads expose existing data: stock/lots/:id provides bounded Admin/Manager receipt/movement provenance under repeatable read and current-origin validation; admin/shop provides minimal configuration to Admin only. Catalogue queries are narrowed to the configured origin, with the shared location registry retained. No mutation, schema, ledger, identity or role expansion. Production stays on minimal lookup/account views. Overview avoids unlike-product quantity totals; exact lot/SKU projections remain authoritative. See admin-experience-implementation-report.md and admin-preservation-evidence.json.
+
+## Invitation vertical slice — 3 November 2026
+
+Additive invitation identities, guarded terminal state, append-only lifecycle/delivery evidence and a private AES-256-GCM delivery queue extend existing shop-scoped account administration. Origin locking, current Admin proof, auth-generation fencing, command idempotency and sanitized audit/outbox commit together. Acceptance creates exactly one staff account and immutable membership with the assigned existing role; it creates no session and is never an account-recovery path. Existing account provisioning stays available.
+
+Only the injected isolated transport exists in this release. No SMTP adapter or real delivery is enabled. Invitation readiness is route-scoped; an unupgraded operational database can continue existing workflows. Query-token acceptance uses no-referrer/no-store, immediate client URL cleanup, suppressed development request logging and explicit same-origin POST proxying. Production proxy log redaction and verified public URL/sender remain rollout gates.

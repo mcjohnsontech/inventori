@@ -1,5 +1,14 @@
 # Dayari Inventory — Implementation Bricks
 
+## Inventory experience Slices1–3 — owner-authorized implementation
+
+Compact navigation, inventory sheet/details drawer and stock-focused overview only; see inventory-experience-slices-1-3-report.md for actual checks and published milestones. Six-character Unit Code correction is design-only (no U prefix; origin-scoped immutable UUID-backed identity), superseding earlier U+7 proposals. Secure email invitations are approved future direction only. No unit schema/cutover, DYI:2, individual-unit/native print redesign, invitation endpoint, password-policy change, operational migration/enrollment or deployment authorized. Stop after Slice3 for owner review. Historical account migration009/010 isolated-only wording below was separately superseded solely by the owner's approved local upgrade/enrollment recorded in decisions.md.
+
+
+## Phase B — complete application systems, isolated verification
+
+Admin prerequisite milestones were verified published at b7172d3 before Phase B. Owner approved local SHOP staff administration, explicit shop membership and supervised compulsory-password-change onboarding. Milestones1–8 are completed, committed and pushed on feat/complete-application-systems. Final QA passed25 unit/62 integration/15 browser tests, typecheck/build and48 preservation checks. The implementation report records verified GitHub completion commits. Stop for owner review; no next inventory phase is authorized. See complete-application-implementation-report.md for actual results and publication evidence. New account migrations009/010 are isolated-test only; operational account upgrade/enrollment remains gated. Earlier local migrations007/008 were separately authorized; this phase does not repeat or extend that authorization. Bounded Production usable discovery is authorized by Phase B; full Phase3 search/hierarchy, StockUnit/DYI:2, issuing, recovery, closing, cloud transport and deployment remain future gates.
+
 ## Phase1 human identities — authorized isolated implementation
 
 Finalized section17 explicitly authorized by owner; code/model/API/UI/backfill tests implemented. New migrations007/008 exercised only on isolated test database, no operational migration/backfill/deployment. Read phase-1-implementation-report.md for actual tests/evidence. Phase2 StockUnit/serialized receiving/DYI:2, later search/print-cart/verification and Brick6 issues remain unauthorized. Stop for Phase1 review.
@@ -72,3 +81,7 @@ Owner authorized local implementation of QR identity, A4 PDFs, print evidence/re
 ## Admin experience cross-cutting milestone — 3 November 2026
 
 Owner authorized a complete UX/integration refinement around implemented catalogue, receiving/ledger, lot QR/PDF and Phase1 identities, with seven separately published Git milestones. Implementation adds responsive operational workspaces and safe bounded reads; existing mutation services/schema remain unchanged. See admin-experience-implementation-report.md for exact status, tests, files and publication evidence. This is not Phase2 authorization and does not complete physical printer acceptance, unit serialization, production workflows, closing or sync. Stop for owner review after the seventh completion commit.
+
+## Invitation implementation slice — 3 November 2026
+
+Owner authorized implementation after Slices 1–3 and confirmed 24-hour/new-email-only single-use invitations, six-character passwords for all roles, and isolated delivery. Development includes additive migrations 011/012, account acceptance and invitation administration; operational migration and live SMTP rollout remain unapproved. This slice does not implement serialized inventory, V2 QR, unit labels, issuing, closing or synchronization.

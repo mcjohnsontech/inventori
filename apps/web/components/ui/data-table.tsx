@@ -19,6 +19,7 @@ export function DataTable<T>({
   loading = false,
   skeletonRows = 5,
   bare = false,
+  label,
 }: {
   columns: Column<T>[];
   rows: T[];
@@ -28,6 +29,8 @@ export function DataTable<T>({
   skeletonRows?: number;
   /** Drop the outer card when already inside a flush Panel. */
   bare?: boolean;
+  /** Names the table for assistive tech when the page has more than one. */
+  label?: string;
 }) {
   return (
     <div
@@ -37,7 +40,7 @@ export function DataTable<T>({
         !bare && 'rounded-2xl border border-black/[0.07] bg-white',
       )}
     >
-      <table className="w-full min-w-[540px] border-collapse text-left font-sans text-sm tracking-[-0.02em] text-ink">
+      <table aria-label={label} className="w-full min-w-[540px] border-collapse text-left font-sans text-sm tracking-[-0.02em] text-ink">
         <thead>
           <tr>
             {columns.map((column) => (
@@ -80,6 +83,7 @@ export function DataTable<T>({
                 {columns.map((column) => (
                   <td
                     key={column.key}
+                    data-label={column.label}
                     className={cn(
                       'border-b border-black/[0.06] px-4 py-3.5 align-top',
                       column.wide ? 'min-w-[280px]' : 'whitespace-nowrap',

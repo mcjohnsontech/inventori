@@ -184,8 +184,9 @@ export function CatalogueWorkspace({
           >
             {!variants.length ? (
               <EmptyState title="Configure the first variant">
-                Use Add variants or source to set up attribute combinations and explicit SKU
-                suffixes.
+                {role === 'ADMIN'
+                  ? 'Use Add variants or source to set up attribute combinations and explicit SKU suffixes.'
+                  : 'Ask Admin to configure missing variant combinations and saved supplier SKUs.'}
               </EmptyState>
             ) : (
               <ul className="divide-y divide-black/[0.06]">

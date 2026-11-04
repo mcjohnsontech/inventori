@@ -1,5 +1,26 @@
 # Decisions and approval register
 
+## Approved Slices1–3 and six-character unit correction — 3 November2026
+
+Owner authorizes implementation/verification and separate commit/push for compact navigation, inventory sheet/details drawer and stock-focused overview only. No operational migration/stock mutation, serialization, DYI:2, print redesign or invitation implementation. Existing roles, UUIDs, SKU/P/L codes, ledger, receipts and DYI:1 remain unchanged.
+
+Owner corrects individual Unit Codes to exactly six readable alphanumeric characters, origin-scoped immutable uniqueness, no fixed U prefix, UUID primary authority. This supersedes previous U+7/eight-character proposals; see six-character-unit-code-design.md for constraints/capacity/collisions/contracts/search/label tests. Unit implementation/activation and historical enrollment remain gated.
+
+Secure email invitations with employee-set password are approved future direction, not authorized implementation. Single-use token, expiry/revocation, private delivery, origin scoping/audit/security requirements are recorded in staff-invitation-design.md; provider/URL, expiry/reissue/existing-account policies remain open. No password minimum is changed in this task.
+
+
+## Inventory-sheet and exact-unit UX review — 3 November 2026
+
+**CONFIRMED requested direction, documentation-only assignment:** owner requests compact navigation without ordinary sidebar scrolling, rectangular inventory rows with modal/drawer details, product/variant quantity overview and stock attention, inline individual QR-label/cart previews with native printing, email after staff creation, a six-character password minimum instead of 16, and an independent identity for each physical item. Supplier-specific SKU provenance remains required. No implementation is authorized by this review request.
+
+Implementation proposal and targeted gates R01–R07: [inventory-sheet-and-unit-tracking-implementation-plan.md](inventory-sheet-and-unit-tracking-implementation-plan.md). Existing A01–A08 unit architecture is reused, not reported implemented. StockUnit/DYI:2, serialized cutover, new print evidence, email activation/delivery, threshold configuration and operational onboarding remain gated. Email mechanism/provider/reachable URL, password-policy role/temporary scope, reorder threshold semantics, capacity/oversized deliveries and legacy/native print eligibility require concrete review. No stock issuing, damage recovery, closing or cloud transport is authorized.
+
+**Subsequent local account upgrade already separately approved/executed:** owner authorized migrations009/010 and enrollment of existing active Admin admin@dayari.test at origin11111111-1111-4111-8111-111111111111. Private consistent data/schema backup captured before upgrade; all32 original data-table datasets compared unchanged afterward (migration metadata excepted), approved membership inserted and API health/auth proxy verified. Password hash preserved. This supersedes the isolated-only restriction for those specific local changes only; no general account enrollment, historical identity/unit backfill or production deployment approval. Private evidence remains under ignored .local/phase-b-upgrade.
+
+## Phase B account policies — approved 3 November 2026
+
+Owner explicitly approved the three targeted account questions: SHOP Admin manages staff assigned to that shop, existing three roles only, transactional/audited commands, no cloud account writes; block self-demotion/self-deactivation and removal of last active Admin. Supervised Admin-supplied strong initial password requires first-login change; password/role/status changes revoke all sessions. Admin reset/email/SMS recovery remains deferred. Explicit membership isolates accounts; unmapped accounts gain no automatic access. Additive migration and enrollment exercised only on isolated fixtures; operational account mapping/migration remains separately gated. This resolves O5/B09 only for the local account-management scope; stock approvals, cloud revocation/sync and recovery authority remain open. See complete-application-implementation-plan.md and application-permissions.md.
+
 ## Local schema upgrade authorization —3 November2026
 
 Owner explicitly approved migrations007/008 to resolve the running local app/database mismatch. Applied together with the API paused, verified all30 existing tables unchanged, empty identity sidecars/no backfill and consistent ledger, then restarted API and verified authenticated local routes200. This supersedes the prior operational-migration restriction for this local schema upgrade only. No production deployment/backfill/Phase2 authorization. See local-phase-1-upgrade.md.
@@ -159,3 +180,9 @@ PROPOSED only: `receiving-ledger-design.md` describes seven additive tables, ori
 **Engineering implementation within that scope:** nine responsive workspaces; UUID-context fragment navigation; real counts without interchangeable-stock grand totals; bounded provenance read for existing Admin/Manager operational access; minimal Admin-only shop configuration; origin-filtered catalogue reads; explicit latest-100 receipt/print history limitations. No supplier/product deletion/rename, user/role administration or unrestricted audit capability is inferred.
 
 **OPEN / unchanged gates:** hardware/media physical acceptance, archival pagination/scale benchmarks, new administrative commands and later unit/production/sync phases remain separate decisions/authorizations. This refinement does not approve them.
+
+## Expanded implementation authorization — 3 November 2026
+
+CONFIRMED: owner authorized remaining proposal slices through “implement all”, followed by targeted approvals. Invitations: 24-hour expiration, resend/role edits revoke old links, new emails only, no recovery of existing/disabled accounts; supervised provisioning retained. Password minimum six characters for every existing role. Zero-stock alerts only, no reorder thresholds. Brevo smtp-relay.brevo.com:587 STARTTLS and Dayari Inventory sender are provisional; no-reply@dayari.ng and APP_PUBLIC_URL require owner verification before live sending. Development/testing uses isolated transport only. No operational migrations, real historical unit enrollment or deployment authorized.
+
+Implementation order: secure invitation vertical slice; serialized receiving and exact six-character unit lookup; individual-label cart/native printing and verification; isolated historical-onboarding rehearsal. Each complete slice requires tests and a separate pushed commit. Preserve existing Product/Lot Codes, DYI:1, ledger and role boundaries. Do not add production issuing, damage/recovery, closing or cloud transport.

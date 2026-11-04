@@ -1,4 +1,7 @@
 import { z } from 'zod';
+export * from './accounts.js';
+export * from './permissions.js';
+export * from './availability.js';
 
 export const roleSchema = z.enum(['ADMIN', 'MANAGER', 'PRODUCTION']);
 const name = z.string().trim().min(1).max(160);
@@ -102,3 +105,4 @@ export * from './public-identities.js';
 
 // Bounded operational provenance: no security/audit snapshots or valuation fields.
 export type LotEvidence = { lotId: string; receiptId: string; deliveredOn: string; acceptedAt: string; originSequence: string; movements: { id: string; fromState: string; toState: string; quantity: string }[] };
+export * from './invitations.js';

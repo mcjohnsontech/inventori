@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 import { choose } from './ui.js';
 test('Manager receives a multi-product delivery, retries a lost response and sees separate usable/damaged stock', async ({ page }) => {
  await page.goto('/');
- async function login(email: string) { await page.getByLabel('Email address').fill(email); await page.getByLabel('Password', { exact: true }).fill(process.env.E2E_PASSWORD!); await page.getByRole('button', { name: 'Sign in', exact: true }).click(); if (!email.includes('production')) await page.getByRole('button', { name: 'Catalogue', exact: true }).click(); await expect(page.getByRole('heading', { name: email.includes('production') ? 'QR lookup' : 'Product catalogue' })).toBeVisible(); }
+ async function login(email: string) { await page.getByLabel('Email address').fill(email); await page.getByLabel('Password', { exact: true }).fill(process.env.E2E_PASSWORD!); await page.getByRole('button', { name: 'Sign in', exact: true }).click(); if (!email.includes('production')) await page.getByRole('button', { name: 'Catalogue', exact: true }).click(); await expect(page.getByRole('heading', { name: email.includes('production') ? 'Production workspace' : 'Product catalogue' })).toBeVisible(); }
  await login('e2e-admin@dayari.test');
  async function create(operation: string, body: unknown) { const response=await page.request.post(`/api/catalogue/${operation}`,{headers:{Origin:'http://127.0.0.1:3101','Idempotency-Key':randomUUID()},data:body});expect(response.ok(),await response.text()).toBe(true);return response.json(); }
  const catalogue=await (await page.request.get('/api/catalogue')).json();
@@ -40,10 +40,10 @@ test('Manager receives a multi-product delivery, retries a lost response and see
  await expect(page.getByRole('region',{name:'Accepted receipt',exact:true})).toContainText(skus[0].fullCode);
  await page.getByRole('button',{name:'Inspect stock lots',exact:true}).first().click();
  await expect(page.getByRole('heading',{name:'Inventory',exact:true})).toBeVisible();
- await page.getByRole('button').filter({hasText:accepted.lines[0].lotCode}).filter({hasText:'Inspect lot provenance'}).click();
+ await page.getByRole('row').filter({hasText:accepted.lines[0].lotCode}).getByRole('button',{name:/Details/}).click();
  const provenance=page.getByRole('region',{name:'Lot provenance',exact:true});
  await expect(provenance).toContainText('External arrival → Usable');
- await provenance.getByRole('button',{name:'View accepted receipt',exact:true}).click();
+ const receiptResponse=page.waitForResponse(r=>r.url().endsWith(`/api/receipts/${accepted.id}`)&&r.request().method()==='GET');await provenance.getByRole('button',{name:'View accepted receipt',exact:true}).click();expect((await receiptResponse).status()).toBe(200);
  await expect(page.getByRole('region',{name:'Accepted receipt',exact:true})).toContainText(accepted.batch.publicCode);
  await page.getByRole('button',{name:'Sign out'}).click();await login('e2e-production@dayari.test');await expect(page.getByRole('button',{name:'Receiving',exact:true})).toHaveCount(0);expect((await page.request.get('/api/receiving/options')).status()).toBe(403);expect((await page.request.get('/api/stock')).status()).toBe(403);
 });

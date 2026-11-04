@@ -12,7 +12,7 @@ const db = database();
 try {
   await db.$transaction(async tx => {
     await tx.originNode.upsert({ where: { id: originId }, create: { id: originId, mode: 'SHOP' }, update: {} });
-    await tx.user.upsert({ where: { email: email.toLowerCase() }, create: { email: email.toLowerCase(), name: 'Development Admin', role: 'ADMIN', passwordHash: passwordHash(password) }, update: {} });
+    await tx.user.upsert({ where: { email: email.toLowerCase() }, create: { email: email.toLowerCase(), name: 'Development Admin', role: 'ADMIN', passwordHash: passwordHash(password), membership:{create:{originId}} }, update: {} });
   });
   console.info('Development shop and Admin provisioned. Existing users/passwords were not changed.');
 } finally { await db.$disconnect(); }

@@ -1,38 +1,41 @@
 'use client';
 import {
   ArrowUpRight01Icon,
-  Book02Icon,
-  PackageDeliveredIcon,
-  PackageIcon,
-  PrinterIcon,
-  QrCodeIcon,
-  TagsIcon,
+  RefreshIcon,
   TruckDeliveryIcon,
 } from '@hugeicons/core-free-icons';
-import type { Catalogue, OperationalStock } from '@dayari/contracts';
+import { useState } from 'react';
+import type { Catalogue, OperationalStock, Role } from '@dayari/contracts';
 
+import { cn } from '../lib/cn';
 import { useApiRead } from '../lib/api';
 import { formatDate, isPositive } from '../lib/format';
+import { stockOverview, type StockVariantRow } from '../lib/stock-overview';
 import {
   Badge,
   Button,
   Code,
+  type Column,
+  CopyButton,
+  DataTable,
   EmptyState,
   ErrorNotice,
+  Field,
   Footnote,
   Icon,
+  LinkButton,
   ListSkeleton,
   Page,
   PageHeader,
+  Pager,
   Panel,
-  Stack,
-  Stat,
-  StatSkeleton,
+  SearchInput,
+  Select,
   card,
-  cardInteractive,
 } from './ui';
-import { cn } from '../lib/cn';
 import type { Workspace } from './shell/destinations';
+
+const PER_PAGE = 12;
 
 export type ReceiptSummary = {
   id: string;
@@ -44,117 +47,272 @@ export type ReceiptSummary = {
   acceptedAt: string;
 };
 
-const shortcuts = [
-  {
-    target: 'catalogue' as Workspace,
-    title: 'Build the catalogue',
-    detail: 'Products, variants and saved supplier SKUs',
-    icon: Book02Icon,
-  },
-  {
-    target: 'qr' as Workspace,
-    title: 'Identify a stock lot',
-    detail: 'Scan DYI:1 or enter a Product / Lot Code',
-    icon: QrCodeIcon,
-  },
-  {
-    target: 'labels' as Workspace,
-    title: 'Prepare delivery labels',
-    detail: 'Accepted receipts and explicit reprints',
-    icon: PrinterIcon,
-  },
-];
+const statusLabel: Record<StockVariantRow['status'], string> = {
+  available: 'In stock',
+  empty: 'No usable stock',
+  unreceived: 'Never received',
+};
 
 export function Dashboard({
   catalogue,
   name,
+  role,
   navigate,
   onReceipt,
+  onLot,
 }: {
   catalogue: Catalogue;
   name: string;
+  role: Role;
   navigate: (workspace: Workspace) => void;
   onReceipt: (id: string) => void;
+  onLot: (productId: string, lotId: string) => void;
 }) {
   const stock = useApiRead<OperationalStock>('stock');
   const receipts = useApiRead<ReceiptSummary[]>('receipts');
 
-  const variants = catalogue.products.reduce(
-    (sum, product) =>
-      sum +
-      product.variants.filter((variant) => !product.attributes.length || variant.combinationKey)
-        .length,
-    0,
-  );
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState('all');
+  const [page, setPage] = useState(1);
+  const [expanded, setExpanded] = useState('');
 
-  const stats = [
+  const rows = stock.data ? stockOverview(catalogue, stock.data) : [];
+
+  const visible = rows.filter((row) => {
+    const haystack = `${row.productName} ${row.variantName} ${row.productCode ?? ''} ${row.lots
+      .map((lot) => `${lot.fullCode} ${lot.lotCode ?? ''} ${lot.publicCode} ${lot.supplierName}`)
+      .join(' ')}`.toLowerCase();
+
+    const matches = haystack.includes(search.toLowerCase().trim());
+    const inFilter =
+      filter === 'all' ||
+      row.status === filter ||
+      (filter === 'damaged' && isPositive(row.damaged));
+
+    return matches && inFilter;
+  });
+
+  const damagedLots = stock.data?.lots.filter((lot) => isPositive(lot.damaged)).length ?? 0;
+
+  const summary = [
+    { label: 'Variants with usable stock', value: rows.filter((r) => r.status === 'available').length, filter: 'available' },
+    { label: 'Variants without usable stock', value: rows.filter((r) => r.status === 'empty').length, filter: 'empty' },
+    { label: 'Not yet received', value: rows.filter((r) => r.status === 'unreceived').length, filter: 'unreceived' },
+    { label: 'Lots containing damaged stock', value: damagedLots, filter: 'damaged' },
+  ];
+
+  function changeFilter(value: string) {
+    setFilter(value);
+    setPage(1);
+    setExpanded('');
+  }
+
+  const pageCount = Math.max(1, Math.ceil(visible.length / PER_PAGE));
+  const current = Math.min(page, pageCount);
+  const start = (current - 1) * PER_PAGE;
+
+  const columns: Column<StockVariantRow>[] = [
     {
-      label: 'Registered products',
-      value: catalogue.products.length,
-      hint: 'Shared parent identities',
-      icon: PackageIcon,
-      target: 'catalogue' as Workspace,
+      key: 'product',
+      label: 'Product',
+      wide: true,
+      cell: (row) => (
+        <>
+          <strong className="block font-semibold">{row.productName}</strong>
+          <span className="mt-0.5 block font-sans text-xs text-grey-3">{row.variantName}</span>
+          {row.productCode ? (
+            <Code tone="brand" className="mt-0.5 block">
+              {row.productCode}
+            </Code>
+          ) : null}
+        </>
+      ),
     },
     {
-      label: 'Configured variants',
-      value: variants,
-      hint: 'Across the product catalogue',
-      icon: TagsIcon,
-      target: 'catalogue' as Workspace,
+      key: 'status',
+      label: 'Status',
+      cell: (row) => (
+        <Badge tone={row.status === 'available' ? 'usable' : 'neutral'}>
+          {statusLabel[row.status]}
+        </Badge>
+      ),
     },
+    { key: 'usable', label: 'Usable', align: 'right', cell: (row) => row.usable },
+    { key: 'damaged', label: 'Damaged', align: 'right', cell: (row) => row.damaged },
     {
-      label: 'Supplier SKUs',
-      value: catalogue.skus.length,
-      hint: 'Saved source-specific identities',
-      icon: TruckDeliveryIcon,
-      target: 'catalogue' as Workspace,
-    },
-    {
-      label: 'Lots with usable stock',
-      value: stock.data ? stock.data.lots.filter((lot) => isPositive(lot.usable)).length : '—',
-      hint: 'Separate SKU and delivery batches',
-      icon: PackageDeliveredIcon,
-      target: 'inventory' as Workspace,
+      key: 'lots',
+      label: 'Lots',
+      cell: (row) =>
+        row.lots.length ? (
+          <LinkButton
+            aria-expanded={expanded === row.variantId}
+            aria-controls={`lots-${row.variantId}`}
+            onClick={() => setExpanded(expanded === row.variantId ? '' : row.variantId)}
+          >
+            {row.lots.length} {row.lots.length === 1 ? 'lot' : 'lots'}{' '}
+            {expanded === row.variantId ? '−' : '+'}
+          </LinkButton>
+        ) : (
+          <span className="text-grey-3">—</span>
+        ),
     },
   ];
 
-  const damagedLots = stock.data?.lots.filter((lot) => isPositive(lot.damaged)).length ?? 0;
-  const usableSkus = stock.data?.bySku.filter((sku) => isPositive(sku.usable)).length ?? 0;
+  const expandedRow = visible.find((row) => row.variantId === expanded);
 
   return (
     <Page>
       <PageHeader
-        eyebrow="Your shop, at a glance"
+        eyebrow={role === 'MANAGER' ? 'Inventory Manager · Stock overview' : 'Stock overview'}
         title={`Welcome, ${name.split(' ')[0]}`}
-        description="A clear starting point for today's inventory work. Figures come from your local shop service."
+        description="What is available, what has arrived and which stock needs attention."
         actions={
-          <Button onClick={() => navigate('receiving')}>
-            Receive a delivery
-            <Icon icon={ArrowUpRight01Icon} size={16} strokeWidth={2} />
-          </Button>
+          <>
+            <Button variant="secondary" onClick={stock.refresh}>
+              <Icon icon={RefreshIcon} size={15} />
+              Refresh stock
+            </Button>
+            <Button onClick={() => navigate('receiving')}>
+              Receive a delivery
+              <Icon icon={ArrowUpRight01Icon} size={16} strokeWidth={2} />
+            </Button>
+          </>
         }
       />
 
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {stock.loading && !stock.data
-          ? stats.map((stat) => <StatSkeleton key={stat.label} />)
-          : stats.map((stat) => (
-              <Stat
-                key={stat.label}
-                label={stat.label}
-                value={stat.value}
-                hint={stat.hint}
-                icon={stat.icon}
-                onClick={() => navigate(stat.target)}
-              />
-            ))}
+      <div
+        aria-label="Stock summary"
+        className="stock-summary-strip mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+      >
+        {summary.map((item) => (
+          <button
+            key={item.label}
+            type="button"
+            aria-pressed={filter === item.filter}
+            onClick={() => {
+              setSearch('');
+              changeFilter(filter === item.filter ? 'all' : item.filter);
+            }}
+            className={cn(
+              card,
+              'px-5 py-4 text-left transition-shadow hover:shadow-[0_10px_30px_rgba(0,0,0,0.06)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand',
+              filter === item.filter && 'border-brand/30 bg-brand-tint',
+            )}
+          >
+            <span className="block font-sans text-xs font-semibold tracking-[0.07em] text-grey-3 uppercase">
+              {item.label}
+            </span>
+            <strong className="mt-2 block font-display text-3xl leading-none font-semibold tracking-[-0.03em] text-brand-deep">
+              {item.value}
+            </strong>
+          </button>
+        ))}
       </div>
 
-      {stock.error ? (
-        <ErrorNotice message={stock.error} onRetry={stock.refresh} className="mt-6" />
-      ) : null}
+      <div className="mt-6">
+        <Panel
+          title="Product availability"
+          description="Quantities stay separated by variant. Open lots to compare suppliers and batches."
+          action={
+            <Button variant="secondary" size="compact" onClick={() => navigate('inventory')}>
+              Open inventory sheet
+            </Button>
+          }
+          flush
+        >
+          <div className="flex flex-col gap-3 border-b border-black/[0.06] px-5 pb-4 sm:flex-row sm:items-end">
+            <SearchInput
+              label="Search stock overview"
+              value={search}
+              placeholder="Product, variant, saved SKU or code…"
+              className="w-full sm:w-[320px]"
+              onChange={(value) => {
+                setSearch(value);
+                setPage(1);
+                setExpanded('');
+              }}
+            />
+            <Field label="Stock status" className="w-full sm:w-[220px]">
+              {(id) => (
+                <Select
+                  id={id}
+                  label="Stock status"
+                  value={filter}
+                  onChange={changeFilter}
+                  options={[
+                    { value: 'all', label: 'All variants' },
+                    { value: 'available', label: 'In stock' },
+                    { value: 'empty', label: 'No usable stock' },
+                    { value: 'unreceived', label: 'Never received' },
+                    { value: 'damaged', label: 'Has damaged stock' },
+                  ]}
+                />
+              )}
+            </Field>
+          </div>
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+          {stock.loading ? (
+            <ListSkeleton rows={6} />
+          ) : stock.error ? (
+            <div className="p-5">
+              <ErrorNotice message={stock.error} onRetry={stock.refresh} />
+            </div>
+          ) : !visible.length ? (
+            <EmptyState title="No variants match this view">
+              Try another filter or search.{' '}
+              {role === 'ADMIN'
+                ? 'Register products in the catalogue to get started.'
+                : 'Ask Admin to register missing products.'}
+            </EmptyState>
+          ) : (
+            <DataTable
+              bare
+              label="Product stock availability"
+              columns={columns}
+              rows={visible.slice(start, start + PER_PAGE)}
+              rowKey={(row) => row.variantId}
+              emptyMessage="No variants match this view."
+            />
+          )}
+
+          {expandedRow ? (
+            <section
+              id={`lots-${expandedRow.variantId}`}
+              aria-label={`Delivery lots for ${expandedRow.productName} ${expandedRow.variantName}`}
+              className="border-t border-black/[0.06] bg-surface-muted/60 px-5 py-4"
+            >
+              <ul className="space-y-2.5">
+                {expandedRow.lots.map((lot) => (
+                  <li key={lot.lotId} className="group flex flex-wrap items-center gap-2">
+                    <Code>{lot.fullCode}</Code>
+                    <CopyButton value={lot.fullCode} label="supplier SKU" />
+                    <Badge tone="usable">{lot.usable} usable</Badge>
+                    <Badge tone="damaged">{lot.damaged} damaged</Badge>
+                    <span className="font-sans text-xs text-grey-3">{lot.supplierName}</span>
+                    <LinkButton onClick={() => onLot(expandedRow.productId, lot.lotId)}>
+                      Open lot
+                    </LinkButton>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+
+          <Pager
+            page={current}
+            pageCount={pageCount}
+            total={visible.length}
+            onChange={setPage}
+          />
+
+          <Footnote className="px-5 pb-4">
+            Low-stock thresholds are not configured. Figures reflect recorded movements; physical
+            counts are not verified here.
+          </Footnote>
+        </Panel>
+      </div>
+
+      <div className="mt-4">
         <Panel
           title="Recent receiving activity"
           description="The latest accepted deliveries, newest first."
@@ -166,18 +324,18 @@ export function Dashboard({
           flush
         >
           {receipts.loading ? (
-            <ListSkeleton rows={5} />
+            <ListSkeleton rows={3} />
           ) : receipts.error ? (
             <div className="px-5 pb-5">
               <ErrorNotice message={receipts.error} onRetry={receipts.refresh} />
             </div>
           ) : !receipts.data?.length ? (
             <EmptyState title="Ready for your first delivery" icon={TruckDeliveryIcon}>
-              Register a supplier and sourced product, then accept a receipt.
+              Select a saved supplier and sourced product to receive stock.
             </EmptyState>
           ) : (
             <ul className="divide-y divide-black/[0.06]">
-              {receipts.data.slice(0, 6).map((receipt) => (
+              {receipts.data.slice(0, 3).map((receipt) => (
                 <li key={receipt.id}>
                   <button
                     type="button"
@@ -202,61 +360,6 @@ export function Dashboard({
             </ul>
           )}
         </Panel>
-
-        <Panel
-          title="Stock attention"
-          description="Quantities stay separated by variant, supplier SKU and batch."
-        >
-          <Stack gap="tight">
-            <Footnote>
-              Unlike products are never combined into one available-stock total.
-            </Footnote>
-            {stock.data ? (
-              <>
-                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-black/[0.06] pt-4">
-                  <span className="font-sans text-sm tracking-[-0.02em] text-ink">
-                    Lots containing damaged stock
-                  </span>
-                  <Badge tone="damaged">{damagedLots}</Badge>
-                </div>
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="font-sans text-sm tracking-[-0.02em] text-ink">
-                    SKUs with usable availability
-                  </span>
-                  <Badge tone="usable">{usableSkus}</Badge>
-                </div>
-                <Button variant="secondary" onClick={() => navigate('inventory')} className="w-full">
-                  Explore inventory
-                  <Icon icon={ArrowUpRight01Icon} size={15} strokeWidth={2} />
-                </Button>
-              </>
-            ) : null}
-          </Stack>
-        </Panel>
-      </div>
-
-      <div className="mt-6 grid gap-4 sm:grid-cols-3">
-        {shortcuts.map((shortcut) => (
-          <button
-            key={shortcut.target}
-            type="button"
-            onClick={() => navigate(shortcut.target)}
-            className={cn(card, cardInteractive, 'p-5')}
-          >
-            <span className="flex items-start justify-between gap-3">
-              <span className="grid size-9 place-items-center rounded-xl bg-brand-tint text-brand">
-                <Icon icon={shortcut.icon} size={18} />
-              </span>
-              <Icon icon={ArrowUpRight01Icon} size={16} className="mt-1 text-grey-3" />
-            </span>
-            <span className="mt-4 block font-sans text-sm font-semibold tracking-[-0.03em] text-ink">
-              {shortcut.title}
-            </span>
-            <span className="mt-1.5 block font-sans text-xs leading-[1.6] tracking-[-0.02em] text-grey-3">
-              {shortcut.detail}
-            </span>
-          </button>
-        ))}
       </div>
     </Page>
   );
