@@ -81,4 +81,6 @@ No Prisma schema, migration, catalogue, receiving command, account service, publ
 
 ## Publication and next review
 
-Publication will be recorded after final checks. Review the software changes, then perform an alignment and physical QR scan trial on the intended printer/media. No next inventory phase is started automatically.
+Implementation commit: [`c788219d55baf1b6e87f20e24a6fe19d7ce17a0a`](https://github.com/mcjohnsontech/inventori/commit/c788219d55baf1b6e87f20e24a6fe19d7ce17a0a), `feat(labels): redesign PDF preview and reusable sheet printing`, branch `feat/complete-application-systems`. Push succeeded and `git ls-remote` returned that exact SHA. Final publication evidence is recorded in a documentation-only follow-up commit.
+
+The local API health check returned HTTP 200 and the local web server was restored on port 3000 after verification. A separate headless Chrome check confirmed HTTP 200 and the hydrated sign-in form; it performed no operational login or mutation. Review the software changes, then perform an alignment and physical QR scan trial on the intended printer/media. No next inventory phase is started automatically.
