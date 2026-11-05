@@ -80,7 +80,18 @@ export class CatalogueService {
   }
 
   async create(user: User, type: string, keyInput: unknown, input: unknown) {
-    requireCapability(user,'CATALOGUE_WRITE');
+    return this.execute(user, type, keyInput, input, false);
+  }
+
+  async createReceivingProduct(user: User, keyInput: unknown, input: unknown) {
+    return this.execute(user, 'product-setups', keyInput, input, true);
+  }
+
+  private async execute(user: User, type: string, keyInput: unknown, input: unknown, receiving: boolean) {
+    const capability = receiving ? 'RECEIVE' : 'CATALOGUE_WRITE';
+    requireCapability(user,capability);
+    // Separate command namespace: a receipt registration cannot replay a catalogue command.
+    const commandType = receiving ? 'receiving.product-setups' : type;
     if (this.mode !== 'SHOP') throw new ForbiddenException('Catalogue writes belong to the shop authority');
     const key = parse(idempotencyKeySchema, keyInput);
     const schemas: Record<string, ZodType> = { products: productSchema, suppliers: supplierSchema, sources: sourceSchema, attributes: attributeSchema, values: valueSchema, variants: variantSchema, skus: skuSchema, 'supplier-setups': supplierSetupSchema, 'product-setups': productSetupSchema };
@@ -96,20 +107,24 @@ export class CatalogueService {
         // Recheck active role under lock; a previously authenticated request cannot bypass deactivation.
         await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${user.id}::uuid FOR SHARE`;
         const current = await tx.user.findUnique({ where: { id: user.id } });
-        if (!current?.active || current.authVersion!==user.authVersion || current.mustChangePassword || current.role !== 'ADMIN') throw new ForbiddenException();
-        const prior = await tx.commandResult.findUnique({ where: { originId_actorId_commandType_key: { originId: this.originId, actorId: user.id, commandType: type, key } } });
+        if (!current?.active || current.authVersion!==user.authVersion || current.mustChangePassword) throw new ForbiddenException();
+        requireCapability(current,capability);
+        const membership = await tx.shopMembership.findUnique({ where: { userId: user.id } });
+        if (membership?.originId !== this.originId) throw new ForbiddenException();
+        const prior = await tx.commandResult.findUnique({ where: { originId_actorId_commandType_key: { originId: this.originId, actorId: user.id, commandType, key } } });
         if (prior) {
           if (prior.requestHash !== requestHash) throw new ConflictException('Idempotency key reused with different input');
           return prior.response;
         }
         const commandId = randomUUID();
+        const eventType = receiving ? 'receiving.product.registered' : `catalogue.${type}.created`;
         const result = await this.insert(tx, type, data, commandId);
         const node = await tx.originNode.update({ where: { id: this.originId }, data: { nextSequence: { increment: 1 } } });
         const response = JSON.parse(JSON.stringify(result)) as Prisma.InputJsonValue;
         const payload = { subject: response, actorId: user.id, actorRole: user.role, commandId } as Prisma.InputJsonValue;
-        await tx.auditEvent.create({ data: { originId: this.originId, actorId: user.id, actorRole: user.role, commandId, action: `catalogue.${type}.created`, subjectId: result.id, snapshot: payload } });
-        await tx.outboxEvent.create({ data: { originId: this.originId, originSequence: node.nextSequence, eventType: `catalogue.${type}.created`, aggregateId: result.id, commandId, actorId: user.id, payload, payloadHash: digest(canonical(payload)) } });
-        await tx.commandResult.create({ data: { id: commandId, originId: this.originId, actorId: user.id, commandType: type, key, requestHash, response } });
+        await tx.auditEvent.create({ data: { originId: this.originId, actorId: user.id, actorRole: user.role, commandId, action: eventType, subjectId: result.id, snapshot: payload } });
+        await tx.outboxEvent.create({ data: { originId: this.originId, originSequence: node.nextSequence, eventType, aggregateId: result.id, commandId, actorId: user.id, payload, payloadHash: digest(canonical(payload)) } });
+        await tx.commandResult.create({ data: { id: commandId, originId: this.originId, actorId: user.id, commandType, key, requestHash, response } });
         return response;
       }, { timeout: 15000 });
     } catch (error) {

@@ -20,7 +20,7 @@ export class ReceivingService {
   allow(user: User) { requireCapability(user,'RECEIVE'); }
   async options(user: User) {
     this.allow(user);
-    const sources = await this.db.supplierSource.findMany({ where: { originId: this.originId, sourcings: { some: { skus: { some: {} } } } }, include: { supplier: true } });
+    const sources = await this.db.supplierSource.findMany({ where: { originId: this.originId, OR: [{ skuPrefix: { isNot: null } }, { sourcings: { some: { skus: { some: {} } } } }] }, include: { supplier: true } });
     const skus = await this.db.supplierVariantSku.findMany({ where: { sourcing: { sourceId: { in: sources.map(source => source.id) } } }, include: { sourcing: true, variant: { include: { product: true } } }, orderBy: { fullCode: 'asc' } });
     const suppliers = new Map<string, { id: string; name: string; code: string; sources: { id: string; name: string; code: string }[] }>();
     for (const source of sources) {

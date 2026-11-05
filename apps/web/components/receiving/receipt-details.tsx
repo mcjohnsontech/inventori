@@ -1,4 +1,5 @@
 'use client';
+import { PagedItems } from '../ui/paged-items';
 import { useState } from 'react';
 import type { AcceptedReceipt, OperationalStock } from '@dayari/contracts';
 
@@ -125,13 +126,13 @@ export function ReceiptDetails({
         description="Usable and damaged quantities are recorded separately and never combined."
         flush
       >
-        <DataTable
+<PagedItems items={receipt.lines}>{pageItems =>         <DataTable
           bare
           columns={columns}
-          rows={receipt.lines}
+          rows={[...pageItems]}
           rowKey={(line) => line.id}
           emptyMessage="This receipt has no lines."
-        />
+        />}</PagedItems>
         <Footnote className="px-5 py-4">Accepted history is immutable.</Footnote>
       </Panel>
 
@@ -141,16 +142,14 @@ export function ReceiptDetails({
         ) : stock.error ? (
           <ErrorNotice message={stock.error} onRetry={stock.refresh} />
         ) : (
-          <ul className="space-y-2.5">
-            {stock.data?.lots.map((lot) => (
+          <PagedItems items={(stock.data?.lots ?? [])} size={10}>{pageItems => <ul className="space-y-2.5">{pageItems.map((lot) => (
               <li key={lot.lotId} className="group flex flex-wrap items-center gap-2">
                 <Code>{lot.fullCode}</Code>
                 <CopyButton value={lot.fullCode} label="supplier SKU" />
                 <Badge tone="usable">{lot.usable} usable</Badge>
                 <Badge tone="damaged">{lot.damaged} damaged</Badge>
               </li>
-            ))}
-          </ul>
+            ))}</ul>}</PagedItems>
         )}
       </Panel>
 

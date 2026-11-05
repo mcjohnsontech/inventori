@@ -65,6 +65,7 @@ export function WorkspaceRouter({
   onSupplierFlow,
   onProductFlow,
   onPasswordChanged,
+  onCatalogueChanged,
 }: {
   workspace: Workspace;
   catalogue: Catalogue;
@@ -77,6 +78,7 @@ export function WorkspaceRouter({
   onSupplierFlow: (id?: string) => void;
   onProductFlow: (id?: string) => void;
   onPasswordChanged: () => void;
+  onCatalogueChanged: (catalogue: Catalogue) => void;
 }) {
   const home = () => navigate(user.role === 'PRODUCTION' ? 'availability' : 'dashboard');
 
@@ -173,6 +175,7 @@ export function WorkspaceRouter({
     case 'receiving':
       return (
         <ReceivingWorkspace
+          onCatalogueChanged={onCatalogueChanged}
           onHistory={() => navigate('receipts')}
           onInventory={(id) => navigate('inventory', id)}
         />

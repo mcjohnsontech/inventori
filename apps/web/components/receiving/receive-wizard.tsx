@@ -1,14 +1,17 @@
 'use client';
+import { PagedItems } from '../ui/paged-items';
 import { useRef, useState } from 'react';
 import {
   lagosDate,
   receiptSchema,
   type AcceptedReceipt,
   type ReceivingOptions,
+  type Catalogue,
 } from '@dayari/contracts';
 
 import {
   Badge,
+  Button,
   Checkbox,
   Code,
   Field,
@@ -24,6 +27,7 @@ import { notifyAuthFailure } from '../../lib/api';
 import { cn } from '../../lib/cn';
 import { WizardShell } from '../wizard/wizard-shell';
 import { Totals } from './totals';
+import { ProductWizard } from '../catalogue/setup-wizards';
 
 type DraftLine = {
   skuId: string;
@@ -47,14 +51,19 @@ async function post(path: string, init?: RequestInit) {
 }
 
 export function ReceiveWizard({
-  options,
+  options: initialOptions,
   onClose,
   onSaved,
+  onCatalogueChanged,
 }: {
   options: ReceivingOptions;
   onClose: () => void;
   onSaved: (receipt: AcceptedReceipt) => void;
+  onCatalogueChanged?: (catalogue: Catalogue) => void;
 }) {
+  const [options, setOptions] = useState(initialOptions);
+  const [registration, setRegistration] = useState<Catalogue | null>(null);
+  const [registering, setRegistering] = useState(false);
   const [step, setStep] = useState(0);
   const [supplierId, setSupplierId] = useState('');
   const [sourceId, setSourceId] = useState('');
@@ -66,6 +75,28 @@ export function ReceiveWizard({
   const [error, setError] = useState('');
 
   const submitting = useRef(false);
+
+  async function openRegistration() {
+    setRegistering(true);
+    setError('');
+    try {
+      const catalogue: Catalogue = await post('catalogue');
+      if (!catalogue.suppliers.some(supplier => supplier.sources.some(source => source.id === sourceId && source.skuPrefix))) throw new Error('Ask Admin to configure this saved location’s SKU prefix before registering products. Existing SKUs can still be received.');
+      setRegistration(catalogue);
+    }
+    catch (failure) { setError((failure as Error).message); }
+    finally { setRegistering(false); }
+  }
+
+  async function registered(skus: { id: string }[]) {
+    // Keep the wizard mounted: the receipt draft survives registration and cancellation.
+    const [refreshed, catalogue]: [ReceivingOptions, Catalogue] = await Promise.all([post('receiving/options'), post('catalogue')]);
+    setOptions(refreshed);
+    setLines(previous => [...previous, ...skus.filter(sku => !previous.some(line => line.skuId === sku.id)).map(sku => ({ skuId: sku.id, usableQuantity: '0', damagedQuantity: '0', damageReason: '' }))]);
+    setProductSearch('');
+    onCatalogueChanged?.(catalogue);
+    setRegistration(null);
+  }
 
   const supplier = options.suppliers.find((item) => item.id === supplierId);
   const source = supplier?.sources.find((item) => item.id === sourceId);
@@ -160,6 +191,8 @@ export function ReceiveWizard({
       .includes(productSearch.toLowerCase()),
   );
 
+  if (registration) return <ProductWizard catalogue={registration} receivingSourceId={sourceId} onClose={() => setRegistration(null)} onSaved={async () => {}} onReceivingSaved={registered} onConfigureSupplier={() => {}} />;
+
   return (
     <WizardShell
       eyebrow="Stock receiving"
@@ -187,7 +220,8 @@ export function ReceiveWizard({
                 value={supplierId}
                 onChange={(value) => {
                   setSupplierId(value);
-                  setSourceId('');
+                  const sources = options.suppliers.find(item => item.id === value)?.sources ?? [];
+                  setSourceId(sources.length === 1 ? sources[0]!.id : '');
                   setLines([]);
                 }}
                 options={options.suppliers.map((item) => ({
@@ -198,7 +232,8 @@ export function ReceiveWizard({
             )}
           </Field>
 
-          {supplier ? (
+          {supplier?.sources.length === 1 ? <Footnote>Saved location: {supplier.sources[0]!.name}. Used automatically for this delivery.</Footnote> : null}
+          {supplier && supplier.sources.length > 1 ? (
             <Field label="Receiving source">
               {(id) => (
                 <Select
@@ -221,8 +256,7 @@ export function ReceiveWizard({
           ) : null}
 
           <Footnote>
-            Only existing sourced SKUs can be received. Ask Admin to complete catalogue setup if a
-            product is missing.
+            Select the supplier once for the entire delivery. Register missing products in the next step.
           </Footnote>
         </>
       ) : null}
@@ -238,8 +272,10 @@ export function ReceiveWizard({
           <Badge tone="brand">
             {lines.length} variant line{lines.length === 1 ? '' : 's'} selected
           </Badge>
+          <Button type="button" variant="secondary" disabled={registering} onClick={openRegistration}>{registering ? 'Loading catalogue…' : 'Register a new product'}</Button>
+          <Footnote>Registration saves the product and its SKUs. Stock is added only when you confirm this receipt.</Footnote>
 
-          {visibleProducts.map(([productId, name]) => (
+          <PagedItems items={visibleProducts} size={8} key={productSearch}>{pageItems => <>{pageItems.map(([productId, name]) => (
             <section key={productId} className={cn(card, 'p-4')}>
               <h4 className="font-sans text-sm font-semibold tracking-[-0.02em] text-ink">
                 {name}
@@ -280,7 +316,7 @@ export function ReceiveWizard({
                   ))}
               </div>
             </section>
-          ))}
+          ))}</>}</PagedItems>
 
           {!visibleProducts.length ? (
             <Footnote>No products match that search for this source.</Footnote>
@@ -316,7 +352,8 @@ export function ReceiveWizard({
             </Field>
           </div>
 
-          {lines.map((line, index) => {
+          <PagedItems items={lines} size={6}>{pageItems => <>{pageItems.map((line) => {
+            const index = lines.findIndex(row => row.skuId === line.skuId);
             const sku = available.find((item) => item.id === line.skuId)!;
 
             return (
@@ -392,9 +429,10 @@ export function ReceiveWizard({
                 ) : null}
               </section>
             );
-          })}
+          })}</>}</PagedItems>
 
           <Totals
+            neutral
             usable={String(usable)}
             damaged={String(damaged)}
             delivered={String(usable + damaged)}
@@ -422,7 +460,7 @@ export function ReceiveWizard({
             </Footnote>
           </div>
 
-          {lines.map((line) => {
+          <PagedItems items={lines} size={8}>{pageItems => <>{pageItems.map((line) => {
             const sku = available.find((item) => item.id === line.skuId)!;
 
             return (
@@ -442,9 +480,10 @@ export function ReceiveWizard({
                 ) : null}
               </div>
             );
-          })}
+          })}</>}</PagedItems>
 
           <Totals
+            neutral
             usable={String(usable)}
             damaged={String(damaged)}
             delivered={String(usable + damaged)}

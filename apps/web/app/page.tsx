@@ -304,6 +304,7 @@ export default function DayariInventory() {
         onSupplierFlow={openSupplier}
         onProductFlow={openProduct}
         onPasswordChanged={passwordChanged}
+        onCatalogueChanged={setCatalogue}
       />
 
       {flow === 'supplier' && user.role === 'ADMIN' ? (

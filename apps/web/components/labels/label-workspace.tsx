@@ -1,4 +1,5 @@
 'use client';
+import { PagedItems } from '../ui/paged-items';
 import { PrinterIcon } from '@hugeicons/core-free-icons';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -447,8 +448,7 @@ export function LabelWorkspace({
                               ? 'Damaged intake · historical sheet order'
                               : 'Damaged intake · separate sheets'}
                         </Badge>
-                        <ul className="mt-2 max-h-64 divide-y divide-black/[0.06] overflow-y-auto">
-                          {rows.map((line) => (
+                        <PagedItems items={rows} size={10}>{pageItems => <ul className="mt-2 max-h-64 divide-y divide-black/[0.06] overflow-y-auto">{pageItems.map((line) => (
                             <li
                               key={line.id}
                               className="flex items-center justify-between gap-3 py-1.5"
@@ -460,8 +460,7 @@ export function LabelWorkspace({
                                 {line.copies}
                               </span>
                             </li>
-                          ))}
-                        </ul>
+                          ))}</ul>}</PagedItems>
                       </div>
                     )
                   );
@@ -669,7 +668,7 @@ export function LabelWorkspace({
                     className="border-t border-black/[0.06] pt-4"
                   >
                     <Stack gap="tight" className="mt-4">
-                      {job.lines.map((line) => (
+                      <PagedItems items={job.lines} size={10}>{pageItems => <>{pageItems.map((line) => (
                         <div key={line.id} className="flex flex-wrap items-end gap-3">
                           <label className="flex flex-1 cursor-pointer items-center gap-2.5 font-sans text-sm tracking-[-0.02em] text-ink">
                             <Checkbox
@@ -706,7 +705,7 @@ export function LabelWorkspace({
                             </Field>
                           ) : null}
                         </div>
-                      ))}
+                      ))}</>}</PagedItems>
 
                       <Field label="Reprint reason">
                         {(id) => (
@@ -727,8 +726,7 @@ export function LabelWorkspace({
                   </Disclosure>
 
                   <Disclosure summary="Print attempt history">
-                    <ul className="mt-3 space-y-1.5">
-                      {job.events.map((entry) => (
+                    <PagedItems items={job.events} size={10}>{pageItems => <ul className="mt-3 space-y-1.5">{pageItems.map((entry) => (
                         <li
                           key={entry.id}
                           className="font-sans text-xs leading-[1.7] tracking-[-0.02em] text-grey-2"
@@ -737,8 +735,7 @@ export function LabelWorkspace({
                           {entry.copies} copies
                           {entry.note ? ` · ${entry.note}` : ''}
                         </li>
-                      ))}
-                    </ul>
+                      ))}</ul>}</PagedItems>
                     <Footnote className="mt-2">
                       Print requests are logged automatically. Older operator reports remain in
                       history.
@@ -754,7 +751,7 @@ export function LabelWorkspace({
         <Disclosure summary="Recent label jobs">
           <div className="mt-3 divide-y divide-black/[0.06]">
             {jobs.length ? (
-              jobs.map((item) => (
+              <PagedItems items={jobs}>{pageItems => <>{pageItems.map((item) => (
                 <button
                   type="button"
                   key={item.id}
@@ -770,7 +767,7 @@ export function LabelWorkspace({
                   </span>
                   <span className="text-xs text-grey-2">{formatDate(item.createdAt)}</span>
                 </button>
-              ))
+              ))}</>}</PagedItems>
             ) : (
               <p className="text-sm text-grey-2">No label jobs yet.</p>
             )}

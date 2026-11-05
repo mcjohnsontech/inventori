@@ -1,3 +1,4 @@
+import { CatalogueService } from '../../apps/api/src/catalogue.service.js';
 import { shopToken } from './shop-fixture.js';
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -253,9 +254,41 @@ describe('catalogue vertical slice against PostgreSQL (FR-01,17–19,23–24)', 
     await create('product-setups', { sourceId: other.source.id, product: { id: initial.product.id }, variants: [{ variantId: green.variantId, suffix: green.suffix }] }).expect(201);
     expect(await db.variant.count({ where: { productId: initial.product.id } })).toBe(6);
   });
+  it('permits audited product registration only through receiving for Manager, with atomic replay and origin checks', async () => {
+    const location = await db.locationRegistry.findUniqueOrThrow({ where: { code: 'LG' } });
+    const supplier = (await create('supplier-setups', { supplier: { name: `Receiving ${randomUUID()}` }, location: { registryId: location.id } }).expect(201)).body;
+    const send = (body: object, key = randomUUID(), auth = manager) => request(app.getHttpServer()).post('/v1/receiving/product-setups').set('Authorization', `Bearer ${auth}`).set('Idempotency-Key', key).send(body);
+    const body = { sourceId: supplier.source.id, product: { name: 'Inline receiving product' }, variants: [{ name: 'Green', suffix: 'GRN', attributes: [{ attribute: 'Colour', value: 'Green' }] }] };
+    const stockBefore = await db.stockMovement.count({ where: { lotId: { in: (await db.stockLot.findMany({ where: { originId }, select: { id: true } })).map(lot => lot.id) } } });
+    const key = randomUUID();
+    const results = await Promise.all([send(body, key), send(body, key)]);
+    expect(results.map(row => row.status)).toEqual([201,201]);expect(results[0].body).toEqual(results[1].body);
+    const result = results[0].body;
+    expect(result.skus[0].fullCode).toMatch(/-GRN$/);
+    const command = await db.commandResult.findFirstOrThrow({ where: { originId, key, commandType: 'receiving.product-setups' } });
+    expect(await db.auditEvent.count({ where: { commandId: command.id, actorRole: 'MANAGER' } })).toBe(1);
+    expect(await db.outboxEvent.count({ where: { commandId: command.id } })).toBe(1);
+    await send({ ...body, product: { name: 'Different' } }, key).expect(409);
+    await send(body, randomUUID(), production).expect(403);
+    await request(app.getHttpServer()).post('/v1/receiving/product-setups').set('Idempotency-Key', randomUUID()).send(body).expect(401);
+    await create('product-setups', body, randomUUID(), manager).expect(403);
+    await send({ ...body, product: { name: 'Admin inline' } }, randomUUID(), token).expect(201);
+    const count = await db.product.count({ where: { originId } });
+    const seq = await db.originNode.findUniqueOrThrow({ where: { id: originId } });
+    await send({ ...body, product: { name: 'Rollback inline' }, variants: [body.variants[0], body.variants[0]] }).expect(400);
+    expect(await db.product.count({ where: { originId } })).toBe(count);
+    expect((await db.originNode.findUniqueOrThrow({ where: { id: originId } })).nextSequence).toBe(seq.nextSequence);
+    const foreignOrigin = randomUUID();await db.originNode.create({ data: { id: foreignOrigin, mode: 'SHOP' } });
+    const foreign = new CatalogueService(db, foreignOrigin, 'SHOP');
+    // A current local account cannot invoke a different shop service directly.
+    await expect(foreign.createReceivingProduct(await db.user.findUniqueOrThrow({ where: { id: userId } }), randomUUID(), body)).rejects.toThrow();
+    expect(await db.stockMovement.count({ where: { lotId: { in: (await db.stockLot.findMany({ where: { originId }, select: { id: true } })).map(lot => lot.id) } } })).toBe(stockBefore);
+  });
+
   it('makes deactivated sessions unusable', async () => {
     await db.user.update({ where: { id: userId }, data: { active: false } });
     await request(app.getHttpServer()).get('/v1/catalogue').set('Authorization', `Bearer ${token}`).expect(401);
   });
+
 
 });

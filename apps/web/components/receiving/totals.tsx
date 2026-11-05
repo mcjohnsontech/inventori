@@ -5,10 +5,12 @@ export function Totals({
   usable,
   damaged,
   delivered,
+  neutral = false,
 }: {
   usable: string;
   damaged: string;
   delivered: string;
+  neutral?: boolean;
 }) {
   const cells = [
     { label: 'Usable', value: usable, tone: 'usable' as const },
@@ -23,7 +25,7 @@ export function Totals({
           key={cell.label}
           className={cn(
             'rounded-xl border px-3 py-3 sm:px-4 sm:py-4',
-            cell.tone === 'damaged'
+            neutral ? 'border-black/[0.07] bg-white' : cell.tone === 'damaged'
               ? 'border-damaged/20 bg-damaged-tint'
               : cell.tone === 'usable'
                 ? 'border-usable/20 bg-usable-tint'
@@ -33,7 +35,7 @@ export function Totals({
           <p
             className={cn(
               'font-sans text-xs font-semibold tracking-[0.06em] uppercase',
-              cell.tone === 'damaged'
+              neutral ? 'text-grey-2' : cell.tone === 'damaged'
                 ? 'text-damaged'
                 : cell.tone === 'usable'
                   ? 'text-usable'
@@ -45,7 +47,7 @@ export function Totals({
           <p
             className={cn(
               'mt-2 font-display text-xl font-semibold tracking-[-0.03em] break-all sm:text-2xl',
-              cell.tone === 'damaged'
+              neutral ? 'text-ink' : cell.tone === 'damaged'
                 ? 'text-damaged'
                 : cell.tone === 'usable'
                   ? 'text-usable'

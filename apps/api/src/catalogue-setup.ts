@@ -37,6 +37,8 @@ export async function setupSupplier(tx: Tx, data: SupplierSetupInput, originId: 
 export async function setupProduct(tx: Tx, data: ProductSetupInput, originId: string, commandId: string) {
   const prefix = await tx.supplierLocationPrefix.findUnique({ where: { sourceId: data.sourceId } });
   if (!prefix) throw new BadRequestException('Set up this supplier location prefix before adding products');
+  if (prefix.originId !== originId) throw new BadRequestException('Supplier location belongs to another shop');
+  if ('id' in data.product && !await tx.product.findFirst({ where: { id: data.product.id, originId } })) throw new BadRequestException('Choose a product from this shop');
   const product = 'id' in data.product
     ? await tx.product.findUnique({ where: { id: data.product.id } })
     : await tx.product.create({ data: { ...data.product, originId, variants: { create: { name: 'Default', combinationKey: '', originId } } } });

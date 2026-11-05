@@ -1,4 +1,5 @@
 'use client';
+import { PagedItems } from './ui/paged-items';
 import {
   ArrowUpRight01Icon,
   RefreshIcon,
@@ -185,18 +186,11 @@ export function Dashboard({
         className="stock-summary-strip mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
       >
         {summary.map((item) => (
-          <button
+          <div
             key={item.label}
-            type="button"
-            aria-pressed={filter === item.filter}
-            onClick={() => {
-              setSearch('');
-              changeFilter(filter === item.filter ? 'all' : item.filter);
-            }}
             className={cn(
               card,
-              'px-5 py-4 text-left transition-shadow hover:shadow-[0_10px_30px_rgba(0,0,0,0.06)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand',
-              filter === item.filter && 'border-brand/30 bg-brand-tint',
+              'px-5 py-4 text-left',
             )}
           >
             <span className="block font-sans text-xs font-semibold tracking-[0.07em] text-grey-3 uppercase">
@@ -205,7 +199,7 @@ export function Dashboard({
             <strong className="mt-2 block font-display text-3xl leading-none font-semibold tracking-[-0.03em] text-brand-deep">
               {item.value}
             </strong>
-          </button>
+          </div>
         ))}
       </div>
 
@@ -281,8 +275,7 @@ export function Dashboard({
               aria-label={`Delivery lots for ${expandedRow.productName} ${expandedRow.variantName}`}
               className="border-t border-black/[0.06] bg-surface-muted/60 px-5 py-4"
             >
-              <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-                {expandedRow.lots.map((lot) => (
+              <PagedItems items={expandedRow.lots} size={6} key={expandedRow.variantId}>{pageItems => <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">{pageItems.map((lot) => (
                   <li key={lot.lotId}>
                     <button
                       type="button"
@@ -307,8 +300,7 @@ export function Dashboard({
                       </span>
                     </button>
                   </li>
-                ))}
-              </ul>
+                ))}</ul>}</PagedItems>
             </section>
           ) : null}
 
@@ -326,18 +318,7 @@ export function Dashboard({
         </Panel>
       </div>
 
-      {role === 'MANAGER' ? (
-        <div className="mt-4">
-          <Panel title="Receiving routine" description="Keep every delivery auditable.">
-            <Disclosure summary="A reliable receiving routine" headingLevel={2}>
-              <Footnote>
-                Check the saved supplier/source, review each SKU and separate usable/damaged
-                arrivals. Retry interrupted saves with the same draft. Accept once, then label.
-              </Footnote>
-            </Disclosure>
-          </Panel>
-        </div>
-      ) : null}
+
 
       <div className="mt-4">
         <Panel
@@ -361,8 +342,7 @@ export function Dashboard({
               Select a saved supplier and sourced product to receive stock.
             </EmptyState>
           ) : (
-            <ul className="divide-y divide-black/[0.06]">
-              {receipts.data.slice(0, 3).map((receipt) => (
+            <PagedItems items={receipts.data} size={5}>{pageItems => <ul className="divide-y divide-black/[0.06]">{pageItems.map((receipt) => (
                 <li key={receipt.id}>
                   <button
                     type="button"
@@ -383,8 +363,7 @@ export function Dashboard({
                     </span>
                   </button>
                 </li>
-              ))}
-            </ul>
+              ))}</ul>}</PagedItems>
           )}
         </Panel>
       </div>

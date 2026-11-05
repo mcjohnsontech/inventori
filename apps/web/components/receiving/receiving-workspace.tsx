@@ -1,7 +1,7 @@
 'use client';
 import { TruckDeliveryIcon } from '@hugeicons/core-free-icons';
 import { useEffect, useState } from 'react';
-import type { AcceptedReceipt, ReceivingOptions } from '@dayari/contracts';
+import type { AcceptedReceipt, ReceivingOptions, Catalogue } from '@dayari/contracts';
 
 import { cn } from '../../lib/cn';
 import { useApiRead } from '../../lib/api';
@@ -22,20 +22,16 @@ import { ReceiveWizard } from './receive-wizard';
 
 export { ReceiptDetails } from './receipt-details';
 
-const guide = [
-  { step: '1. Choose the source', detail: 'One supplier location for the entire delivery.' },
-  { step: '2. Add delivered variants', detail: 'Use saved SKUs across multiple products.' },
-  { step: '3. Review and accept', detail: 'All lines, batch and movements commit together.' },
-];
-
 export function ReceivingWorkspace({
   initialReceiptId = '',
   onHistory,
   onInventory,
+  onCatalogueChanged,
 }: {
   initialReceiptId?: string;
   onHistory?: () => void;
   onInventory?: (id: string) => void;
+  onCatalogueChanged?: (catalogue: Catalogue) => void;
 }) {
   const options = useApiRead<ReceivingOptions>('receiving/options');
   const selected = useApiRead<AcceptedReceipt>(
@@ -63,7 +59,7 @@ export function ReceivingWorkspace({
               </Button>
             ) : null}
             <Button
-              disabled={options.loading || !options.data?.skus.length}
+              disabled={options.loading || !options.data?.suppliers.length}
               onClick={() => setOpen(true)}
             >
               Receive delivery
@@ -79,38 +75,9 @@ export function ReceivingWorkspace({
           </div>
         ) : options.error ? (
           <ErrorNotice message={options.error} onRetry={options.refresh} />
-        ) : (
-          <Panel
-            title="Ready to receive"
-            description="How a delivery is accepted into the ledger."
-            action={
-              <Badge tone="brand">
-                {options.data?.suppliers.length ?? 0} suppliers with sourced SKUs
-              </Badge>
-            }
-          >
-            <ol className="grid gap-5 sm:grid-cols-3">
-              {guide.map((item) => (
-                <li key={item.step}>
-                  <strong className="block font-sans text-sm font-semibold tracking-[-0.02em] text-brand">
-                    {item.step}
-                  </strong>
-                  <span className="mt-2 block font-sans text-xs leading-[1.7] tracking-[-0.02em] text-grey-2">
-                    {item.detail}
-                  </span>
-                </li>
-              ))}
-            </ol>
-
-            {!options.data?.skus.length ? (
-              <div className="mt-4 border-t border-black/[0.06]">
-                <EmptyState title="Complete catalogue setup first" icon={TruckDeliveryIcon}>
-                  Ask Admin to register a supplier source and its product SKUs before receiving.
-                </EmptyState>
-              </div>
-            ) : null}
-          </Panel>
-        )}
+        ) : !options.data?.suppliers.length ? (
+          <EmptyState title="No receiving suppliers configured" icon={TruckDeliveryIcon}>Ask Admin to register a supplier and its location prefix first.</EmptyState>
+        ) : null}
 
         {selected.loading ? (
           <div className={cn(card, 'p-6')}>
@@ -134,6 +101,7 @@ export function ReceivingWorkspace({
       {open && options.data ? (
         <ReceiveWizard
           options={options.data}
+          onCatalogueChanged={onCatalogueChanged}
           onClose={() => setOpen(false)}
           onSaved={(result) => {
             setOpen(false);

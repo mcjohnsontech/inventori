@@ -16,7 +16,7 @@ test('Manager receives a multi-product delivery, retries a lost response and see
  await page.getByRole('button',{name:'Receiving',exact:true}).click();await page.getByRole('button',{name:'Receive delivery',exact:true}).click();
  const dialog=page.getByRole('dialog');const next=()=>dialog.getByRole('button',{name:'Continue',exact:true}).click();
  await choose(dialog,'Receiving supplier',supplier.supplier.id);
- await choose(dialog,'Receiving source',supplier.source.id);await next();
+ await expect(dialog.getByText('Saved location:',{exact:false})).toBeVisible();await expect(dialog.getByRole('combobox',{name:'Receiving source',exact:true})).toHaveCount(0);await next();
  for(const sku of skus) await dialog.locator('label').filter({hasText:sku.fullCode}).getByRole('checkbox').check();
  await next();
  const quantities=[[30,2],[20,0],[12,1]];

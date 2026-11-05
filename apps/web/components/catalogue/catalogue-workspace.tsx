@@ -1,4 +1,5 @@
 'use client';
+import { PagedItems } from '../ui/paged-items';
 import { ArrowLeft01Icon, ArrowRight01Icon, Building03Icon, PlusSignIcon } from '@hugeicons/core-free-icons';
 import { useEffect, useMemo, useState } from 'react';
 import type { Catalogue, Role } from '@dayari/contracts';
@@ -165,6 +166,8 @@ export function CatalogueWorkspace({
           }
         />
 
+      <div className="mt-5"><IdentityLookup /></div>
+
         <div className="mt-6 flex flex-wrap items-center gap-2.5">
           <Badge tone="brand">Product</Badge>
           <Icon icon={ArrowRight01Icon} size={14} className="text-grey-3" />
@@ -189,8 +192,7 @@ export function CatalogueWorkspace({
                   : 'Ask Admin to configure missing variant combinations and saved supplier SKUs.'}
               </EmptyState>
             ) : (
-              <ul className="divide-y divide-black/[0.06]">
-                {variants.map((variant) => {
+              <PagedItems items={variants} size={10} key={product.id}>{pageItems => <ul className="divide-y divide-black/[0.06]">{pageItems.map((variant) => {
                   const variantSkus = savedSkus.filter((sku) => sku.variantId === variant.id);
 
                   return (
@@ -214,8 +216,7 @@ export function CatalogueWorkspace({
                       ) : null}
                     </li>
                   );
-                })}
-              </ul>
+                })}</ul>}</PagedItems>
             )}
           </Panel>
 
@@ -250,13 +251,13 @@ export function CatalogueWorkspace({
         <div className="mt-4">
           <Panel title="Supplier sourcing" description="Every saved SKU for this product." flush>
             {savedSkus.length ? (
-              <DataTable
+<PagedItems items={savedSkus}>{pageItems =>               <DataTable
                 bare
                 columns={sourcingColumns}
-                rows={savedSkus}
+                rows={[...pageItems]}
                 rowKey={(row) => row.id}
                 emptyMessage="No saved supplier SKUs."
-              />
+              />}</PagedItems>
             ) : (
               <EmptyState title="No saved supplier SKUs" icon={Building03Icon}>
                 Connect this parent product to an existing supplier source.
@@ -375,6 +376,8 @@ export function CatalogueWorkspace({
         }
       />
 
+      <div className="mt-5"><IdentityLookup /></div>
+
       <section className={cn(card, 'mt-8 overflow-hidden')}>
         <div className="flex flex-col gap-3 border-b border-black/[0.06] px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
           <Tabs
@@ -464,9 +467,7 @@ export function CatalogueWorkspace({
         <Pager page={current} pageCount={pageCount} total={total} onChange={setPage} />
       </section>
 
-      <Disclosure summary="Find an exact Product or Lot Code" open className="mt-5">
-        <IdentityLookup />
-      </Disclosure>
+
 
       <Footnote className="mt-5">
         Catalogue registration does not add stock. Receive an accepted delivery to create stock

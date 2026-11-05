@@ -1,4 +1,5 @@
 'use client';
+import { PagedItems } from './ui/paged-items';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { InvitationSummary } from '@dayari/contracts';
 import { api, useApiRead } from '../lib/api';
@@ -168,7 +169,7 @@ export function InvitationsPanel() {
           className="mt-4"
         >
           <div className="max-h-96 divide-y overflow-y-auto">
-            {directory.invitations.map((i) => (
+            <PagedItems items={directory.invitations} size={10}>{pageItems => <>{pageItems.map((i) => (
               <div key={i.id} className="py-3">
                 <div className="flex flex-wrap justify-between gap-2">
                   <span>
@@ -228,7 +229,7 @@ export function InvitationsPanel() {
                   </form>
                 )}
               </div>
-            ))}
+            ))}</>}</PagedItems>
           </div>
         </Disclosure>
       ) : null}

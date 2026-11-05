@@ -250,6 +250,8 @@ export function InventoryWorkspace({
         }
       />
 
+      <div className="mt-5"><IdentityLookup /></div>
+
       {productId ? (
         <Breadcrumb>
           <LinkButton onClick={() => onProductDetail(productId)}>
@@ -491,9 +493,7 @@ export function InventoryWorkspace({
         </DetailsDrawer>
       ) : null}
 
-      <Disclosure summary="Exact Product or Lot Code lookup" className="mt-5">
-        <IdentityLookup />
-      </Disclosure>
+
 
       <Footnote className="mt-5">
         Balances are server projections of the immutable movement ledger. Printing and

@@ -29,10 +29,10 @@ import {
 import { Summary } from '../wizard/summary';
 import { WizardShell } from '../wizard/wizard-shell';
 
-async function saveSetup(type: string, body: unknown) {
+async function saveSetup(type: string, body: unknown, receiving = false) {
   // Reuse the submission key for an unchanged body so a lost response cannot double-post.
   const fingerprint = JSON.stringify(body);
-  const storageKey = `dayari_pending_${type}`;
+  const storageKey = `dayari_pending_${receiving ? 'receiving_' : ''}${type}`;
   const prior = JSON.parse(sessionStorage.getItem(storageKey) ?? 'null') as {
     fingerprint: string;
     key: string;
@@ -41,7 +41,7 @@ async function saveSetup(type: string, body: unknown) {
 
   sessionStorage.setItem(storageKey, JSON.stringify({ fingerprint, key }));
 
-  const response = await fetch(`/api/catalogue/${type}`, {
+  const response = await fetch(`/api/${receiving ? 'receiving' : 'catalogue'}/${type}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Idempotency-Key': key },
     body: fingerprint,
@@ -350,10 +350,12 @@ export function ProductWizard({
   onSaved,
   onConfigureSupplier,
   initialProductId = '',
-}: Props & { initialProductId?: string; onConfigureSupplier: (supplierId: string) => void }) {
-  const [step, setStep] = useState(0);
-  const [supplierId, setSupplierId] = useState('');
-  const [sourceId, setSourceId] = useState('');
+  receivingSourceId,
+  onReceivingSaved,
+}: Props & { initialProductId?: string; onConfigureSupplier: (supplierId: string) => void; receivingSourceId?: string; onReceivingSaved?: (skus: { id: string }[]) => Promise<void> }) {
+  const [step, setStep] = useState(receivingSourceId ? 1 : 0);
+  const [supplierId, setSupplierId] = useState(catalogue.suppliers.find(row => row.sources.some(source => source.id === receivingSourceId))?.id ?? '');
+  const [sourceId, setSourceId] = useState(receivingSourceId ?? '');
   const [productId, setProductId] = useState('');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -488,8 +490,9 @@ export function ProductWizard({
     };
 
     try {
-      const result = await saveSetup('product-setups', body);
-      await onSaved(
+      const result = await saveSetup('product-setups', body, Boolean(receivingSourceId));
+      if (onReceivingSaved) await onReceivingSaved(result.skus);
+      else await onSaved(
         `Product saved. ${result.skus.map((sku: { fullCode: string }) => sku.fullCode).join(', ')}`,
       );
     } catch (failure) {
@@ -532,7 +535,8 @@ export function ProductWizard({
       onFinish={finish}
       finishLabel="Save product"
     >
-      {step === 0 ? (
+      {step === 0 && receivingSourceId ? <Footnote>Receiving from {supplier?.name} · {source?.name}. The saved supplier location is fixed for this delivery.</Footnote> : null}
+      {step === 0 && !receivingSourceId ? (
         <>
           <Field label="Supplier">
             {(id) => (
