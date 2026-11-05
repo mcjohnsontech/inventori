@@ -199,6 +199,7 @@ export function WorkspaceRouter({
           onSelect={(id) => navigate('catalogue', id)}
           onProduct={onProductFlow}
           onSupplier={onSupplierFlow}
+          onSupplierDirectory={() => navigate('suppliers')}
           onStock={(id) => navigate('inventory', id)}
         />
       );

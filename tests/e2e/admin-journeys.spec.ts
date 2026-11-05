@@ -87,18 +87,16 @@ test('Admin product extension, deep links and complete responsive workspaces use
 
   for (const width of [1440, 1024, 768, 390, 320]) {
     await page.setViewportSize({ width, height: 900 });
-    for (const [key, label] of [['overview', 'Overview'], ['catalogue', 'Catalogue'], ['suppliers', 'Suppliers & sources'], ['inventory', 'Inventory'], ['receiving', 'Receiving'], ['receipts', 'Receipts & activity'], ['qr', 'QR lookup'], ['labels', 'Labels & printing'], ['settings', 'Account & shop']]) {
+    for (const [key, label] of [['overview', 'Overview'], ['catalogue', 'Catalogue'], ['inventory', 'Inventory'], ['receipts', 'Receipts & activity'], ['qr', 'QR lookup'], ['labels', 'Labels & printing'], ['settings', 'Account & shop']]) {
       await navigate(page, label!);
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
       if (key === 'overview') await expect(page.getByText('Lots containing damaged stock', { exact: true })).toBeVisible();
       if (key === 'catalogue') await page.getByLabel('Search catalogue', { exact: true }).fill(product.product.productCode);
-      if (key === 'suppliers') await page.getByLabel('Search suppliers', { exact: true }).fill(supplier.supplier.name);
       if (key === 'inventory') {
         await expect(page.getByRole('combobox', { name: 'Product', exact: true })).toHaveCount(width < 640 ? 0 : 1);
         await page.getByLabel('Search inventory', { exact: true }).fill(receipt.lines[0].lotCode);
         await expect(page.getByRole('row').filter({ hasText: receipt.lines[0].lotCode })).toBeVisible();
       }
-      if (key === 'receiving') await expect(page.getByText('Ready to receive', { exact: true })).toBeVisible();
       if (key === 'receipts') {
         await page.getByLabel('Search receipts', { exact: true }).fill(receipt.batch.publicCode);
         await page.getByRole('button').filter({ hasText: receipt.batch.publicCode }).filter({ hasText: 'View receipt' }).click();

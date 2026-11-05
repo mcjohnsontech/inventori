@@ -15,7 +15,8 @@ test('workspace navigation is usable across shop screen sizes', async ({ page })
   await expect(page.getByText('Variants with usable stock', { exact: true })).toBeVisible();
   await page.screenshot({ path: 'test-results/admin-dashboard-1440.png' });
   await page.getByRole('button', { name: 'Catalogue', exact: true }).click();
-  await page.getByRole('button', { name: 'Suppliers & sources', exact: true }).click();
+  await page.getByRole('button', { name: 'Suppliers', exact: true }).click();
+  await page.getByRole('button', { name: 'Supplier directory', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Suppliers & sources', exact: true })).toBeVisible();
   await page.getByLabel('Search suppliers', { exact: true }).fill('no-such-supplier-xyz');
   await expect(page.getByRole('heading', { name: 'No matching suppliers' })).toBeVisible();

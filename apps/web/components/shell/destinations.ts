@@ -56,10 +56,12 @@ export function workspaceAllowed(role: Role, workspace: Workspace) {
   return can(role, workspaceCapabilities[workspace]);
 }
 
-/** Sidebar grouping. Order here is the order staff read it in. */
+/** Sidebar grouping. Order here is the order staff read it in.
+ * Suppliers and Receiving are consolidated into Catalogue and the receipt
+ * workflow; both workspaces stay routable so existing workflows and links work. */
 export const navGroups: { name: string; keys: Workspace[] }[] = [
-  { name: 'Stock & operations', keys: ['dashboard', 'availability', 'inventory', 'receiving', 'receipts'] },
-  { name: 'Catalogue', keys: ['catalogue', 'suppliers'] },
+  { name: 'Stock & operations', keys: ['dashboard', 'availability', 'inventory', 'receipts'] },
+  { name: 'Catalogue', keys: ['catalogue'] },
   { name: 'Tools & reports', keys: ['labels', 'qr', 'reports'] },
   { name: 'Workspace', keys: ['users', 'settings', 'help'] },
 ];

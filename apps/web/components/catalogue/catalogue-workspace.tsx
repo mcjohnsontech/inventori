@@ -41,6 +41,7 @@ export function CatalogueWorkspace({
   role,
   onProduct,
   onSupplier,
+  onSupplierDirectory,
   onStock,
   initialProductId = '',
   onSelect,
@@ -51,6 +52,7 @@ export function CatalogueWorkspace({
   role: Role;
   onProduct: (id?: string) => void;
   onSupplier: (id?: string) => void;
+  onSupplierDirectory: () => void;
   onStock: (id: string) => void;
 }) {
   const [search, setSearch] = useState('');
@@ -355,18 +357,26 @@ export function CatalogueWorkspace({
         title="Product catalogue"
         description="Register once. Keep variants, supplier SKUs and stock lots connected."
         actions={
-          role === 'ADMIN' ? (
-            <>
-              <Button variant="secondary" onClick={() => onSupplier()}>
+          <>
+            {tab === 'suppliers' ? (
+              <Button variant="secondary" onClick={onSupplierDirectory}>
                 <Icon icon={Building03Icon} size={16} />
-                Add supplier
+                Supplier directory
               </Button>
-              <Button onClick={() => onProduct()}>
-                <Icon icon={PlusSignIcon} size={16} strokeWidth={2} />
-                Add product
-              </Button>
-            </>
-          ) : undefined
+            ) : null}
+            {role === 'ADMIN' ? (
+              <>
+                <Button variant="secondary" onClick={() => onSupplier()}>
+                  <Icon icon={Building03Icon} size={16} />
+                  Add supplier
+                </Button>
+                <Button onClick={() => onProduct()}>
+                  <Icon icon={PlusSignIcon} size={16} strokeWidth={2} />
+                  Add product
+                </Button>
+              </>
+            ) : null}
+          </>
         }
       />
 
