@@ -61,6 +61,7 @@ export function Dashboard({
   navigate,
   onReceipt,
   onLot,
+  onReceive,
 }: {
   catalogue: Catalogue;
   name: string;
@@ -68,6 +69,7 @@ export function Dashboard({
   navigate: (workspace: Workspace) => void;
   onReceipt: (id: string) => void;
   onLot: (productId: string, lotId: string) => void;
+  onReceive: () => void;
 }) {
   const stock = useApiRead<OperationalStock>('stock');
   const receipts = useApiRead<ReceiptSummary[]>('receipts');
@@ -171,7 +173,7 @@ export function Dashboard({
               <Icon icon={RefreshIcon} size={15} />
               Refresh stock
             </Button>
-            <Button onClick={() => navigate('receiving')}>
+            <Button onClick={onReceive}>
               Receive a delivery
               <Icon icon={ArrowUpRight01Icon} size={16} strokeWidth={2} />
             </Button>

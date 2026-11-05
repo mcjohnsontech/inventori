@@ -35,10 +35,12 @@ export function ReceiptsWorkspace({
   initialReceiptId = '',
   onStock,
   onSelect,
+  onReceive,
 }: {
   initialReceiptId?: string;
   onStock: (id: string) => void;
   onSelect: (id: string) => void;
+  onReceive?: () => void;
 }) {
   const [id, setId] = useState(initialReceiptId);
   const [search, setSearch] = useState('');
@@ -74,16 +76,19 @@ export function ReceiptsWorkspace({
         title="Receipts & activity"
         description="Immutable delivery records, ordered by acceptance. Delivery dates remain separate from the time stock was recorded."
         actions={
-          <Button
-            variant="secondary"
-            onClick={() => {
-              history.refresh();
-              if (id) receipt.refresh();
-            }}
-          >
-            <Icon icon={RefreshIcon} size={15} />
-            Refresh receipts
-          </Button>
+          <>
+            {onReceive ? <Button onClick={onReceive}>Receive delivery</Button> : null}
+            <Button
+              variant="secondary"
+              onClick={() => {
+                history.refresh();
+                if (id) receipt.refresh();
+              }}
+            >
+              <Icon icon={RefreshIcon} size={15} />
+              Refresh receipts
+            </Button>
+          </>
         }
       />
 

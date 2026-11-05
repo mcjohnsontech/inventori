@@ -13,7 +13,7 @@ test('Manager registers products inside receiving while preserving the delivery 
   await expect(page.locator('[aria-label="Stock summary"] button')).toHaveCount(0);
   await expect(page.locator('[data-page-header] p')).toHaveCount(0);
   await page.getByRole('button',{name:'Sign out'}).click();await login('e2e-manager@dayari.test');
-  await page.getByRole('button',{name:'Receiving',exact:true}).click();await expect(page.getByText('Ready to receive',{exact:true})).toHaveCount(0);await page.getByRole('button',{name:'Receive delivery',exact:true}).click();
+  await page.getByRole('button',{name:'Receive a delivery',exact:true}).click();
   let dialog=page.getByRole('dialog');
   await choose(dialog,'Receiving supplier',supplier.supplier.id);
   await expect(dialog.getByRole('combobox',{name:'Receiving source',exact:true})).toHaveCount(0);
@@ -64,7 +64,8 @@ test('compact supplier lists and catalogue grids paginate with title-only header
   await page.getByRole('button',{name:'Catalogue',exact:true}).click();await expect(page.getByRole('button',{name:/View product/})).toHaveCount(18);
   await page.getByRole('button',{name:'Next page',exact:true}).click();await expect(page.getByText('Paged product 25',{exact:true})).toBeVisible();await expect(page.getByText('Paged product 01',{exact:true})).toHaveCount(0);
   await page.getByLabel('Search catalogue',{exact:true}).fill('product 01');await expect(page.getByText('Paged product 01',{exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Next page',exact:true})).toHaveCount(0);
-  await page.getByRole('button',{name:'Suppliers & sources',exact:true}).click();await expect(page.getByRole('heading',{name:/Paged supplier/})).toHaveCount(12);
+  await page.getByLabel('Search catalogue',{exact:true}).fill('');
+  await page.getByRole('button',{name:'Suppliers',exact:true}).click();await page.getByRole('button',{name:'Supplier directory',exact:true}).click();await expect(page.getByRole('heading',{name:/Paged supplier/})).toHaveCount(12);
   await page.getByRole('button',{name:'Next page',exact:true}).click();await expect(page.getByRole('heading',{name:'Paged supplier 13',exact:true})).toBeVisible();
   await page.getByLabel('Search suppliers',{exact:true}).fill('supplier 25');await expect(page.getByRole('heading',{name:'Paged supplier 25',exact:true})).toBeVisible();
   await expect(page.locator('[data-page-header] p')).toHaveCount(0);expect(await page.locator('[data-page-header]').evaluate(element=>getComputedStyle(element).borderLeftWidth)).toBe('0px');

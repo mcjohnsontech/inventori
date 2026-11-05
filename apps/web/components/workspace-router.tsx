@@ -66,6 +66,7 @@ export function WorkspaceRouter({
   onProductFlow,
   onPasswordChanged,
   onCatalogueChanged,
+  onReceive,
 }: {
   workspace: Workspace;
   catalogue: Catalogue;
@@ -79,6 +80,7 @@ export function WorkspaceRouter({
   onProductFlow: (id?: string) => void;
   onPasswordChanged: () => void;
   onCatalogueChanged: (catalogue: Catalogue) => void;
+  onReceive: () => void;
 }) {
   const home = () => navigate(user.role === 'PRODUCTION' ? 'availability' : 'dashboard');
 
@@ -187,6 +189,7 @@ export function WorkspaceRouter({
           initialReceiptId={detail.receipt}
           onSelect={(id) => navigate('receipts', id)}
           onStock={(id) => navigate('inventory', id)}
+          onReceive={onReceive}
         />
       );
 
@@ -213,6 +216,7 @@ export function WorkspaceRouter({
           navigate={navigate}
           onReceipt={(id) => navigate('receipts', id)}
           onLot={(productId, lotId) => navigate('inventory', productId, lotId)}
+          onReceive={onReceive}
         />
       );
   }

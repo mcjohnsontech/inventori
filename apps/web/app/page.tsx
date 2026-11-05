@@ -1,6 +1,6 @@
 'use client';
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
-import type { Catalogue, Role } from '@dayari/contracts';
+import type { Catalogue, ReceivingOptions, Role } from '@dayari/contracts';
 
 import { ApiError, api } from '../lib/api';
 import { AppShell } from '../components/shell/app-shell';
@@ -8,6 +8,7 @@ import { workspaceOrder, type Workspace } from '../components/shell/destinations
 import { LoginPage } from '../components/login-page';
 import { WorkspaceRouter } from '../components/workspace-router';
 import { ProductWizard, SupplierWizard } from '../components/catalogue/setup-wizards';
+import { ReceiveWizard } from '../components/receiving/receive-wizard';
 import { PasswordForm } from '../components/account-security';
 import { Button, ErrorNotice, SuccessNotice } from '../components/ui';
 
@@ -39,6 +40,17 @@ export default function DayariInventory() {
   const [flow, setFlow] = useState<'supplier' | 'product' | null>(null);
   const [supplierContext, setSupplierContext] = useState('');
   const [productContext, setProductContext] = useState('');
+
+  const [receiveOpen, setReceiveOpen] = useState(false);
+  const [receiveOptions, setReceiveOptions] = useState<ReceivingOptions | null>(null);
+  /** Remounts the active workspace after an accepted receipt so its reads refresh. */
+  const [dataVersion, setDataVersion] = useState(0);
+  /**
+   * Set after a receipt is accepted. The wizard still counts as busy while its
+   * save resolves, so the route change waits for the next commit, when the
+   * dialog has unmounted and its unsaved-draft guard is gone.
+   */
+  const [receiptToOpen, setReceiptToOpen] = useState('');
 
   const [detail, setDetail] = useState({
     catalogue: '',
@@ -140,6 +152,16 @@ export default function DayariInventory() {
     return () => window.removeEventListener('dayari:session-expired', expired);
   }, []);
 
+  useEffect(() => {
+    if (!receiptToOpen) return;
+
+    setReceiptToOpen('');
+    navigate('receipts', receiptToOpen);
+    setNotice('Delivery accepted. Receipt evidence and stock projections are updating.');
+    // navigate is declared below and is not a dependency of this one-shot handoff.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [receiptToOpen]);
+
   function navigate(next: Workspace, id = '', lotId = '') {
     if (!mayNavigate()) return;
 
@@ -194,6 +216,9 @@ export default function DayariInventory() {
       setCatalogueReady(false);
       setDetail({ catalogue: '', stock: '', lot: '', receipt: '', labelJob: '', qrCode: '' });
       setFlow(null);
+      setReceiveOpen(false);
+      setReceiveOptions(null);
+      setReceiptToOpen('');
       setError('');
       setNotice('');
     } catch (failure) {
@@ -220,6 +245,27 @@ export default function DayariInventory() {
     setError('');
     setNotice('');
     setFlow('product');
+  }
+
+  /**
+   * The receive wizard is a dialog, so any page can start a delivery without
+   * leaving its context. Options are loaded first to keep the dialog synchronous.
+   */
+  async function openReceive() {
+    setError('');
+    setNotice('');
+
+    try {
+      const options = await api<ReceivingOptions>('receiving/options');
+      if (!options.suppliers.length) {
+        setNotice('Ask Admin to register a supplier and its location prefix before receiving.');
+        return;
+      }
+      setReceiveOptions(options);
+      setReceiveOpen(true);
+    } catch (failure) {
+      setError((failure as Error).message);
+    }
   }
 
   async function saved(message: string) {
@@ -293,6 +339,7 @@ export default function DayariInventory() {
       ) : null}
 
       <WorkspaceRouter
+        key={dataVersion}
         workspace={current}
         catalogue={catalogue}
         catalogueReady={catalogueReady}
@@ -305,6 +352,7 @@ export default function DayariInventory() {
         onProductFlow={openProduct}
         onPasswordChanged={passwordChanged}
         onCatalogueChanged={setCatalogue}
+        onReceive={() => void openReceive()}
       />
 
       {flow === 'supplier' && user.role === 'ADMIN' ? (
@@ -323,6 +371,20 @@ export default function DayariInventory() {
           onClose={() => setFlow(null)}
           onSaved={saved}
           onConfigureSupplier={openSupplier}
+        />
+      ) : null}
+
+      {receiveOpen && receiveOptions ? (
+        <ReceiveWizard
+          options={receiveOptions}
+          onCatalogueChanged={setCatalogue}
+          onClose={() => setReceiveOpen(false)}
+          onSaved={(receipt) => {
+            setReceiveOpen(false);
+            setReceiveOptions(null);
+            setReceiptToOpen(receipt.id);
+            setDataVersion((version) => version + 1);
+          }}
         />
       ) : null}
     </AppShell>

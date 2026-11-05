@@ -13,7 +13,7 @@ test('Manager receives a multi-product delivery, retries a lost response and see
  const skus=[...notebook.skus,...pen.skus];
  await page.getByRole('button',{name:'Sign out'}).click();await login('e2e-manager@dayari.test');
  await expect(page.getByRole('button',{name:'Add supplier',exact:true})).toHaveCount(0);
- await page.getByRole('button',{name:'Receiving',exact:true}).click();await page.getByRole('button',{name:'Receive delivery',exact:true}).click();
+ await page.getByRole('button',{name:'Overview',exact:true}).click();await page.getByRole('button',{name:'Receive a delivery',exact:true}).click();
  const dialog=page.getByRole('dialog');const next=()=>dialog.getByRole('button',{name:'Continue',exact:true}).click();
  await choose(dialog,'Receiving supplier',supplier.supplier.id);
  await expect(dialog.getByText('Saved location:',{exact:false})).toBeVisible();await expect(dialog.getByRole('combobox',{name:'Receiving source',exact:true})).toHaveCount(0);await next();
@@ -34,7 +34,7 @@ test('Manager receives a multi-product delivery, retries a lost response and see
  const accepted=await (await page.request.get(`/api/receipts/${acceptedId}`)).json();expect(accepted.lines).toHaveLength(3);expect(accepted.totals).toEqual({usable:'62',damaged:'3',delivered:'65'});
  const stock=await (await page.request.get(`/api/stock?sourceId=${supplier.source.id}`)).json();expect(stock.lots).toHaveLength(3);expect(stock.lots.find((x:any)=>x.skuId===skus[0].id)).toMatchObject({usable:'30',damaged:'2'});
  await expect(page.getByRole('region',{name:'Accepted batch balances'})).toContainText('30 usable');await page.setViewportSize({width:1280,height:900});await page.screenshot({path:'test-results/receiving-accepted.png'});
- await page.getByRole('button',{name:'Receipt history',exact:true}).click();
+ await page.getByRole('button',{name:'Back to receipt history',exact:true}).click();
  await page.getByLabel('Search receipts',{exact:true}).fill(accepted.batch.publicCode);
  await page.getByRole('button').filter({hasText:accepted.batch.publicCode}).filter({hasText:'View receipt'}).click();
  await expect(page.getByRole('region',{name:'Accepted receipt',exact:true})).toContainText(skus[0].fullCode);
