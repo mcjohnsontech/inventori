@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { Fragment, type ReactNode } from 'react';
 
 import { cn } from '../../lib/cn';
 import { Skeleton } from './skeleton';
@@ -21,6 +21,7 @@ export function DataTable<T>({
   bare = false,
   label,
   mobileStack = false,
+  subRow,
 }: {
   columns: Column<T>[];
   rows: T[];
@@ -34,6 +35,8 @@ export function DataTable<T>({
   label?: string;
   /** Keep every field and action visible in narrow inventory rows. */
   mobileStack?: boolean;
+  /** Render an expansion row directly beneath the row it belongs to. */
+  subRow?: (row: T) => ReactNode | null;
 }) {
   return (
     <div
@@ -88,40 +91,56 @@ export function DataTable<T>({
               </td>
             </tr>
           ) : (
-            rows.map((row) => (
-              <tr
-                role="row"
-                key={rowKey(row)}
-                className={cn(
-                  'group hover:bg-surface-muted/60',
-                  mobileStack &&
-                    'max-sm:block max-sm:border-b max-sm:border-black/[0.06] max-sm:py-3',
-                )}
-              >
-                {columns.map((column) => (
-                  <td
-                    key={column.key}
-                    role="cell"
-                    data-label={column.label}
+            rows.map((row) => {
+              const expansion = subRow?.(row);
+
+              return (
+                <Fragment key={rowKey(row)}>
+                  <tr
+                    role="row"
                     className={cn(
-                      'border-b border-black/[0.06] px-4 py-3.5 align-top',
-                      column.wide ? 'min-w-[280px]' : 'whitespace-nowrap',
-                      column.align === 'right' && 'text-right',
+                      'group hover:bg-surface-muted/60',
                       mobileStack &&
-                        'max-sm:flex max-sm:min-w-0 max-sm:items-start max-sm:justify-between max-sm:gap-3 max-sm:border-0 max-sm:px-5 max-sm:py-2 max-sm:whitespace-normal max-sm:before:w-20 max-sm:before:shrink-0 max-sm:before:text-left max-sm:before:text-xs max-sm:before:text-grey-2 max-sm:before:content-[attr(data-label)]',
+                        'max-sm:block max-sm:border-b max-sm:border-black/[0.06] max-sm:py-3',
                     )}
                   >
-                    {mobileStack ? (
-                      <div className="min-w-0 max-sm:flex-1 max-sm:text-right max-sm:break-words">
-                        {column.cell(row)}
-                      </div>
-                    ) : (
-                      column.cell(row)
-                    )}
-                  </td>
-                ))}
-              </tr>
-            ))
+                    {columns.map((column) => (
+                      <td
+                        key={column.key}
+                        role="cell"
+                        data-label={column.label}
+                        className={cn(
+                          'border-b border-black/[0.06] px-4 py-3.5 align-top',
+                          column.wide ? 'min-w-[280px]' : 'whitespace-nowrap',
+                          column.align === 'right' && 'text-right',
+                          mobileStack &&
+                            'max-sm:flex max-sm:min-w-0 max-sm:items-start max-sm:justify-between max-sm:gap-3 max-sm:border-0 max-sm:px-5 max-sm:py-2 max-sm:whitespace-normal max-sm:before:w-20 max-sm:before:shrink-0 max-sm:before:text-left max-sm:before:text-xs max-sm:before:text-grey-2 max-sm:before:content-[attr(data-label)]',
+                        )}
+                      >
+                        {mobileStack ? (
+                          <div className="min-w-0 max-sm:flex-1 max-sm:text-right max-sm:break-words">
+                            {column.cell(row)}
+                          </div>
+                        ) : (
+                          column.cell(row)
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                  {expansion ? (
+                    <tr role="row" className="bg-surface-muted/60">
+                      <td
+                        role="cell"
+                        colSpan={columns.length}
+                        className="border-b border-black/[0.06] p-0 align-top"
+                      >
+                        {expansion}
+                      </td>
+                    </tr>
+                  ) : null}
+                </Fragment>
+              );
+            })
           )}
         </tbody>
       </table>

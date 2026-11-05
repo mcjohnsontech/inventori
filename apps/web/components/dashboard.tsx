@@ -159,8 +159,6 @@ export function Dashboard({
     },
   ];
 
-  const expandedRow = visible.find((row) => row.variantId === expanded);
-
   return (
     <Page>
       <PageHeader
@@ -266,43 +264,47 @@ export function Dashboard({
               rows={visible.slice(start, start + PER_PAGE)}
               rowKey={(row) => row.variantId}
               emptyMessage="No variants match this view."
+              subRow={(row) =>
+                row.variantId === expanded ? (
+                  <section
+                    id={`lots-${row.variantId}`}
+                    aria-label={`Delivery lots for ${row.productName} ${row.variantName}`}
+                    className="px-4 py-3 sm:px-5"
+                  >
+                    <PagedItems items={row.lots} size={6} key={row.variantId}>
+                      {(pageItems) => (
+                        <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                          {pageItems.map((lot) => (
+                            <li key={lot.lotId}>
+                              <button
+                                type="button"
+                                onClick={() => onLot(row.productId, lot.lotId)}
+                                className="w-full rounded-lg border border-black/[0.06] bg-white px-3 py-2 text-left transition-colors hover:border-brand/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                              >
+                                <span className="flex flex-wrap items-center justify-between gap-2">
+                                  <strong className="font-mono text-xs font-medium text-brand">
+                                    {lot.lotCode ?? lot.publicCode}
+                                  </strong>
+                                  <span className="flex gap-1.5">
+                                    <Badge tone="usable">{lot.usable}</Badge>
+                                    <Badge tone="damaged">{lot.damaged}</Badge>
+                                  </span>
+                                </span>
+                                <span className="mt-1 flex flex-wrap items-center gap-x-2 font-sans text-xs tracking-[-0.02em] text-grey-3">
+                                  <span className="font-mono">{lot.fullCode}</span>
+                                  <span>{lot.supplierName}</span>
+                                </span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </PagedItems>
+                  </section>
+                ) : null
+              }
             />
           )}
-
-          {expandedRow ? (
-            <section
-              id={`lots-${expandedRow.variantId}`}
-              aria-label={`Delivery lots for ${expandedRow.productName} ${expandedRow.variantName}`}
-              className="border-t border-black/[0.06] bg-surface-muted/60 px-5 py-4"
-            >
-              <PagedItems items={expandedRow.lots} size={6} key={expandedRow.variantId}>{pageItems => <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">{pageItems.map((lot) => (
-                  <li key={lot.lotId}>
-                    <button
-                      type="button"
-                      onClick={() => onLot(expandedRow.productId, lot.lotId)}
-                      className={cn(
-                        card,
-                        'w-full p-3 text-left transition-shadow hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand',
-                      )}
-                    >
-                      <span className="flex flex-wrap items-center justify-between gap-2">
-                        <strong className="font-mono text-xs font-medium text-brand">
-                          {lot.lotCode ?? lot.publicCode}
-                        </strong>
-                        <span className="flex gap-1.5">
-                          <Badge tone="usable">{lot.usable}</Badge>
-                          <Badge tone="damaged">{lot.damaged}</Badge>
-                        </span>
-                      </span>
-                      <Code className="mt-1.5 block">{lot.fullCode}</Code>
-                      <span className="mt-1 block font-sans text-xs text-grey-3">
-                        {lot.supplierName}
-                      </span>
-                    </button>
-                  </li>
-                ))}</ul>}</PagedItems>
-            </section>
-          ) : null}
 
           <Pager
             page={current}
