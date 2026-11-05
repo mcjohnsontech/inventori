@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { Catalogue, Role } from '@dayari/contracts';
 
 import { cn } from '../../lib/cn';
+import { matchProducts } from '../../lib/catalogue-search';
 import {
   Badge,
   Breadcrumb,
@@ -73,15 +74,8 @@ export function CatalogueWorkspace({
   const product = catalogue.products.find((item) => item.id === selected);
 
   const products = useMemo(
-    () =>
-      catalogue.products.filter((item) =>
-        `${item.name} ${item.productCode ?? ''} ${item.description} ${item.variants
-          .map((variant) => variant.name)
-          .join(' ')}`
-          .toLowerCase()
-          .includes(query),
-      ),
-    [catalogue.products, query],
+    () => matchProducts(catalogue.products, search),
+    [catalogue.products, search],
   );
 
   const skus = useMemo(
@@ -393,7 +387,13 @@ export function CatalogueWorkspace({
           <SearchInput
             label="Search catalogue"
             value={search}
-            placeholder="Name, code, variant or SKU…"
+            placeholder={
+              tab === 'products'
+                ? 'Product name or Product Code…'
+                : tab === 'suppliers'
+                  ? 'Supplier name or code…'
+                  : 'Saved SKU, product or supplier…'
+            }
             className="w-full lg:w-[320px]"
             onChange={(value) => {
               setSearch(value);
@@ -407,7 +407,9 @@ export function CatalogueWorkspace({
             title={search ? 'No matching catalogue entries' : 'Start with your first product'}
           >
             {search
-              ? 'Try a product name, Product Code, variant or saved SKU.'
+              ? tab === 'products'
+                ? `No product matches “${search.trim()}”. Try its name or Product Code.`
+                : 'Try a product name, Product Code, variant or saved SKU.'
               : 'Create a shared parent product and its supplier-specific variants.'}
           </EmptyState>
         ) : tab === 'products' ? (

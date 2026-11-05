@@ -197,3 +197,9 @@ CONFIRMED owner direction supersedes the earlier operator-outcome UI: no printed
 
 ## Invitation SMTP and local upgrade — 4 November 2026
 CONFIRMED: owner approved applying local migrations 011/012 after private backup; applied and preservation verified. A real SMTP adapter is implemented but live delivery remains gated on verified sender, private credentials and employee-accessible HTTPS URL. Isolated transport remains for tests; it never claims real email. Existing accounts cannot be recovered through invitations. See invitation-email-implementation-report.md.
+
+## UI consolidation and production issuing — plan review, 5 November 2026
+
+PROPOSED only, no implementation: `ui-and-production-implementation-plan.md`. Owner requests recorded as CONFIRMED direction: catalogue search by product name or Product Code; remove the standalone Suppliers page (catalogue retains supplier details and setup); product availability expansion renders as an inline sub-row under its product; remove the Receiving page and open the existing receive wizard as a modal from every entry point; production lands on product search, has no exact manual lookup, checks out scanned items with a reason and order reference per scan across multiple products in one session; usable stock stays visible to production as quantities only. Screenshot page mapping is unverified because image input was unavailable.
+
+OPEN gates for the production-issuing slice: reason taxonomy; whether order reference is mandatory or an explicit unlinked path is allowed; duplicate-lot handling within a session; which roles may issue; which fields production may see; and approval of an additive `StockMovement` migration (nullable parent plus `issueLineId`) versus a separate issue-movement table. Manual-lookup restriction requires a new Admin/Manager-only capability and server-side enforcement. No schema, migration, permission, stock mutation or application change is authorized by this entry.
