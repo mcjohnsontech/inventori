@@ -1,0 +1,52 @@
+name: Verify Dayari
+
+on:
+  pull_request:
+  push:
+    branches: [main, 'feat/**']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: dayari
+          # Disposable CI database credential; never used for operational accounts.
+          POSTGRES_PASSWORD: disposable-ci-only
+          POSTGRES_DB: dayari_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U dayari -d dayari_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://dayari:disposable-ci-only@127.0.0.1:5432/dayari_test
+      TEST_DATABASE_URL: postgresql://dayari:disposable-ci-only@127.0.0.1:5432/dayari_test
+      INVITATION_TRANSPORT: disabled
+      INVITATION_LIVE_ENABLED: '0'
+      SMTP_SENDER_VERIFIED: '0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run db:generate
+      - name: Migrate isolated test database only
+        run: node scripts/migrate-test-db.ts
+      - run: npm test
+      - run: npm run typecheck
+      - run: npm run test:integration
+      - run: npm exec -- playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - run: npm run build

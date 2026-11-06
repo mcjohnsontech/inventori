@@ -183,6 +183,7 @@ export function Dashboard({
 
       <div
         aria-label="Stock summary"
+        aria-busy={stock.loading}
         className="stock-summary-strip mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
       >
         {summary.map((item) => (
@@ -197,7 +198,7 @@ export function Dashboard({
               {item.label}
             </span>
             <strong className="mt-2 block font-display text-3xl leading-none font-semibold tracking-[-0.03em] text-brand-deep">
-              {item.value}
+              {stock.loading ? 'Loading…' : stock.error || !stock.data ? 'Unavailable' : item.value}
             </strong>
           </div>
         ))}

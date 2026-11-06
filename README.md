@@ -1,5 +1,11 @@
 # Dayari Inventory
 
+## Completion verification and CI
+
+The active sequential completion record is [docs/dayari-completion-progress.md](docs/dayari-completion-progress.md). It distinguishes implemented/tested milestones from pending policy and operational gates. Dedicated shop-server/LAN deployment and cloud synchronization are deferred by the owner; the existing development setup remains available.
+
+`.github/workflows/verify.yml` runs Node 24 against a disposable PostgreSQL 17 `dayari_test` service: isolated migrations, unit tests, typecheck, PostgreSQL integration tests, Chromium browser workflows and production build. It does not seed an operational database, deploy the app or send real invitations. SMTP is disabled by default in integration tests; invitation suites inject isolated transports. Workflow success must be verified on GitHub after publication rather than inferred from this file.
+
 Local-first inventory and production accountability. The first implemented slice is an authenticated, create-only catalogue: shared products, configurable variants, suppliers, stable sources and automatically allocated supplier-specific SKUs. Receiving and its immutable stock ledger are implemented. A4 QR labels and read-only lookup are implemented for local trials. Production issuing, approvals, closing and cloud transport remain subsequent slices.
 
 Read [the decision register](docs/decisions.md) and [build plan](docs/build-plan.md) before extending behavior. The authoritative PRD is currently at the repository root, despite the older instructions naming a `docs/` path.

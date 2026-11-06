@@ -1,5 +1,9 @@
 # Architecture and API boundaries
 
+## Current completion directive (6–7 November 2026)
+
+CONFIRMED: sequential implementation of remaining V1 workflows is now authorized in isolated development/test environments. Older phase-stop text below is historical. Preserve UUID/SKU/Product/Lot and DYI:1 identities. Physical units use permanent six-character codes and DYI:2; checkout and lifecycle operations require append-only domain/ledger evidence. All three existing roles may confirm checkout. Missing reasons create reconciliation obligations; Order IDs are optional and reusable. A maximum of 10,000 units/100 receipt lines is approved subject to benchmark proof. General catalogue administration remains Admin-only, with Manager product registration restricted to receiving. Operational migrations, historical enrollment, real invitations/live stock and deployment remain separately gated. Dedicated shop-server/LAN deployment and synchronization transport: **Deferred — awaiting owner direction**. See dayari-completion-progress.md for actual implementation status.
+
 ## Owner correction — six-character unit identities and inventory UX
 
 Slices1–3 authorize compact role-aware navigation, inventory-sheet/drawer and stock-focused overview only. Existing service/ledger/QR/print/account mutation authority is unchanged. Future StockUnit human codes are exactly six random readable characters without a fixed U prefix, origin-scoped unique and immutable; UUID remains primary and DYI:2 encodes UUID. Earlier U+7 is superseded. See [six-character-unit-code-design.md](six-character-unit-code-design.md) for database/contract/search/label/collision rules. No unit implementation/cutover is authorized. Secure staff email invitations are approved future direction only; [staff-invitation-design.md](staff-invitation-design.md) describes separately gated trust and delivery boundaries. Current password policy remains unchanged.
