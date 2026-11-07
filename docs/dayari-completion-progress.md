@@ -12,11 +12,11 @@ The PRD, current audit and repository were inspected. Existing catalogue/receipt
 
 | # | Milestone | Status | Evidence / next action |
 |---|---|---|---|
-| 1 | Baseline stabilization and CI | Verified locally; publication in progress | 50 unit/81 integration tests, fresh database migration rehearsal, 22 distinct successful browser cases across documented runs, typecheck/build and screenshot inspection. CI file added; remote run not yet verified. |
-| 2 | Serialized receiving and six-character Unit Codes | Pending | Additive schema, immutable identity/state evidence, old-writer bypass proof and benchmark/capacity gate. |
+| 1 | Baseline stabilization and CI | Completed and pushed | `1839aa71d52d0eb4633e0fc332be1399a8c0bbf0`; remote SHA verified. 50 unit/81 integration tests, fresh migration rehearsal, 22 distinct browser passes across runs, typecheck/build and visual review. Remote CI run not yet verified. |
+| 2 | Serialized receiving and six-character Unit Codes | Verified; publication pending | See serialized-receiving-implementation-report.md. Unit/integration/browser/build/type checks, isolated preservation, restricted-login denial and capacity proof completed. No operational migration. |
 | 3 | DYI:2 and unique-unit printing | Pending | Exact-unit manifests and no stock effects; retain historical DYI:1 artifacts. |
 | 4 | Unit tracking and lifecycle timeline | Pending | Authorized exact lookup/details; only recorded events/locations. Extend as later domains arrive. |
-| 5 | Production checkout | Pending policy decisions | Optional reusable Order IDs and explicit confirmation approved; taxonomy and issue roles require confirmation. |
+| 5 | Production checkout | Pending policy decisions | Optional reusable Order IDs and explicit confirmation approved; taxonomy requires confirmation; all three issue roles approved. |
 | 6 | Missing-reason reconciliation | Pending | Append classification; never deduct twice. |
 | 7 | BAD, recovery and disposition | Pending | Preserve damage lineage, approved authority and compensating accounting. |
 | 8 | Completion and physical reconciliation | Pending | Recorded versus physically verified evidence; no invented historical events. |
@@ -57,3 +57,15 @@ Final Milestone 1 verification:
 - Inspected loaded overview screenshots at 1440px and 320px; new evidence: `images/completion/milestone-1/overview-{1440,390,320}.png`. Also reviewed a contact sheet of the 34 refreshed existing synthetic browser screenshots and the 320px user directory directly. Existing evidence files are retained rather than discarded.
 - Changed files: verification workflow; `vitest.integration.config.ts`; dashboard loading state; stock-overview synchronization and new stock-summary browser test; README; architecture/decision/progress documentation; synthetic screenshot evidence. No migration or dependency change.
 - Remaining limits: physical printing, real mail, operational rollout and future domains remain unverified/gated. CI workflow availability does not establish a green remote execution. Next: Milestone 2 serialized identities/receiving with benchmark and old-writer proof.
+
+### Milestone 2 verification (7 November)
+
+Six-character immutable units, exact receiving events/state, bounded hashed manifests, Admin/Manager receipt-unit pagination and migration cutover safeguards implemented. Additive migrations 014-018 exercised only in isolated test fixtures; operational dayari_dev remains through 013 with no StockUnit table.
+
+51 unit tests passed. Full PostgreSQL regression repeat: 89 tests/12 files passed; final strengthened serialization suite: 8/8 passed using a genuine non-superuser login, RESET ROLE/replication-trigger bypass denial, exact audit/outbox manifest references and complete rollback. The first full run had 86 passes/3 failures during multi-hour host timing gaps and is not treated as a pass.
+
+Browser full run: 20 passed/2 failed (new heading ambiguity and invitation total-test timeout). Corrected batch-heading locator and invitation both passed on targeted rerun; final receiving typography/scenario rerun passed with an explicit 90-second whole-test budget for added pagination/five-width screenshots. Individual assertions and app timeouts unchanged. All 22 distinct scenarios have passing results across runs; no claim of one green full 22-case run. Actual unit-table screenshots inspected at 320/390/768/1024/1440; 40 refreshed synthetic regression images reviewed via contact sheet. Final production build and typecheck passed.
+
+Capacity: one warmup/three measured runs at 100/1,000/10,000 units and 100 lines. Measured 10,000-unit maxima 9.85s (one line), 12.09s (100 lines), with unchanged 15s/20s application limits. 500-row chunks, collision retries, smaller-chunk comparison and same-origin 2x1,000-unit contention exercised. Development measurements do not certify future shop hardware. Initial timeout/slow-commit attempts led to indexed UUID membership joins, set-based provenance validation and once-per-batch whole-graph checks; no history/late-insert/balance/unit guard removed.
+
+Fresh isolated migration rehearsal preserved historical catalogue/SKU/P/L/receipts/ledger/command/audit/outbox/print tables, same-key receipt reply and exact PDF hash. Historical lots explicitly LEGACY, zero fabricated units/events. Read-only planner reports uncounted/unverified physical coverage with no apply mode. Final fresh-fixture utility/rehearsal and planner commands passed. Operational migration, enrollment, deployment, real invitations and hardware acceptance remain gated. Next: Milestone 3 DYI:2/exact-unit printing; checkout reason catalogue remains open for Milestone 5.

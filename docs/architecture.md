@@ -147,3 +147,7 @@ A read-only authenticated preview renders the same local PDF generator used for 
 
 ## SMTP invitation adapter — 4 November 2026
 The existing encrypted invitation queue now supports an explicit SMTP adapter alongside isolated tests. STARTTLS/certificate checks, bounded network deadlines and sanitized provider errors apply. Delivery happens outside transactions; payload mode fencing prevents sending isolated messages after cutover. Stable message identity and single-use tokens tolerate uncertain retries. Live readiness fails closed without verified configuration. Local migrations 011/012 applied with owner approval; no production rollout.
+
+## Serialized receiving implementation - 7 November 2026
+
+Milestone 2 adds origin-scoped StockUnit identities, initial immutable UnitEvent evidence, UnitState projections and bounded exact-command manifest pages. LotSerialization classifies historical lots without enrollment. Cutover occurs only when additive migration 014 is installed; operational installation remains unapproved. All native receiving routes use the existing origin lock, actor fencing, idempotency and atomic ledger command. New unit tables supplement, rather than replace or double-count, authoritative lot movements. Paginated receipt-unit reads are Admin/Manager-only. See serialized-receiving-implementation-design.md and the milestone report for database bypass and preservation proof. Unit QR/printing/checkout remain separate milestones.

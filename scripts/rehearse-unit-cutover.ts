@@ -1,0 +1,46 @@
+import 'dotenv/config';
+import { randomUUID,createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
+import { mkdir,writeFile } from 'node:fs/promises';
+import request from 'supertest';
+import { database } from '../apps/api/src/database.js';
+import { createApp } from '../apps/api/src/app.js';
+import { passwordHash,canonical } from '../apps/api/src/security.js';
+import { isolatedBackfillUrl } from '../apps/api/src/identity-backfill.js';
+import { ReceivingService as OldWriter } from '../apps/api/test-fixtures/pre-serialization-receiving.js';
+
+const url=isolatedBackfillUrl(process.env.UNIT_CUTOVER_REHEARSAL_DATABASE_URL);
+const db=database(url.toString()),originId=randomUUID();
+let app:Awaited<ReturnType<typeof createApp>>|undefined;
+const hash=(data:unknown)=>createHash('sha256').update(JSON.stringify(data,(_,v)=>typeof v==='bigint'?v.toString():v)).digest('hex');
+try {
+ const [schema]=await db.$queryRaw<{present:boolean}[]>`SELECT to_regclass('"StockUnit"') IS NOT NULL AS present`;
+ if(schema!.present)throw Error('Rehearsal requires an isolated fixture database through migration 013; refuses resetting an existing schema');
+ await db.originNode.create({data:{id:originId,mode:'SHOP'}});
+ const password=randomUUID(),actor=await db.user.create({data:{name:'Cutover fixture Admin',email:originId+'@cutover.test',role:'ADMIN',passwordHash:passwordHash(password),membership:{create:{originId}}}});
+ app=await createApp(db,originId,'SHOP');
+ const token=(await request(app.getHttpServer()).post('/v1/sessions').send({email:actor.email,password}).expect(200)).body.token;
+ const post=(path:string,body:object)=>request(app!.getHttpServer()).post('/v1/'+path).set('Authorization','Bearer '+token).set('Idempotency-Key',randomUUID()).send(body);
+ const registry=await db.locationRegistry.findFirstOrThrow({where:{code:'LG'}});
+ const source=(await post('catalogue/supplier-setups',{supplier:{name:'Cutover '+originId},location:{registryId:registry.id}}).expect(201)).body.source;
+ const product=(await post('catalogue/product-setups',{sourceId:source.id,product:{name:'Historical fixture'},variants:[]}).expect(201)).body;
+ const key=randomUUID(),body={sourceId:source.id,deliveredOn:'2020-01-01',lines:[{skuId:product.skus[0].id,usableQuantity:3,damagedQuantity:1,damageReason:'Synthetic historical damaged intake'}]};
+ const old=new OldWriter(db,originId,'SHOP'),receipt=await old.create(actor,key,body) as any;
+ const job=(await post('label-print-jobs',{kind:'INITIAL',receiptId:receipt.id,profileId:'a4-70x35-v1'}).expect(201)).body;
+ await post(`label-print-jobs/${job.id}/artifacts/0`,{}).expect(201);
+ const pdf=async()=>{const r=await request(app!.getHttpServer()).get(`/v1/label-print-jobs/${job.id}/artifacts/0.pdf`).set('Authorization','Bearer '+token).expect(200);return createHash('sha256').update(r.body as Buffer).digest('hex');};
+ const tables=['Product','Variant','Supplier','SupplierSource','SupplierVariantSku','ProductPublicIdentity','LotPublicIdentity','DeliveryBatch','Receipt','ReceiptLine','StockLot','StockTransaction','StockMovement','StockBalance','CommandResult','AuditEvent','OutboxEvent','LabelPrintJob','LabelPrintJobLine','LabelPrintEvent'];
+ const snapshot=async()=>{const result:Record<string,string>={};for(const table of tables){const [r]=await db.$queryRawUnsafe<{rows:unknown}[]>(`SELECT jsonb_agg(to_jsonb(t) ORDER BY to_jsonb(t)::text) AS rows FROM "${table}" t`);result[table]=hash(r!.rows);}return result;};
+ const before=await snapshot(),pdfBefore=await pdf();
+ execFileSync(process.execPath,['node_modules/prisma/build/index.js','migrate','deploy'],{env:{...process.env,DATABASE_URL:url.toString(),INVITATION_TRANSPORT:'disabled',INVITATION_LIVE_ENABLED:'0'},stdio:'pipe'});
+ const after=await snapshot(),pdfAfter=await pdf();
+ if(JSON.stringify(before)!==JSON.stringify(after)||pdfBefore!==pdfAfter)throw Error('Historical preservation mismatch');
+ const replay=await old.create(actor,key,body);
+ if(canonical(replay)!==canonical(receipt))throw Error('Historical replay changed');
+ const units=await db.stockUnit.count({where:{originId}}),policies=await db.lotSerialization.findMany({where:{originId}});
+ if(units!==0||policies.length!==1||policies[0]!.mode!=='LEGACY')throw Error('Historical classification fabricated units');
+ let denied=false;try{await old.create(actor,randomUUID(),body);}catch{denied=true;}if(!denied)throw Error('Old writer bypassed cutover');
+ await mkdir('artifacts/completion',{recursive:true});
+ await writeFile('artifacts/completion/unit-cutover-rehearsal.json',JSON.stringify({syntheticOnly:true,originId,recordedAt:new Date().toISOString(),unchangedTables:tables,unchangedPdf:true,receiptReplayUnchanged:true,historicalUnits:units,legacyLots:policies.length,oldWriterDenied:true},null,2));
+ console.info('Isolated cutover rehearsal passed: historical records, replay and PDF unchanged; no historical units; stale writer rejected.');
+}finally{await app?.close();await db.$disconnect();}

@@ -70,3 +70,15 @@ P+5 identifies a shared parent; L+5 identifies one exact SKU/batch lot. Codes ar
 Migrations007/008 were first verified on dayari_test, then explicitly approved by the owner and applied to local dayari_dev to resolve the app/schema mismatch. No backfill was performed. Do not migrate any other operational/production target without separate authorization. Existing unmapped records remain Code not assigned. See docs/phase-1-implementation-report.md and docs/prd-human-identities-addendum.md.
 
 Backfill rehearsal only: explicitly set IDENTITY_BACKFILL_DATABASE_URL to an isolated local *_test target; run npm run identity:backfill with --origin, --actor (active Admin UUID), --kind PRODUCT or LOT, --limit (1..500) and --out plan.json. Default is a no-write dry run; apply explicitly with --apply --plan plan.json. Saved plans retain replay keys; repeat the same plan after a lost result, or plan the next page using nextCursor. Utility refuses operational/remote databases; no operational backfill is authorized.
+
+### Serialized receiving rehearsal (isolated fixtures only)
+
+Operational unit migration/activation remains owner-gated. Migrations 014-018 enable serialized receiving only on the database where they are explicitly installed. Existing local operational migration 013 remains usable with quantity receiving until separately upgraded.
+
+- `npm run units:benchmark`: uses explicit loopback `TEST_DATABASE_URL` ending in `_test`; four capacity cases, repeated samples and sanitized metrics under ignored `artifacts/completion`.
+- `npm run units:benchmark-contention`: additional chunk-size/contention diagnostics using the prior synthetic benchmark origin.
+- `npm run units:create-cutover-fixture`: requires a fresh `UNIT_CUTOVER_REHEARSAL_DATABASE_URL` named `dayari_cutover_*_test`; refuses overwriting an existing database and prepares migration-013 fixtures.
+- `npm run units:rehearse-cutover`: same explicit URL, creates synthetic receipt/print evidence and verifies preservation across migration deployment. Refuses a database already containing StockUnit.
+- `npm run units:plan-history -- --origin <UUID> --out <new-plan.json> [--after <UUID>]`: read-only, requires explicit `HISTORICAL_UNIT_PLAN_DATABASE_URL` pointing to an isolated loopback `_test` fixture. Reports uncounted/unverified historical coverage; no apply mode, historical unit creation or stock adjustment.
+
+Keep all URL credentials private. These tools do not authorize operational migrations, historical enrollment, physical verification, QR V2 deployment or production rollout. See `docs/serialized-receiving-implementation-report.md`.

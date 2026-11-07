@@ -1,10 +1,11 @@
+import { hasUnitSchema, receiveUnitGroups, type UnitIntake } from './unit-receiving.js';
 import { requireCapability } from './permissions.js';
 import { allocatePublicIdentity } from './public-code.js';
 import { randomUUID } from 'node:crypto';
-import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { Prisma, type PrismaClient, type User } from '@prisma/client';
 import { z, type ZodType } from 'zod';
-import { batchCode, idempotencyKeySchema, lagosDate, receiptSchema, type AcceptedReceipt, type LotEvidence, type OperationalStock } from '@dayari/contracts';
+import { batchCode, idempotencyKeySchema, lagosDate, receiptSchema, receiptUnitsQuery, serializedReceiptLimit, type ReceiptUnitsPage, type ReceivedUnit, type AcceptedReceipt, type LotEvidence, type OperationalStock } from '@dayari/contracts';
 import { canonical, digest } from './security.js';
 
 type Reader = Prisma.TransactionClient;
@@ -16,7 +17,7 @@ function parse<T>(schema: ZodType<T>, value: unknown): T {
 }
 const json = (value: unknown) => JSON.parse(JSON.stringify(value, (_, item) => typeof item === 'bigint' ? item.toString() : item)) as Prisma.InputJsonValue;
 export class ReceivingService {
-  constructor(readonly db: PrismaClient, readonly originId: string, readonly mode: string) {}
+  constructor(readonly db: PrismaClient, readonly originId: string, readonly mode: string, readonly unitDraw?: () => string, readonly unitChunkSize = 500) {}
   allow(user: User) { requireCapability(user,'RECEIVE'); }
   async options(user: User) {
     this.allow(user);
@@ -27,7 +28,7 @@ export class ReceivingService {
       const supplier = suppliers.get(source.supplierId) ?? { id: source.supplierId, name: source.supplier.name, code: source.supplier.code, sources: [] };
       supplier.sources.push({ id: source.id, name: source.name, code: source.code }); suppliers.set(source.supplierId, supplier);
     }
-    return { suppliers: [...suppliers.values()], skus: skus.map(sku => ({ id: sku.id, fullCode: sku.fullCode, sourceId: sku.sourcing.sourceId, productId: sku.productId, productName: sku.variant.product.name, variantId: sku.variantId, variantName: sku.variant.name })) };
+    return { serializationActive: await hasUnitSchema(this.db), unitLimit: serializedReceiptLimit, suppliers: [...suppliers.values()], skus: skus.map(sku => ({ id: sku.id, fullCode: sku.fullCode, sourceId: sku.sourcing.sourceId, productId: sku.productId, productName: sku.variant.product.name, variantId: sku.variantId, variantName: sku.variant.name })) };
   }
   async list(user: User) {
     this.allow(user);
@@ -46,9 +47,28 @@ export class ReceivingService {
     const productIds = lines.map(l => (l.snapshot as {productId:string}).productId).filter(Boolean);
     const productIdentities = await tx.productPublicIdentity.findMany({ where: { productId: { in: productIds } } });
     const sum = (field: 'usableQuantity' | 'damagedQuantity' | 'totalQuantity') => lines.reduce((total, row) => total + row[field], 0n).toString();
-    return { id, batch: { id: batch.id, originId: batch.originId, publicCode: batch.publicCode, deliveredOn: batch.deliveredOn.toISOString().slice(0, 10), acceptedAt: batch.acceptedAt.toISOString(), numberedOn: batch.numberedOn.toISOString().slice(0, 10), invoiceReference: batch.invoiceReference, supplierName: (batch.snapshot as { supplierName: string }).supplierName, sourceName: (batch.snapshot as { sourceName: string }).sourceName }, originSequence: transaction.originSequence.toString(), lines: lines.map(line => ({ lotCode: lotIdentities.find(i => i.lotId === line.lotId)?.code ?? null, productCode: productIdentities.find(i => i.productId === (line.snapshot as {productId:string}).productId)?.code ?? null, id: line.id, skuId: line.skuId, lotId: line.lotId, usableQuantity: line.usableQuantity.toString(), damagedQuantity: line.damagedQuantity.toString(), totalQuantity: line.totalQuantity.toString(), damageReason: line.damageReason, fullCode: (line.snapshot as { fullCode: string }).fullCode, productId: (line.snapshot as { productId: string }).productId, productName: (line.snapshot as { productName: string }).productName, variantName: (line.snapshot as { variantName: string }).variantName })), totals: { usable: sum('usableQuantity'), damaged: sum('damagedQuantity'), delivered: sum('totalQuantity') } };
+    const unitCount = await hasUnitSchema(tx) ? await tx.stockUnit.count({ where: { receiptLineId: { in: lines.map(line => line.id) } } }) : 0;
+    const serialization = unitCount ? { unitCount: String(unitCount), manifestPages: await tx.unitCommandManifestPage.count({ where: { commandId: transaction.commandId } }) } : undefined;
+    return { ...(serialization ? { serialization } : {}), id, batch: { id: batch.id, originId: batch.originId, publicCode: batch.publicCode, deliveredOn: batch.deliveredOn.toISOString().slice(0, 10), acceptedAt: batch.acceptedAt.toISOString(), numberedOn: batch.numberedOn.toISOString().slice(0, 10), invoiceReference: batch.invoiceReference, supplierName: (batch.snapshot as { supplierName: string }).supplierName, sourceName: (batch.snapshot as { sourceName: string }).sourceName }, originSequence: transaction.originSequence.toString(), lines: lines.map(line => ({ lotCode: lotIdentities.find(i => i.lotId === line.lotId)?.code ?? null, productCode: productIdentities.find(i => i.productId === (line.snapshot as {productId:string}).productId)?.code ?? null, id: line.id, skuId: line.skuId, lotId: line.lotId, usableQuantity: line.usableQuantity.toString(), damagedQuantity: line.damagedQuantity.toString(), totalQuantity: line.totalQuantity.toString(), damageReason: line.damageReason, fullCode: (line.snapshot as { fullCode: string }).fullCode, productId: (line.snapshot as { productId: string }).productId, productName: (line.snapshot as { productName: string }).productName, variantName: (line.snapshot as { variantName: string }).variantName })), totals: { usable: sum('usableQuantity'), damaged: sum('damagedQuantity'), delivered: sum('totalQuantity') } };
   }
   async get(user: User, id: string) { this.allow(user); return this.read(this.db, parse(idempotencyKeySchema, id)); }
+  async units(user: User, idInput: unknown, input: unknown): Promise<ReceiptUnitsPage> {
+    this.allow(user);
+    const id = parse(idempotencyKeySchema, idInput), query = parse(receiptUnitsQuery, input);
+    if (!await hasUnitSchema(this.db)) throw new ServiceUnavailableException('Unit tracking requires the separately approved database upgrade');
+    return this.db.$transaction(async tx => {
+      const receipt = await this.read(tx, id);
+      const lineIds = receipt.lines.filter(line => !query.lotId || line.lotId === query.lotId).map(line => line.id);
+      const where = { originId: this.originId, receiptLineId: { in: lineIds } };
+      const total = await tx.stockUnit.count({ where });
+      const saved = await tx.stockUnit.findMany({ where, orderBy: [{ receiptLineId: 'asc' }, { unitCode: 'asc' }], skip: (query.page - 1) * 20, take: 20 });
+      const states = await tx.unitState.findMany({ where: { unitId: { in: saved.map(unit => unit.id) } } });
+      return { total, page: query.page, pageSize: 20, historicalUnassigned: !receipt.serialization,
+        units: saved.map(unit => { const line = receipt.lines.find(line => line.id === unit.receiptLineId)!;
+          return { id: unit.id, unitCode: unit.unitCode, lotId: unit.lotId, receiptLineId: unit.receiptLineId, initialState: unit.initialState as ReceivedUnit['initialState'], state: states.find(state => state.unitId === unit.id)!.state, fullSku: line.fullCode, productName: line.productName, variantName: line.variantName, recordedAt: unit.recordedAt.toISOString() };
+        }) };
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
+  }
   async lotEvidence(user: User, input: string): Promise<LotEvidence> {
     this.allow(user);
     const id = parse(idempotencyKeySchema, input);
@@ -109,6 +129,9 @@ export class ReceivingService {
           const actor = await tx.user.findUniqueOrThrow({ where: { id: user.id } }); this.allow(actor); if(actor.authVersion!==user.authVersion||actor.mustChangePassword)throw new ForbiddenException('Session security state changed');
           const prior = await tx.commandResult.findUnique({ where: { originId_actorId_commandType_key: { originId: this.originId, actorId: user.id, commandType, key } } });
           if (prior) { if (prior.requestHash !== requestHash) throw new ConflictException('Idempotency key reused with different receipt'); return prior.response; }
+          const serialized = await hasUnitSchema(tx);
+          if (serialized && data.lines.reduce((sum, line) => sum + line.usableQuantity + line.damagedQuantity, 0) > serializedReceiptLimit) throw new BadRequestException('A serialized receipt supports at most 10,000 units. Record larger deliveries as explicit separate receipts.');
+          const unitIntakes: UnitIntake[] = [];
           const [clock] = await tx.$queryRaw<{ now: Date }[]>`SELECT clock_timestamp() AS now`;
           const now = clock!.now;
           const date = lagosDate(now);
@@ -133,13 +156,16 @@ export class ReceivingService {
             const record = await tx.receiptLine.create({ data: { receiptId: receipt.id, batchId: batch.id, skuId: sku.id, lotId: lot.id, lineNumber: index + 1, usableQuantity: BigInt(line.usableQuantity), damagedQuantity: BigInt(line.damagedQuantity), damageReason: line.damageReason, snapshot: json({ fullCode: sku.fullCode, productId: sku.productId, productName: sku.variant.product.name, variantId: sku.variantId, variantName: sku.variant.name, selections: sku.variant.selections.map(selection => ({ attributeId: selection.attributeId, valueId: selection.valueId, label: selection.value.label })) }) } });
             // New batch means new lots: no pre-existing balances can race. Future operations must lock sorted lot/state rows after the origin lock.
             for (const [state, quantity] of [['U', line.usableQuantity], ['D', line.damagedQuantity]] as const) {
-              if (quantity > 0) await tx.stockMovement.create({ data: { transactionId: transaction.id, batchId: batch.id, lotId: lot.id, receiptLineId: record.id, fromState: 'E', toState: state, quantity: BigInt(quantity) } });
+              const movement = quantity > 0 ? await tx.stockMovement.create({ data: { transactionId: transaction.id, batchId: batch.id, lotId: lot.id, receiptLineId: record.id, fromState: 'E', toState: state, quantity: BigInt(quantity) } }) : null;
               await tx.stockBalance.create({ data: { lotId: lot.id, state, quantity: BigInt(quantity), lastTransactionId: transaction.id } });
+              if (serialized && movement) unitIntakes.push({ originId: this.originId, lotId: lot.id, receiptLineId: record.id, movementId: movement.id, state: state as 'U' | 'D', quantity, commandId, actor, now, pageOrdinal: 0 });
             }
           }
+          if (serialized) await receiveUnitGroups(tx,unitIntakes,this.unitDraw,this.unitChunkSize);
           const response = json(await this.read(tx, receipt.id));
           const movements = await tx.stockMovement.findMany({ where: { transactionId: transaction.id } });
-          const payload = json({ subject: response, transactionId: transaction.id, movements, actorId: actor.id, actorRole: actor.role, commandId });
+          const unitManifest = serialized ? { version: 1, pages: await tx.unitCommandManifestPage.findMany({ where: { commandId }, orderBy: { ordinal: 'asc' }, select: { id: true, ordinal: true, payloadHash: true } }) } : undefined;
+          const payload = json({ subject: response, transactionId: transaction.id, movements, ...(unitManifest ? { unitManifest } : {}), actorId: actor.id, actorRole: actor.role, commandId });
           await tx.auditEvent.create({ data: { originId: this.originId, actorId: actor.id, actorRole: actor.role, commandId, action: 'inventory.receipt.accepted', subjectId: receipt.id, snapshot: payload } });
           await tx.outboxEvent.create({ data: { originId: this.originId, originSequence: node.nextSequence, eventType: 'inventory.receipt.accepted', aggregateId: receipt.id, commandId, actorId: actor.id, payload, payloadHash: digest(canonical(payload)) } });
           await tx.commandResult.create({ data: { id: commandId, originId: this.originId, actorId: actor.id, commandType, key, requestHash, response } });

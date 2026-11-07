@@ -426,3 +426,78 @@ model InvitationMail {
   updatedAt DateTime @default(now()) @db.Timestamptz(6)
   @@index([status, availableAt])
 }
+
+// Serialized identity/history sidecars; original stock/receipt tables stay authoritative.
+model SerializationCutover {
+  id String @id @default(uuid()) @db.Uuid
+  originId String @unique @db.Uuid
+  watermark BigInt
+  policyVersion Int @default(1)
+  migrationName String
+  activatedAt DateTime @default(now()) @db.Timestamptz(6)
+}
+model LotSerialization {
+  lotId String @id @db.Uuid
+  originId String @db.Uuid
+  cutoverId String @db.Uuid
+  mode String
+  recordedAt DateTime @default(now()) @db.Timestamptz(6)
+}
+model StockUnit {
+  id String @id @db.Uuid
+  originId String @db.Uuid
+  lotId String @db.Uuid
+  receiptLineId String @db.Uuid
+  unitCode String
+  initialState String
+  initialMovementId String @db.Uuid
+  registrationCommandId String @db.Uuid
+  actorId String @db.Uuid
+  actorRole Role
+  recordedAt DateTime @db.Timestamptz(6)
+  @@unique([originId,unitCode])
+  @@unique([id,lotId])
+  @@index([receiptLineId,initialState])
+  @@index([lotId,id])
+  @@index([registrationCommandId])
+}
+model UnitEvent {
+  id String @id @db.Uuid
+  unitId String @db.Uuid
+  lotId String @db.Uuid
+  originId String @db.Uuid
+  ordinal Int
+  kind String
+  fromState String
+  toState String
+  actorId String @db.Uuid
+  actorRole Role
+  commandId String @db.Uuid
+  movementId String @db.Uuid
+  recordedAt DateTime @db.Timestamptz(6)
+  details Json
+  @@unique([unitId,ordinal])
+  @@index([commandId])
+}
+model UnitState {
+  unitId String @id @db.Uuid
+  lotId String @db.Uuid
+  originId String @db.Uuid
+  state String
+  condition String
+  custody String
+  version BigInt @default(1)
+  lastEventId String @unique @db.Uuid
+  @@index([lotId,state])
+}
+model UnitCommandManifestPage {
+  id String @id @db.Uuid
+  commandId String @db.Uuid
+  originId String @db.Uuid
+  ordinal Int
+  members Json
+  canonicalPayload String
+  payloadHash String
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  @@unique([commandId,ordinal])
+}

@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "dryRun": true,
+  "originId": "ff11873b-0ad9-4732-982f-edbfbc4d623c",
+  "recordedAt": "2026-11-07T06:26:53.337Z",
+  "lots": [
+    {
+      "lotId": "4cde6706-5590-4e08-b83e-a8fdec4184e7",
+      "sku": "CUTLG75812-STD",
+      "batch": "B-20261107-0001",
+      "usable": "3",
+      "damaged": "1",
+      "assigned": "0",
+      "physicalCount": null,
+      "discrepancy": "UNRESOLVED_NOT_COUNTED",
+      "verified": false
+    }
+  ],
+  "nextCursor": null
+}

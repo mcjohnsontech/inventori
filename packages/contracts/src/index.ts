@@ -1,4 +1,5 @@
 import { z } from 'zod';
+export * from './units.js';
 export * from './accounts.js';
 export * from './permissions.js';
 export * from './availability.js';
@@ -91,8 +92,9 @@ export const receiptSchema = z.object({
     .refine(row => !row.damagedQuantity || (row.damageReason.length >= 10 && /\p{L}/u.test(row.damageReason)), 'Explain damaged arrivals in at least 10 characters')).min(1).max(100),
 }).strict().refine(body => new Set(body.lines.map(row => row.skuId)).size === body.lines.length, 'Each SKU can appear only once');
 export type ReceiptInput = z.infer<typeof receiptSchema>;
-export type ReceivingOptions = { suppliers: { id: string; name: string; code: string; sources: { id: string; name: string; code: string }[] }[]; skus: { id: string; fullCode: string; sourceId: string; productId: string; productName: string; variantId: string; variantName: string }[] };
+export type ReceivingOptions = { serializationActive?: boolean; unitLimit?: number; suppliers: { id: string; name: string; code: string; sources: { id: string; name: string; code: string }[] }[]; skus: { id: string; fullCode: string; sourceId: string; productId: string; productName: string; variantId: string; variantName: string }[] };
 export type AcceptedReceipt = {
+ serialization?: { unitCount: string; manifestPages: number };
  id: string; batch: { id: string; originId: string; publicCode: string; deliveredOn: string; acceptedAt: string; numberedOn: string; invoiceReference: string | null; supplierName: string; sourceName: string };
  originSequence: string; lines: { id: string; skuId: string; lotId: string; lotCode?: string | null; productCode?: string | null; fullCode: string; productId: string; productName: string; variantName: string; usableQuantity: string; damagedQuantity: string; totalQuantity: string; damageReason: string }[];
  totals: { usable: string; damaged: string; delivered: string };

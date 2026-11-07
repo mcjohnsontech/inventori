@@ -1,0 +1,32 @@
+{
+  "syntheticOnly": true,
+  "originId": "ff11873b-0ad9-4732-982f-edbfbc4d623c",
+  "recordedAt": "2026-11-07T06:16:43.106Z",
+  "unchangedTables": [
+    "Product",
+    "Variant",
+    "Supplier",
+    "SupplierSource",
+    "SupplierVariantSku",
+    "ProductPublicIdentity",
+    "LotPublicIdentity",
+    "DeliveryBatch",
+    "Receipt",
+    "ReceiptLine",
+    "StockLot",
+    "StockTransaction",
+    "StockMovement",
+    "StockBalance",
+    "CommandResult",
+    "AuditEvent",
+    "OutboxEvent",
+    "LabelPrintJob",
+    "LabelPrintJobLine",
+    "LabelPrintEvent"
+  ],
+  "unchangedPdf": true,
+  "receiptReplayUnchanged": true,
+  "historicalUnits": 0,
+  "legacyLots": 1,
+  "oldWriterDenied": true
+}

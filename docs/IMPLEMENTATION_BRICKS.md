@@ -92,3 +92,7 @@ Owner authorized a lot-label screen redesign: actual generated-PDF canvas previe
 
 ## Staff invitation SMTP slice — 4 November 2026
 SMTP implementation and isolated verification complete; local 011/012 upgrade approved/applied with preservation checks. Live email not enabled pending verified sender/URL/private credentials. No stock effects or future inventory phases. See invitation-email-implementation-report.md.
+
+## Complete V1 directive - milestone 2 progress
+
+The 6 November directive authorizes sequential implementation beyond earlier stop points, retaining operational migration/deployment gates. Serialized receipt identity implementation and isolated migrations 014-018 are under verification; see serialized-receiving-implementation-design.md. No StockUnit deployment to operational data, historical enrollment, DYI:2 activation, production transitions, physical printer certification or synchronization is completed by this entry.

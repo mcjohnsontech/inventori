@@ -24,7 +24,12 @@
     "test:integration": "npm run build:contracts && node scripts/run-vitest.mjs run --config vitest.integration.config.ts",
     "test:e2e": "npm run build:contracts && npm run db:generate && npm run build -w @dayari/api && playwright test",
     "identity:backfill": "tsx scripts/backfill-public-identities.ts",
-    "mail:check": "tsx scripts/check-invitation-mail.ts"
+    "mail:check": "tsx scripts/check-invitation-mail.ts",
+    "units:benchmark": "npm run build:contracts && tsx --tsconfig apps/api/tsconfig.json scripts/benchmark-serialized-receiving.ts",
+    "units:plan-history": "tsx --tsconfig apps/api/tsconfig.json scripts/plan-historical-units.ts",
+    "units:rehearse-cutover": "tsx --tsconfig apps/api/tsconfig.json scripts/rehearse-unit-cutover.ts",
+    "units:create-cutover-fixture": "node scripts/create-cutover-fixture.mjs",
+    "units:benchmark-contention": "tsx --tsconfig apps/api/tsconfig.json scripts/benchmark-unit-contention.ts"
   },
   "devDependencies": {
     "@napi-rs/canvas": "1.1.0",

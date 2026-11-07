@@ -121,6 +121,10 @@ export function ReceiveWizard({
     }
 
     if (next > step && step === 2) {
+      if (options.serializationActive && usable + damaged > (options.unitLimit ?? 10000)) {
+        setError('A receipt supports at most 10,000 physical units. Record larger deliveries as separate receipts.');
+        return;
+      }
       const valid = receiptSchema.safeParse({
         sourceId,
         deliveredOn,
@@ -442,6 +446,7 @@ export function ReceiveWizard({
 
       {step === 3 ? (
         <>
+          {options.serializationActive ? <Footnote>{usable + damaged} permanent Unit Codes will be created atomically with this receipt. Damaged units remain separate from usable stock.</Footnote> : null}
           <div className={cn(card, 'p-4')}>
             <p className="font-sans text-sm tracking-[-0.02em] text-ink">
               <strong className="font-semibold">{supplier?.name}</strong> · {source?.name}

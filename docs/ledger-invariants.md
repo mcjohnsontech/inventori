@@ -104,3 +104,9 @@ The 2 November 2026 Task 3 authorization supersedes earlier O3/B02/B06 proposals
 ## Labels do not affect inventory
 
 QR resolution/manual lookup are reads, with no CommandResult/audit/outbox writes. Label job/artifact/attempt writes append separate print metadata with audit/outbox; the general origin stream advances but every receipt/batch/lot/stock-transaction/movement/balance row remains unchanged. Printing, cancellation, reprinting and uncertain physical output never require a compensating stock event. Shared usable/damaged lot QR does not prove an individual unit is usable. See Brick5B isolation evidence in qr-label-implementation-report.md.
+
+## Native serialized receipt invariants - implementation milestone 2
+
+After serialization cutover, every positive receipt quantity has one exact immutable unit identity and initial E-to-U/D event; sums by receipt line/state equal accepted movement quantities. Every unit has an event-matching state projection and exactly one membership in the command's hashed, contiguous manifest pages (at most 500 members each). No zero movements or independent unit stock authority. State identity cannot be reassigned; initial receiving event kinds are the only enabled lifecycle events. Historical lots are explicitly LEGACY and remain unassigned.
+
+The full immutable receipt graph is validated once per DeliveryBatch at deferred commit, because all children have batch foreign keys and same-creation-transaction insertion guards. Independent balance reconciliation and once-per-receipt unit completeness remain. Replaying an accepted historical command returns original evidence without adding units. No operational migration or physical historical verification is implied.

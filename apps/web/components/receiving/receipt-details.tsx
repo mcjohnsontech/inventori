@@ -21,6 +21,7 @@ import {
 } from '../ui';
 import { LabelWorkspace } from '../labels/label-workspace';
 import { Totals } from './totals';
+import { ReceivedUnits } from './received-units';
 
 export function ReceiptDetails({
   receipt,
@@ -30,6 +31,7 @@ export function ReceiptDetails({
   onStock?: (productId: string) => void;
 }) {
   const [labelsOpen, setLabelsOpen] = useState(false);
+  const [unitsOpen, setUnitsOpen] = useState(false);
   const stock = useApiRead<OperationalStock>(`stock?batchId=${receipt.batch.id}`);
 
   const columns: Column<(typeof receipt.lines)[number]>[] = [
@@ -119,6 +121,12 @@ export function ReceiptDetails({
           </Disclosure>
         </Stack>
       </Panel>
+
+      {receipt.serialization ? <Panel title="Individual physical units" action={<Badge>{receipt.serialization.unitCount} unique units</Badge>}>
+        <Disclosure summary="View received Unit Codes" onOpen={() => setUnitsOpen(true)}>
+          {unitsOpen ? <ReceivedUnits key={receipt.id} receiptId={receipt.id} /> : null}
+        </Disclosure>
+      </Panel> : null}
 
       <Panel
         level={3}

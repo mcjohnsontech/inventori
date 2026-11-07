@@ -1,0 +1,300 @@
+{
+  "recordedAt": "2026-11-07T00:05:23.366Z",
+  "syntheticOnly": true,
+  "originId": "f9d6a03f-ba81-49b8-875f-4564973847e5",
+  "hardware": {
+    "platform": "win32",
+    "release": "10.0.26200",
+    "cpu": "Intel(R) Core(TM) i5-8350U CPU @ 1.70GHz",
+    "cpuCount": 8,
+    "totalMemory": 8420122624
+  },
+  "runtime": {
+    "node": "24.16.0",
+    "acorn": "8.16.0",
+    "ada": "3.4.4",
+    "amaro": "1.1.9",
+    "ares": "1.34.6",
+    "brotli": "1.2.0",
+    "cldr": "48.0",
+    "icu": "78.3",
+    "llhttp": "9.4.1",
+    "merve": "1.2.2",
+    "modules": "137",
+    "napi": "10",
+    "nbytes": "0.1.4",
+    "ncrypto": "0.0.1",
+    "nghttp2": "1.68.0",
+    "nghttp3": "",
+    "ngtcp2": "",
+    "openssl": "3.5.6",
+    "simdjson": "4.6.1",
+    "simdutf": "6.4.0",
+    "sqlite": "3.53.0",
+    "tz": "2026b",
+    "undici": "7.25.0",
+    "unicode": "17.0",
+    "uv": "1.52.1",
+    "uvwasi": "0.0.23",
+    "v8": "13.6.233.17-node.49",
+    "zlib": "1.3.1-e00f703",
+    "zstd": "1.5.7"
+  },
+  "postgres": {
+    "version": "17.11"
+  },
+  "chunkSize": 500,
+  "results": [
+    {
+      "units": 100,
+      "lines": 1,
+      "samples": [
+        {
+          "run": 0,
+          "warmup": true,
+          "status": 201,
+          "elapsedMs": 466.830899999999,
+          "transactionMs": 451.48489999999947,
+          "originLockMs": 1.7809999999990396,
+          "peakRss": 274554880,
+          "allocationAttempts": 100,
+          "collisionRetries": 0,
+          "clusterWalBytes": "2876464",
+          "unitCount": "100"
+        },
+        {
+          "run": 1,
+          "warmup": false,
+          "status": 201,
+          "elapsedMs": 389.51350000000093,
+          "transactionMs": 375.8099999999995,
+          "originLockMs": 1.4454999999998108,
+          "peakRss": 279142400,
+          "allocationAttempts": 100,
+          "collisionRetries": 0,
+          "clusterWalBytes": "2793672",
+          "unitCount": "100"
+        },
+        {
+          "run": 2,
+          "warmup": false,
+          "status": 201,
+          "elapsedMs": 308.3488000000016,
+          "transactionMs": 293.32940000000053,
+          "originLockMs": 1.5655000000006112,
+          "peakRss": 277032960,
+          "allocationAttempts": 100,
+          "collisionRetries": 0,
+          "clusterWalBytes": "2614240",
+          "unitCount": "100"
+        },
+        {
+          "run": 3,
+          "warmup": false,
+          "status": 201,
+          "elapsedMs": 810.4758000000002,
+          "transactionMs": 798.3631000000005,
+          "originLockMs": 1.168999999999869,
+          "peakRss": 277299200,
+          "allocationAttempts": 100,
+          "collisionRetries": 0,
+          "clusterWalBytes": "2469552",
+          "unitCount": "100"
+        }
+      ],
+      "p50Ms": 389.51350000000093,
+      "p95Ms": 810.4758000000002,
+      "maxMs": 810.4758000000002
+    },
+    {
+      "units": 1000,
+      "lines": 1,
+      "samples": [
+        {
+          "run": 0,
+          "warmup": true,
+          "status": 201,
+          "elapsedMs": 1871.683500000001,
+          "transactionMs": 1859.8305999999993,
+          "originLockMs": 1.2427000000006956,
+          "peakRss": 285216768,
+          "allocationAttempts": 1000,
+          "collisionRetries": 0,
+          "clusterWalBytes": "15861456",
+          "unitCount": "1000"
+        },
+        {
+          "run": 1,
+          "warmup": false,
+          "status": 201,
+          "elapsedMs": 2626.7613999999994,
+          "transactionMs": 2612.012999999999,
+          "originLockMs": 1.3575000000018917,
+          "peakRss": 291090432,
+          "allocationAttempts": 1000,
+          "collisionRetries": 0,
+          "clusterWalBytes": "8928008",
+          "unitCount": "1000"
+        },
+        {
+          "run": 2,
+          "warmup": false,
+          "status": 201,
+          "elapsedMs": 1721.5081999999966,
+          "transactionMs": 1708.4051,
+          "originLockMs": 1.547999999998865,
+          "peakRss": 297754624,
+          "allocationAttempts": 1000,
+          "collisionRetries": 0,
+          "clusterWalBytes": "5464856",
+          "unitCount": "1000"
+        },
+        {
+          "run": 3,
+          "warmup": false,
+          "status": 201,
+          "elapsedMs": 1941.1510999999991,
+          "transactionMs": 1927.3012000000017,
+          "originLockMs": 1.516700000000128,
+          "peakRss": 295874560,
+          "allocationAttempts": 1000,
+          "collisionRetries": 0,
+          "clusterWalBytes": "3811776",
+          "unitCount": "1000"
+        }
+      ],
+      "p50Ms": 1941.1510999999991,
+      "p95Ms": 2626.7613999999994,
+      "maxMs": 2626.7613999999994
+    },
+    {
+      "units": 10000,
+      "lines": 1,
+      "samples": [
+        {
+          "run": 0,
+          "warmup": true,
+          "status": 201,
+          "elapsedMs": 10943.2759,
+          "transactionMs": 10926.6434,
+          "originLockMs": 1.7599000000009255,
+          "peakRss": 340316160,
+          "allocationAttempts": 10000,
+          "collisionRetries": 0,
+          "clusterWalBytes": "22337296",
+          "unitCount": "10000"
+        },
+        {
+          "run": 1,
+          "warmup": false,
+          "status": 201,
+          "elapsedMs": 9852.762299999995,
+          "transactionMs": 9839.389600000002,
+          "originLockMs": 1.1633999999976368,
+          "peakRss": 386170880,
+          "allocationAttempts": 10000,
+          "collisionRetries": 0,
+          "clusterWalBytes": "21183128",
+          "unitCount": "10000"
+        },
+        {
+          "run": 2,
+          "warmup": false,
+          "status": 201,
+          "elapsedMs": 9302.4136,
+          "transactionMs": 9288.834000000003,
+          "originLockMs": 1.132499999999709,
+          "peakRss": 402026496,
+          "allocationAttempts": 10000,
+          "collisionRetries": 0,
+          "clusterWalBytes": "20616600",
+          "unitCount": "10000"
+        },
+        {
+          "run": 3,
+          "warmup": false,
+          "status": 201,
+          "elapsedMs": 8454.964500000002,
+          "transactionMs": 8439.691699999996,
+          "originLockMs": 1.2813000000023749,
+          "peakRss": 373424128,
+          "allocationAttempts": 10000,
+          "collisionRetries": 0,
+          "clusterWalBytes": "20691448",
+          "unitCount": "10000"
+        }
+      ],
+      "p50Ms": 9302.4136,
+      "p95Ms": 9852.762299999995,
+      "maxMs": 9852.762299999995
+    },
+    {
+      "units": 10000,
+      "lines": 100,
+      "samples": [
+        {
+          "run": 0,
+          "warmup": true,
+          "status": 201,
+          "elapsedMs": 13033.609699999994,
+          "transactionMs": 13008.985000000008,
+          "originLockMs": 1.872800000004645,
+          "peakRss": 371699712,
+          "allocationAttempts": 10000,
+          "collisionRetries": 0,
+          "clusterWalBytes": "22481944",
+          "unitCount": "10000"
+        },
+        {
+          "run": 1,
+          "warmup": false,
+          "status": 201,
+          "elapsedMs": 12091.7203,
+          "transactionMs": 12073.202600000004,
+          "originLockMs": 1.8391999999876134,
+          "peakRss": 357376000,
+          "allocationAttempts": 10001,
+          "collisionRetries": 1,
+          "clusterWalBytes": "22006560",
+          "unitCount": "10000"
+        },
+        {
+          "run": 2,
+          "warmup": false,
+          "status": 201,
+          "elapsedMs": 11741.381499999989,
+          "transactionMs": 11713.743399999992,
+          "originLockMs": 2.192800000004354,
+          "peakRss": 357654528,
+          "allocationAttempts": 10002,
+          "collisionRetries": 2,
+          "clusterWalBytes": "22161560",
+          "unitCount": "10000"
+        },
+        {
+          "run": 3,
+          "warmup": false,
+          "status": 201,
+          "elapsedMs": 12034.723899999997,
+          "transactionMs": 12017.276100000003,
+          "originLockMs": 1.1491000000096392,
+          "peakRss": 356339712,
+          "allocationAttempts": 10002,
+          "collisionRetries": 2,
+          "clusterWalBytes": "22569336",
+          "unitCount": "10000"
+        }
+      ],
+      "p50Ms": 12034.723899999997,
+      "p95Ms": 12091.7203,
+      "maxMs": 12091.7203
+    }
+  ],
+  "relationGrowthBytes": "95494144",
+  "limitations": [
+    "Development hardware, not certified shop hardware",
+    "p95 is the maximum of three measured runs; not a statistical production guarantee",
+    "Cluster WAL includes background activity",
+    "No network deployment or real stock used"
+  ]
+}

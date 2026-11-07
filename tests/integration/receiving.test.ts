@@ -1,3 +1,4 @@
+import { receiveUnits } from '../../apps/api/src/unit-receiving.js';
 import { shopToken } from './shop-fixture.js';
 import { allocatePublicIdentity } from '../../apps/api/src/public-code.js';
 import { randomUUID } from 'node:crypto';
@@ -136,6 +137,9 @@ describe('immutable receiving ledger (FR-01/03/12/14/17/19/23/24)', () => {
   if(mode!=='missing-movement')await tx.stockMovement.create({data:{transactionId:t.id,batchId:batch.id,lotId:lot.id,receiptLineId:mode==='orphan-movement'?randomUUID():line.id,fromState:'E',toState:'U',quantity:mode==='zero-movement'?0n:mode==='negative-movement'?-1n:mode==='wrong-quantity'?3n:2n}});
   await tx.stockMovement.create({data:{transactionId:t.id,batchId:batch.id,lotId:lot.id,receiptLineId:line.id,fromState:'E',toState:'D',quantity:1n}});
   for(const [state,quantity] of [['U',2n],['D',1n]] as const)await tx.stockBalance.create({data:{lotId:lot.id,state,quantity,lastTransactionId:t.id}});
+  let pageOrdinal=0;
+  const actor=await tx.user.findUniqueOrThrow({where:{id:adminId}});
+  for(const movement of await tx.stockMovement.findMany({where:{transactionId:t.id}}))pageOrdinal=await receiveUnits(tx,{originId,lotId:lot.id,receiptLineId:line.id,movementId:movement.id,state:movement.toState as 'U'|'D',quantity:movement.toState==='U'?2:1,commandId,actor,now,pageOrdinal});
   if(mode!=='missing-evidence'){
    await tx.auditEvent.create({data:{originId,actorId:adminId,actorRole:'ADMIN',commandId,action:'inventory.receipt.accepted',subjectId:r.id,snapshot:{}}});
    await tx.outboxEvent.create({data:{originId,originSequence:node.nextSequence,actorId:adminId,commandId,eventType:'inventory.receipt.accepted',aggregateId:r.id,payload:{},payloadHash:'test'}});

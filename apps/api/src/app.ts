@@ -50,6 +50,7 @@ class ApiController {
   @Post('receiving/product-setups') async receivingProduct(@Headers('authorization') auth: string | undefined, @Headers('idempotency-key') key: string | undefined, @Body() body: unknown) { return this.service.createReceivingProduct(await this.service.actor(this.token(auth)), key, body); }
   @Get('receipts') async receipts(@Headers('authorization') auth?: string) { return this.receiving.list(await this.service.actor(this.token(auth))); }
   @Get('receipts/:id') async receipt(@Param('id') id: string, @Headers('authorization') auth?: string) { return this.receiving.get(await this.service.actor(this.token(auth)), id); }
+  @Get('receipts/:id/units') async receiptUnits(@Param('id') id: string, @Query() query: unknown, @Headers('authorization') auth?: string) { return this.receiving.units(await this.service.actor(this.token(auth)), id, query); }
   @Get('stock/lots/:id') async lotEvidence(@Param('id') id: string, @Headers('authorization') auth?: string) { return this.receiving.lotEvidence(await this.service.actor(this.token(auth)), id); }
   @Get('stock') async stock(@Query() query: unknown, @Headers('authorization') auth?: string) { return this.receiving.stock(await this.service.actor(this.token(auth)), query); }
   @Post('receipts') async receive(@Headers('authorization') auth: string | undefined, @Headers('idempotency-key') key: string | undefined, @Body() body: unknown) { return this.receiving.create(await this.service.actor(this.token(auth)), key, body); }

@@ -1,0 +1,31 @@
+{
+  "syntheticOnly": true,
+  "recordedAt": "2026-11-07T05:59:23.683Z",
+  "samples": [
+    {
+      "kind": "chunk-comparison",
+      "units": 1000,
+      "chunkSize": 250,
+      "elapsedMs": 2722.3298999999997,
+      "unitCount": "1000"
+    },
+    {
+      "kind": "chunk-comparison",
+      "units": 1000,
+      "chunkSize": 500,
+      "elapsedMs": 1391.2855,
+      "unitCount": "1000"
+    },
+    {
+      "kind": "same-origin-concurrent",
+      "units": 2000,
+      "chunkSize": 500,
+      "elapsedMs": 2393.810699999999,
+      "receipts": 2
+    }
+  ],
+  "limitations": [
+    "Single diagnostic run per case, not a statistical latency guarantee",
+    "Concurrent different keys are intentional separate receipts; origin locking serializes their commits"
+  ]
+}

@@ -186,3 +186,7 @@ FR-02/FR-20/PRD 15.4: versioned v2 layout makes SKU largest, separates damaged s
 
 ## Staff email delivery — 4 November 2026
 Approved secure staff onboarding maps to SMTP adapter/configuration, delivery status UI, isolated TLS unit tests, queue/activation integration tests and invitation/account browser checks. No plaintext password email or account recovery. Local invitation migration approved/applied; live SMTP configuration remains gated. See invitation-email-implementation-report.md.
+
+## Milestone 2 - serialized receiving
+
+Owner's complete V1 directive supersedes the earlier V1 shared-unit-only restriction for newly received physical units after an explicitly installed cutover. Six readable characters/UUID authority map to StockUnit, secure allocator and origin uniqueness. Exact receipt/movement membership, immutable initial events, manifest pages and state agreement map to migrations 014-018 and serialized-receiving integration tests. Existing receiving suite retains source/batch/quantity/negative-balance checks. Old quantity-only writer, including restricted-role SQL access, is rejected after cutover. Historical preservation rehearsal verifies unchanged catalogue/SKU/ledger/receipts/command/audit/print records and PDF bytes; dry-run planner creates no historical units or verification. Per-unit QR, lookup and production are subsequent milestones, not complete here.
