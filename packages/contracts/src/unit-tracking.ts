@@ -11,7 +11,7 @@ export const unitTrackingQuerySchema = z.object({
 }).strict();
 export type UnitHistoryItem = {
   id: string;
-  kind: 'RECEIVED' | 'LABEL_REQUESTED' | 'LABEL_PREPARED' | 'PRINT_DIALOG_REQUESTED' | 'QR_PRESENTED';
+  kind: 'ISSUED' | 'RECEIVED' | 'LABEL_REQUESTED' | 'LABEL_PREPARED' | 'PRINT_DIALOG_REQUESTED' | 'QR_PRESENTED';
   recordedAt: string;
   originSequence: string;
   actor: { id: string; name: string; role: AppRole };
@@ -21,6 +21,10 @@ export type UnitHistoryItem = {
   movementId?: string;
   labelJobId?: string;
   method?: 'CAMERA' | 'QR_INPUT';
+  checkoutId?: string;
+  orderReference?: string | null;
+  reasonCode?: string | null;
+  reasonNote?: string;
 };
 export type UnitTracking = {
   unit: UnitIdentityLookup;
@@ -29,7 +33,7 @@ export type UnitTracking = {
   initialCondition?: string;
   deliveredOn?: string;
   timeline: { events: UnitHistoryItem[]; total: number; page: number; pageSize: number };
-  historyScope: 'OPERATIONAL' | 'OWN_QR_PRESENTATIONS';
+  historyScope: 'OPERATIONAL' | 'OWN_QR_PRESENTATIONS' | 'OWN_ACTIVITY';
   physicalVerification: 'NOT_ESTABLISHED_BY_THIS_VIEW';
 };
 export type UnitObservationResult = {

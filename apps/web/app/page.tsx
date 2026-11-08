@@ -24,7 +24,7 @@ const EMPTY_CATALOGUE: Catalogue = {
 
 const UUID = /^[0-9a-f-]{36}$/i;
 
-const PRODUCTION_WORKSPACES: Workspace[] = ['availability', 'qr', 'settings', 'help'];
+const PRODUCTION_WORKSPACES: Workspace[] = ['availability', 'checkout', 'qr', 'settings', 'help'];
 
 export default function DayariInventory() {
   const [workspace, setWorkspace] = useState<Workspace>('dashboard');

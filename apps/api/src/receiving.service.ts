@@ -62,7 +62,7 @@ export class ReceivingService {
       const where = { originId: this.originId, receiptLineId: { in: lineIds } };
       const total = await tx.stockUnit.count({ where });
       const saved = await tx.stockUnit.findMany({ where, orderBy: [{ receiptLineId: 'asc' }, { unitCode: 'asc' }], skip: (query.page - 1) * 20, take: 20 });
-      const states = await tx.unitState.findMany({ where: { unitId: { in: saved.map(unit => unit.id) } } });
+      const states = await tx.unitState.findMany({ where: { unitId: { in: saved.map(unit => unit.id) } }, select: { unitId: true, state: true } });
       return { total, page: query.page, pageSize: 20, historicalUnassigned: !receipt.serialization,
         units: saved.map(unit => { const line = receipt.lines.find(line => line.id === unit.receiptLineId)!;
           return { id: unit.id, unitCode: unit.unitCode, lotId: unit.lotId, receiptLineId: unit.receiptLineId, initialState: unit.initialState as ReceivedUnit['initialState'], state: states.find(state => state.unitId === unit.id)!.state, fullSku: line.fullCode, productName: line.productName, variantName: line.variantName, recordedAt: unit.recordedAt.toISOString() };
@@ -79,7 +79,7 @@ export class ReceivingService {
       const receipt = await tx.receipt.findUniqueOrThrow({ where: { id: line.receiptId } });
       const batch = await tx.deliveryBatch.findUniqueOrThrow({ where: { id: lot.batchId } });
       const transaction = await tx.stockTransaction.findUniqueOrThrow({ where: { id: receipt.transactionId } });
-      const movements = await tx.stockMovement.findMany({ where: { lotId: id, transactionId: transaction.id }, orderBy: { toState: 'asc' } });
+      const movements = await tx.stockMovement.findMany({ where: { lotId: id, transactionId: transaction.id }, orderBy: { toState: 'asc' }, select: { id: true, fromState: true, toState: true, quantity: true } });
       return { lotId: id, receiptId: receipt.id, deliveredOn: batch.deliveredOn.toISOString().slice(0, 10), acceptedAt: transaction.recordedAt.toISOString(), originSequence: transaction.originSequence.toString(), movements: movements.map(movement => ({ id: movement.id, fromState: movement.fromState, toState: movement.toState, quantity: movement.quantity.toString() })) };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
   }
@@ -156,14 +156,14 @@ export class ReceivingService {
             const record = await tx.receiptLine.create({ data: { receiptId: receipt.id, batchId: batch.id, skuId: sku.id, lotId: lot.id, lineNumber: index + 1, usableQuantity: BigInt(line.usableQuantity), damagedQuantity: BigInt(line.damagedQuantity), damageReason: line.damageReason, snapshot: json({ fullCode: sku.fullCode, productId: sku.productId, productName: sku.variant.product.name, variantId: sku.variantId, variantName: sku.variant.name, selections: sku.variant.selections.map(selection => ({ attributeId: selection.attributeId, valueId: selection.valueId, label: selection.value.label })) }) } });
             // New batch means new lots: no pre-existing balances can race. Future operations must lock sorted lot/state rows after the origin lock.
             for (const [state, quantity] of [['U', line.usableQuantity], ['D', line.damagedQuantity]] as const) {
-              const movement = quantity > 0 ? await tx.stockMovement.create({ data: { transactionId: transaction.id, batchId: batch.id, lotId: lot.id, receiptLineId: record.id, fromState: 'E', toState: state, quantity: BigInt(quantity) } }) : null;
+              const movement = quantity > 0 ? await tx.stockMovement.create({ data: { transactionId: transaction.id, batchId: batch.id, lotId: lot.id, receiptLineId: record.id, fromState: 'E', toState: state, quantity: BigInt(quantity) }, select: { id: true } }) : null;
               await tx.stockBalance.create({ data: { lotId: lot.id, state, quantity: BigInt(quantity), lastTransactionId: transaction.id } });
               if (serialized && movement) unitIntakes.push({ originId: this.originId, lotId: lot.id, receiptLineId: record.id, movementId: movement.id, state: state as 'U' | 'D', quantity, commandId, actor, now, pageOrdinal: 0 });
             }
           }
           if (serialized) await receiveUnitGroups(tx,unitIntakes,this.unitDraw,this.unitChunkSize);
           const response = json(await this.read(tx, receipt.id));
-          const movements = await tx.stockMovement.findMany({ where: { transactionId: transaction.id } });
+          const movements = await tx.stockMovement.findMany({ where: { transactionId: transaction.id }, select: { id: true, transactionId: true, batchId: true, lotId: true, receiptLineId: true, fromState: true, toState: true, quantity: true } });
           const unitManifest = serialized ? { version: 1, pages: await tx.unitCommandManifestPage.findMany({ where: { commandId }, orderBy: { ordinal: 'asc' }, select: { id: true, ordinal: true, payloadHash: true } }) } : undefined;
           const payload = json({ subject: response, transactionId: transaction.id, movements, ...(unitManifest ? { unitManifest } : {}), actorId: actor.id, actorRole: actor.role, commandId });
           await tx.auditEvent.create({ data: { originId: this.originId, actorId: actor.id, actorRole: actor.role, commandId, action: 'inventory.receipt.accepted', subjectId: receipt.id, snapshot: payload } });

@@ -1,6 +1,7 @@
 'use client';
 import type { Catalogue, Role } from '@dayari/contracts';
 
+import { CheckoutWorkspace } from './checkout-workspace';
 import { CatalogueWorkspace } from './catalogue/catalogue-workspace';
 import { Dashboard } from './dashboard';
 import { HelpWorkspace } from './help-workspace';
@@ -119,6 +120,9 @@ export function WorkspaceRouter({
   }
 
   switch (workspace) {
+    case 'checkout':
+      return <CheckoutWorkspace actorId={user.id} />;
+
     case 'help':
       return <HelpWorkspace role={user.role} navigate={navigate} />;
 
@@ -135,6 +139,7 @@ export function WorkspaceRouter({
     case 'availability':
       return (
         <ProductionWorkspace
+          onCheckout={() => navigate('checkout')}
           onScan={() => navigate('qr')}
           onCode={(code) => navigate('qr', code)}
         />

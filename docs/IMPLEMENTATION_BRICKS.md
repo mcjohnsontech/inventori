@@ -106,3 +106,8 @@ Serialized receiving milestone 2 was verified and pushed as 11aa0eb. Milestone 3
 ## Complete V1 directive — milestone 4
 
 Recorded unit tracking adds an authorized drawer and immutable QR-presentation metadata through isolated migration 020. Existing lookup is read-only; observations/print requests are not labelled as physical verification or successful stock transitions. Operational migration, historical enrollment and hardware verification remain gated. See unit-tracking-implementation-design.md and its implementation report for actual verification.
+
+
+## Complete V1 directive — milestone 5
+
+Exact-unit checkout is under verification through additive isolated migration 021, authenticated all-role explicit confirmation, immutable ISSUE groups, actor/origin drafts, own-history Production filtering and classification exceptions. Only receiving and checkout stock transitions are enabled. O5 pending request workflows are authorized for later implementation, while cloud authorization execution/infrastructure stays deferred. O8 Manager-selected completion and O4 strict Manager closing are confirmed for their later slices. No operational migration or deployment is included. See production-checkout-implementation-report.md for actual results when finalized.

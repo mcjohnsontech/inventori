@@ -1,0 +1,86 @@
+import { randomUUID } from 'node:crypto';
+import { mkdir } from 'node:fs/promises';
+import { expect, test } from '@playwright/test';
+import { encodeUnitQr } from '@dayari/contracts';
+import { choose } from './ui.js';
+
+test('Production reviews exact units, preserves drafts and retries a lost checkout response without another deduction', async ({ page }) => {
+  test.setTimeout(180_000);
+  await page.goto('/');
+  const login = async (email: string) => {
+    await page.getByLabel('Email address').fill(email);
+    await page.getByLabel('Password', { exact: true }).fill(process.env.E2E_PASSWORD!);
+    const session = page.waitForResponse(response => new URL(response.url()).pathname === '/api/sessions' && response.request().method() === 'POST');
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+    expect((await session).status()).toBe(200);
+    await expect(page.getByRole('button', { name: 'Sign out', exact: true })).toBeVisible();
+  };
+  await login('e2e-admin@dayari.test');
+  const post = async (path: string, body: object) => {
+    const response = await page.request.post('/api/' + path, { headers: { Origin: 'http://127.0.0.1:3101', 'Idempotency-Key': randomUUID() }, data: body });
+    expect(response.ok(), await response.text()).toBe(true); return response.json();
+  };
+  const catalogue = await (await page.request.get('/api/catalogue')).json();
+  const source = (await post('catalogue/supplier-setups', { supplier: { name: 'Checkout browser ' + randomUUID().slice(0, 8) }, location: { registryId: catalogue.locations.find((row: any) => row.code === 'LG').id } })).source;
+  const product = await post('catalogue/product-setups', { sourceId: source.id, product: { name: 'Checkout browser notebook ' + randomUUID().slice(0, 8) }, variants: [] });
+  const receipt = await post('receipts', { sourceId: source.id, deliveredOn: '2020-01-01', invoiceReference: 'PRIVATE-CHECKOUT-INVOICE', lines: [{ skuId: product.skus[0].id, usableQuantity: 3, damagedQuantity: 1, damageReason: 'Private damaged browser fixture' }] });
+  const all = (await (await page.request.get(`/api/receipts/${receipt.id}/units`)).json()).units;
+  const units = all.filter((unit: any) => unit.state === 'U');
+  await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+  await login('e2e-production@dayari.test');
+  await page.getByRole('button', { name: 'Production checkout', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Production checkout', exact: true })).toBeVisible();
+  const previousHistory = await (await page.request.get('/api/checkouts?orderReference=Reusable%20Order%20A')).json();
+  await page.evaluate(() => { navigator.mediaDevices.getUserMedia = async () => { throw new DOMException('Synthetic camera denial', 'NotAllowedError'); }; });
+  await page.getByRole('button', { name: 'Use camera for checkout', exact: true }).click();
+  await expect(page.getByText('Camera permission denied. Use a connected scanner or enter the Unit Code.', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Close checkout camera', exact: true }).click();
+  const input = page.getByLabel('Scan individual QR or enter Unit Code', { exact: true });
+  await input.fill(units[0].unitCode);
+  await page.getByRole('button', { name: 'Add item', exact: true }).click();
+  await expect(page.getByRole('button', { name: `Remove ${units[0].unitCode}`, exact: true })).toBeVisible();
+  await expect(input).toBeFocused();
+  await input.fill(units[0].unitCode); await input.press('Enter');
+  await expect(page.getByText(`${units[0].unitCode} is already in this checkout.`, { exact: true })).toBeVisible();
+  await input.fill(encodeUnitQr(process.env.E2E_NODE_ID!, units[1].id)); await input.press('Enter');
+  await expect(page.getByRole('button', { name: `Remove ${units[1].unitCode}`, exact: true })).toBeVisible();
+  await choose(page, 'Session reason', 'SAMPLE');
+  await page.getByLabel('Session Order ID (optional)', { exact: true }).fill('Reusable Order A');
+  await page.getByRole('button', { name: 'Review checkout', exact: true }).click();
+  await expect(page.getByText('Sample · Reusable Order A', { exact: true })).toHaveCount(2);
+  await page.getByRole('button', { name: 'Back to items', exact: true }).click();
+  await expect(page.getByLabel('Session Order ID (optional)', { exact: true })).toHaveValue('Reusable Order A');
+  await expect(page.getByRole('button', { name: 'Overview', exact: true })).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByRole('button', { name: `Remove ${units[0].unitCode}`, exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Review checkout', exact: true }).click();
+  await mkdir('docs/images/completion/milestone-5', { recursive: true });
+  for (const width of [1440, 1024, 768, 390, 320]) {
+    await page.setViewportSize({ width, height: 1000 });
+    await page.evaluate(() => window.scrollTo(0, 0));
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: `docs/images/completion/milestone-5/checkout-review-${width}.png`, fullPage: true });
+  }
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  let lost = false, acceptedId = '';
+  await page.route('**/api/checkouts', async route => {
+    if (route.request().method() !== 'POST' || lost) return route.continue();
+    const response = await route.fetch(); expect(response.ok()).toBe(true); acceptedId = (await response.json()).id; lost = true; await route.abort('failed');
+  });
+  await page.getByRole('button', { name: 'Confirm checkout of 2 items', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Retry saved confirmation', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Retry saved confirmation', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Accepted checkout', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Accepted checkout', exact: true })).toBeFocused();
+  await expect(page.getByRole('button', { name: 'Start another checkout', exact: true })).toBeVisible();
+  const accepted = page.getByRole('table', { name: 'Accepted checkout units', exact: true });
+  await expect(accepted.getByText(units[0].unitCode, { exact: true })).toBeVisible();
+  await expect(accepted.getByText(units[1].unitCode, { exact: true })).toBeVisible();
+  const history = await (await page.request.get('/api/checkouts?orderReference=Reusable%20Order%20A')).json();
+  expect(history.total).toBe(previousHistory.total + 1);
+  expect(history.checkouts.find((checkout: { id: string }) => checkout.id === acceptedId).totalUnits).toBe(2);
+  const detail = await (await page.request.get('/api/checkouts/' + acceptedId)).json();
+  expect(detail.balances).toEqual([{ lotId: units[0].lotId, usable: '1' }]);
+  expect(JSON.stringify(detail)).not.toMatch(/PRIVATE-CHECKOUT-INVOICE|supplierName|damageReason/);
+  await page.screenshot({ path: 'docs/images/completion/milestone-5/checkout-accepted-1440.png', fullPage: true });
+});

@@ -1,0 +1,11 @@
+{
+  "syntheticOnly": true,
+  "selectedUnits": 500,
+  "elapsedMs": 2109.063100000001,
+  "accepted": true,
+  "samples": 1,
+  "limitations": [
+    "Development loopback sample, not production hardware or mixed-lot maximum certification",
+    "Existing 15-second transaction limit unchanged"
+  ]
+}

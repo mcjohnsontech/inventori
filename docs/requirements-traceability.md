@@ -218,3 +218,10 @@ Software checks do not certify physical printer/media reliability or authorize o
 | No invented historical or physical verification | empty migration, explicit evidence labels and unknown verification | 48-table preservation and browser assertions |
 
 Later checkout/order/damage/count/closing histories are added only with their domain milestones.
+
+
+## Exact-unit checkout — milestone 5 implementation
+
+FR-04/05/21: explicit checkout binds distinct exact units across products, suppliers and batches, optional opaque reusable Order IDs, approved reasons/defaults/overrides and missing-reason obligations. U-to-P occurs once per selected unit, atomically, with authentication/current shop authorization, idempotency, audit/outbox and origin sequencing. No quantity-only or DYI:1 shared-lot fallback. Production checkout reads are own-record only and omit supplier/invoice/damaged/print administration data.
+
+Implementation: checkouts.ts shared contracts, CheckoutsService, migration 021, CheckoutWorkspace and actor/origin draft hook. Verification: tests/unit/checkouts.test.ts, tests/integration/checkouts.test.ts and tests/e2e/checkouts.spec.ts; actual final results belong in production-checkout-implementation-report.md. Manager missing-reason reconciliation, BAD, selected-unit completion and closing remain subsequent milestones. O4/O5/O8 approved rules are recorded in decisions.md; pending cloud authorization is not an accepted stock recovery/correction.

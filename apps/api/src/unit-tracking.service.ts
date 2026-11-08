@@ -44,10 +44,20 @@ export class UnitTrackingService {
         SELECT e.id,CASE e.kind WHEN 'REQUESTED' THEN 'LABEL_REQUESTED' WHEN 'ARTIFACT_READY' THEN 'LABEL_PREPARED' ELSE 'PRINT_DIALOG_REQUESTED' END,e."recordedAt",o."originSequence",e."actorId",u.name,e."actorRole",NULL::text,NULL::text,NULL::uuid,NULL::uuid,e."jobId",NULL::text
         FROM "UnitLabelEvent" e JOIN "UnitLabelLine" l ON l."jobId"=e."jobId" JOIN "User" u ON u.id=e."actorId"
         JOIN "OutboxEvent" o ON o."commandId"=e."commandId" AND o."originId"=e."originId"
-        WHERE l."unitId"=${id.data}::uuid AND e."originId"=${this.originId}::uuid` : observations;
+        WHERE l."unitId"=${id.data}::uuid AND e."originId"=${this.originId}::uuid` : Prisma.sql`${observations} UNION ALL
+        SELECT e.id,e.kind,e."recordedAt",o."originSequence",e."actorId",u.name,e."actorRole",e."fromState",e."toState",NULL::uuid,e."movementId",NULL::uuid,NULL::text
+        FROM "UnitEvent" e JOIN "User" u ON u.id=e."actorId"
+        JOIN "OutboxEvent" o ON o."commandId"=e."commandId" AND o."originId"=e."originId"
+        WHERE e."unitId"=${id.data}::uuid AND e."originId"=${this.originId}::uuid AND e.kind='ISSUED' AND e."actorId"=${user.id}::uuid`;
       const [count] = await tx.$queryRaw<{ n: bigint }[]>(Prisma.sql`SELECT count(*) AS n FROM (${history}) h`);
       const rows = await tx.$queryRaw<HistoryRow[]>(Prisma.sql`SELECT * FROM (${history}) h ORDER BY "originSequence",id LIMIT 20 OFFSET ${(query.data.page - 1) * 20}`);
+      const issueIds = rows.filter(row => row.kind === 'ISSUED').map(row => row.id);
+      const issueLines = issueIds.length ? await tx.checkoutLine.findMany({ where: { eventId: { in: issueIds }, originId: this.originId },
+        select: { eventId: true, checkoutId: true, reasonCode: true, reasonNote: true, orderReference: true } }) : [];
+      const issueByEvent = new Map(issueLines.map(line => [line.eventId, line]));
+      const ownIssue = operational ? false : await tx.unitEvent.count({ where: { unitId: id.data, originId: this.originId, actorId: user.id, kind: 'ISSUED' } }) > 0;
       const events = rows.map(row => ({
+        ...(issueByEvent.get(row.id) ? { checkoutId: issueByEvent.get(row.id)!.checkoutId, orderReference: issueByEvent.get(row.id)!.orderReference, reasonCode: issueByEvent.get(row.id)!.reasonCode, reasonNote: issueByEvent.get(row.id)!.reasonNote } : {}),
         id: row.id, kind: row.kind, recordedAt: row.recordedAt.toISOString(), originSequence: row.originSequence.toString(),
         actor: { id: row.actorId, name: row.actorName, role: row.actorRole },
         ...(row.fromState ? { fromState: row.fromState } : {}), ...(row.toState ? { toState: row.toState } : {}),
@@ -55,10 +65,10 @@ export class UnitTrackingService {
         ...(row.labelJobId ? { labelJobId: row.labelJobId } : {}), ...(row.method ? { method: row.method } : {}),
       }));
       const result: UnitTracking = { unit, timeline: { events, total: Number(count!.n), page: query.data.page, pageSize: 20 },
-        historyScope: operational ? 'OPERATIONAL' : 'OWN_QR_PRESENTATIONS', physicalVerification: 'NOT_ESTABLISHED_BY_THIS_VIEW' };
+        historyScope: operational ? 'OPERATIONAL' : ownIssue ? 'OWN_ACTIVITY' : 'OWN_QR_PRESENTATIONS', physicalVerification: 'NOT_ESTABLISHED_BY_THIS_VIEW' };
       if (operational) {
         const saved = await tx.stockUnit.findUniqueOrThrow({ where: { id: id.data } });
-        const state = await tx.unitState.findUniqueOrThrow({ where: { unitId: id.data } });
+        const state = await tx.unitState.findUniqueOrThrow({ where: { unitId: id.data }, select: { custody: true } });
         result.recordedCustody = state.custody;
         result.initialCondition = saved.initialState === 'U' ? 'USABLE' : 'DAMAGED';
         const line = await tx.receiptLine.findUniqueOrThrow({ where: { id: saved.receiptLineId }, select: { receiptId: true, batchId: true } });

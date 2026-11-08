@@ -175,7 +175,7 @@ describe('immutable receiving ledger (FR-01/03/12/14/17/19/23/24)', () => {
   }finally{await independent.close();}
  });
  it('reconciles every lot/state projection against accepted movements without an external boundary balance',async()=>{
-  const bad=await db.$queryRaw<{count:bigint}[]>`SELECT count(*) FROM "StockBalance" b WHERE b.quantity<>COALESCE((SELECT sum(m.quantity) FROM "StockMovement" m WHERE m."lotId"=b."lotId" AND m."toState"=b.state),0)`;
+  const bad=await db.$queryRaw<{count:bigint}[]>`SELECT count(*) FROM "StockBalance" b WHERE b.quantity<>COALESCE((SELECT sum(CASE WHEN m."toState"=b.state THEN m.quantity ELSE -m.quantity END) FROM "StockMovement" m WHERE m."lotId"=b."lotId" AND (m."toState"=b.state OR m."fromState"=b.state)),0)`;
   expect(bad[0]!.count).toBe(0n);expect(await db.stockBalance.count({where:{state:'E'}})).toBe(0);
  });
 });

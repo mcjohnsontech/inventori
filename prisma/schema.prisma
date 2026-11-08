@@ -249,7 +249,7 @@ model DeliveryBatch {
 }
 model StockTransaction {
   id String @id @default(uuid()) @db.Uuid
-  batchId String @unique @db.Uuid
+  batchId String? @unique @db.Uuid
   originId String @db.Uuid
   commandId String @unique @db.Uuid
   originSequence BigInt
@@ -297,7 +297,8 @@ model StockMovement {
   transactionId String @db.Uuid
   batchId String @db.Uuid
   lotId String @db.Uuid
-  receiptLineId String @db.Uuid
+  receiptLineId String? @db.Uuid
+  checkoutLineId String? @unique @db.Uuid
   fromState String
   toState String
   quantity BigInt
@@ -476,6 +477,8 @@ model UnitEvent {
   movementId String @db.Uuid
   recordedAt DateTime @db.Timestamptz(6)
   details Json
+  previousEventId String? @db.Uuid
+  checkoutLineId String? @unique @db.Uuid
   @@unique([unitId,ordinal])
   @@index([commandId])
 }
@@ -488,6 +491,7 @@ model UnitState {
   custody String
   version BigInt @default(1)
   lastEventId String @unique @db.Uuid
+  holderId String? @db.Uuid
   @@index([lotId,state])
 }
 model UnitCommandManifestPage {
@@ -582,4 +586,51 @@ model UnitObservation {
   recordedAt DateTime @db.Timestamptz(6)
   @@index([unitId,recordedAt,id])
   @@index([originId,actorId,recordedAt])
+}
+
+model Checkout {
+  id String @id @db.Uuid
+  originId String @db.Uuid
+  transactionId String @unique @db.Uuid
+  actorId String @db.Uuid
+  actorRole Role
+  commandId String @unique @db.Uuid
+  acceptedAt DateTime @db.Timestamptz(6)
+  reasonCode String?
+  reasonNote String
+  orderReference String?
+  unitCount Int
+  @@index([originId,acceptedAt,id])
+  @@index([originId,actorId,acceptedAt])
+}
+model CheckoutLine {
+  id String @id @db.Uuid
+  checkoutId String @db.Uuid
+  originId String @db.Uuid
+  ordinal Int
+  unitId String @db.Uuid
+  lotId String @db.Uuid
+  skuId String @db.Uuid
+  batchId String @db.Uuid
+  movementId String @unique @db.Uuid
+  eventId String @unique @db.Uuid
+  reasonCode String?
+  reasonNote String
+  orderReference String?
+  reasonInherited Boolean
+  orderInherited Boolean
+  initiallyMissingReason Boolean @default(dbgenerated())
+  snapshot Json
+  @@unique([checkoutId,unitId])
+  @@unique([checkoutId,ordinal])
+  @@index([unitId])
+  @@index([originId,orderReference,checkoutId])
+}
+model CheckoutException {
+  id String @id @db.Uuid
+  checkoutId String @db.Uuid
+  lineId String @unique @db.Uuid
+  originId String @db.Uuid
+  commandId String @db.Uuid
+  createdAt DateTime @db.Timestamptz(6)
 }

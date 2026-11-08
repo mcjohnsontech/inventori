@@ -165,3 +165,10 @@ Five additive print tables keep exact unit membership, one initial claim per uni
 UnitTrackingService provides a role-filtered chronological read model from immutable receiving, exact-unit print and QR-presentation evidence. Production queries only its own QR presentations and the minimal identity DTO; it never queries then hides operational history in the frontend. Origin sequence provides accepted ordering. Delivery date is separate from recording time.
 
 Additive UnitObservation records camera or keyboard/scanner QR presentations under existing origin/actor/idempotency/audit/outbox transactions. Lookup remains read-only; observation acceptance changes no stock/unit-state/print records. The client preserves successful identification if history recording fails and offers explicit same-key retry. A QR presentation is not proof of physical custody, attachment or stock movement. Unit drawers preserve list/receipt context, and typed exact Unit matches do not override Product/Lot namespaces.
+
+
+## Exact-unit checkout and deferred authorization — milestone 5
+
+CheckoutsService extends the existing modular monolith and origin-first transaction protocol. Separate immutable Checkout/CheckoutLine/CheckoutException records bind exact units to ISSUE movements/events and rebuildable balance/state projections. Migration 021 is additive and test-only until operational approval; it preserves historical receipt/SKU/Product/Lot/QR/print identities. A role-neutral accepted response avoids sensitive-field disclosure on replay after a role change. Production reads only its own checkout/presentation history. Browser drafts are actor/origin scoped and retain the exact pending payload/key after uncertain network results.
+
+Owner O5 explicitly defers cloud-delivered approval execution and infrastructure. Recovery/correction request slices may validate and record pending evidence, but may not execute local approval or stock changes. Independent checkout, BAD, Manager reconciliation/completion, closing and reporting continue. See recovery-correction-request-design.md; no new delivery trust mechanism or cloud transport is introduced.

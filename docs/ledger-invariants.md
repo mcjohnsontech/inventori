@@ -120,3 +120,14 @@ A unit-label job contains each selected saved unit at most once. An initial immu
 ## QR presentations and tracking — milestone 4
 
 UnitObservation is append-only non-stock evidence. It references the exact immutable unit/origin/lot and authenticated actor, and commits with one idempotent command/audit/outbox group. It never changes UnitEvent, UnitState, custody, quantity, receipt or print records. A presentation cannot establish a checkout, physical attachment, count or successful print. Timeline reads create no observations and preserve authoritative projections.
+
+
+## Exact-unit checkout — milestone 5
+
+A checkout identifies distinct saved native units; every line commits one positive quantity-one U-to-P movement, its append-only ISSUED event, previous event link, next ordinal and matching recorded staff-custody projection. A multi-source/multi-batch checkout has no single receipt batch on its transaction; each movement retains its exact immutable lot/batch/SKU. Receipt provenance remains exclusive and unchanged. Only RECEIPT/ISSUE are enabled by migration 021; later transitions still require their domain slices.
+
+One origin-locked transaction accepts header, exact lines, missing-reason obligations, movements/events, reconciled U/P balances, hashed membership, audit/outbox and idempotency result. An unavailable selected unit rejects the whole group. Same-key replay creates no further deduction; competing keys cannot issue an already unavailable unit. Accepted graphs cannot be supplemented. Unit census agrees with ledger projections by affected native lot. No negative internal stock or E projection.
+
+A reason exception is classification evidence, not a second deduction. Order IDs are optional, unverified, reusable grouping references. A checkout is never completed merely because another transaction uses the same Order ID. Stored acceptance responses contain quantities as of acceptance, not live stock.
+
+O5 recovery/correction requests cannot change stock before valid future cloud-delivered authorization. O8 Manager completion must use selected eligible P units and avoid a second U deduction. O4 close is Manager-only, immutable and blocked by unresolved certification evidence; internally consistent fully accounted P/held D can carry forward. These later workflows are not enabled by checkout migration 021.

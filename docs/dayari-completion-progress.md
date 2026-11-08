@@ -15,8 +15,8 @@ The PRD, current audit and repository were inspected. Existing catalogue/receipt
 | 1 | Baseline stabilization and CI | Completed and pushed | `1839aa71d52d0eb4633e0fc332be1399a8c0bbf0`; remote SHA verified. 50 unit/81 integration tests, fresh migration rehearsal, 22 distinct browser passes across runs, typecheck/build and visual review. Remote CI run not yet verified. |
 | 2 | Serialized receiving and six-character Unit Codes | Completed and pushed | `11aa0ebac17944cbf5a94178831f3dd0a0c13b74`; remote SHA verified. See serialized-receiving-implementation-report.md. Unit/integration/browser/build/type checks, isolated preservation, restricted-login denial and capacity proof completed. No operational migration. |
 | 3 | DYI:2 and unique-unit printing | Completed and pushed: 1608ca2 | 55 unit tests; 98-test full integration run plus final 8-case print suite (99 distinct successes); all 23 browser cases successful across runs; typecheck/build; 43-table preservation and 500-unit print capacity. |
-| 4 | Unit tracking and lifecycle timeline | Verified; publication pending | 57 unit / 106 integration tests, final 7-case tracking repeat, six browser regressions, typecheck/build, 48-table preservation and reviewed five-width drawer. |
-| 5 | Production checkout | Pending implementation | All three issue roles; Production use, Sample, Internal use and Other (explanation required); optional reusable Order IDs and explicit missing-reason reconciliation approved. |
+| 4 | Unit tracking and lifecycle timeline | Completed and pushed: 926c58b | 57 unit / 106 integration tests, final 7-case tracking repeat, six browser regressions, typecheck/build, 48-table preservation and reviewed five-width drawer. |
+| 5 | Production checkout | Verified; publication pending | All three issue roles; Production use, Sample, Internal use and Other (explanation required); optional reusable Order IDs and explicit missing-reason reconciliation approved. |
 | 6 | Missing-reason reconciliation | Pending | Append classification; never deduct twice. |
 | 7 | BAD, recovery and disposition | Pending | Preserve damage lineage, approved authority and compensating accounting. |
 | 8 | Completion and physical reconciliation | Pending | Recorded versus physically verified evidence; no invented historical events. |
@@ -94,3 +94,20 @@ Unit tracking drawer and typed inventory matches added to existing inventory, re
 57/57 unit tests and full 106/106 PostgreSQL integration tests passed. Final tracking suite 7/7 passed, including actual foreign units and same-text Product/Unit namespaces. Six relevant browser regressions passed together, including focus/context/escape, same-key lost-response retry, legacy/new printing and five-width captures. Final typecheck/build passed. Migration 020 retained all 48 prior table fingerprints, with zero fabricated observations. Final 21 loopback presentation requests measured maximum 67.05ms; no hardware/Wi-Fi/camera performance certification.
 
 Failed helper/global-fixture and host-pause attempts are documented in unit-tracking-implementation-report.md, not counted as passes. Initial visual review led to a compact identity header and corrected duplicated timezone text. Operational migration, historical enrollment, physical acceptance, real mail, deployment and sync remain gated. Checkout implementation is next; targeted O4/O5/O8 policy questions are pending for later affected slices.
+
+
+Milestone 4 completion: `926c58b06a9392428a1a0e9461f107e07fa4004a`, `feat(tracking): implement recorded unit history and QR presentations`, branch `feat/complete-application-systems`, https://github.com/mcjohnsontech/inventori/commit/926c58b06a9392428a1a0e9461f107e07fa4004a. Push/exact remote SHA verified; working tree clean.
+
+
+### Owner decisions recorded — 8 November
+
+O4/O8 confirmed Manager-only close and selected-unit completion, with Admin close review only. O5 explicitly authorizes pending recovery/correction request workflows but defers authorization delivery/execution, local-server infrastructure and cloud synchronization. Requests cannot change stock. Independent milestones continue. Closing blocks approvals only where needed to certify reported quantities; fully certified held damage may carry forward. See decisions.md for the complete approved rules. PRD addendum and affected workflow tests remain to be implemented; no operational migration is authorized.
+
+
+### Milestone 5 verification checkpoint — 8 November
+
+Exact-unit checkout is implemented for all three approved roles, with saved drafts/review, USB/keyboard input, camera fallback, reusable optional Order IDs, explicit missing-reason exceptions, immutable ISSUE graphs and Production own-history DTOs. Migration 021 tested only in isolated fixtures. Current code also received on schema 013 and serialized schema 020; populated legacy/native migration preservation retained all prior fields and both print histories. Operational read-only check still shows migration 013 and no StockUnit table.
+
+64/64 unit tests; full PostgreSQL repeat 114/114; final affected suites 37/37 including nine checkout cases after adding Manager acceptance and old-schema compatibility selects (115 distinct successful integration cases across runs). Eight relevant browser cases have successful results across broader/targeted runs, including final accepted-first keyboard focus and lost-response replay. Final production build and typecheck passed; milestone publication is next. Initial restricted SMTP, outdated incoming-only balance assertion, cold login, reusable-Order-ID fixture count and seeded-registry helper failures are recorded in production-checkout-implementation-report.md, not counted as passes.
+
+Six responsive checkout screenshots retained separately; earlier regenerated regression screenshots restored to preserve historical evidence. Next: publish milestone 5, then Manager missing-reason reconciliation without another stock deduction. O5 pending request/cloud-execution boundary, O8 Manager-selected completion and O4 strict Manager closing remain confirmed for their affected slices.
