@@ -1,0 +1,99 @@
+{
+  "syntheticOnly": true,
+  "recordedAt": "2026-11-08T04:36:06.536Z",
+  "node": "v24.16.0",
+  "samples": [
+    {
+      "profileId": "unit-a4-70x35-v2",
+      "warmup": true,
+      "units": 500,
+      "elapsedMs": 3338.1409000000003,
+      "rssBefore": 116097024,
+      "rssAfter": 291659776,
+      "htmlBytes": 5898591,
+      "pdfBytes": 1092616,
+      "pages": 25
+    },
+    {
+      "profileId": "unit-a4-70x35-v2",
+      "warmup": false,
+      "units": 500,
+      "elapsedMs": 2862.7434000000003,
+      "rssBefore": 291663872,
+      "rssAfter": 318476288,
+      "htmlBytes": 5898591,
+      "pdfBytes": 1092616,
+      "pages": 25
+    },
+    {
+      "profileId": "unit-a4-70x35-v2",
+      "warmup": false,
+      "units": 500,
+      "elapsedMs": 3039.8279999999995,
+      "rssBefore": 318476288,
+      "rssAfter": 344887296,
+      "htmlBytes": 5898591,
+      "pdfBytes": 1092616,
+      "pages": 25
+    },
+    {
+      "profileId": "unit-a4-70x35-v2",
+      "warmup": false,
+      "units": 500,
+      "elapsedMs": 3296.4511,
+      "rssBefore": 344887296,
+      "rssAfter": 376504320,
+      "htmlBytes": 5898591,
+      "pdfBytes": 1092616,
+      "pages": 25
+    },
+    {
+      "profileId": "unit-a4-90x45-v2",
+      "warmup": true,
+      "units": 500,
+      "elapsedMs": 3142.0357000000004,
+      "rssBefore": 376508416,
+      "rssAfter": 392744960,
+      "htmlBytes": 5897653,
+      "pdfBytes": 1074107,
+      "pages": 52
+    },
+    {
+      "profileId": "unit-a4-90x45-v2",
+      "warmup": false,
+      "units": 500,
+      "elapsedMs": 3271.6106,
+      "rssBefore": 392744960,
+      "rssAfter": 412405760,
+      "htmlBytes": 5897653,
+      "pdfBytes": 1074107,
+      "pages": 52
+    },
+    {
+      "profileId": "unit-a4-90x45-v2",
+      "warmup": false,
+      "units": 500,
+      "elapsedMs": 2370.5735999999997,
+      "rssBefore": 412405760,
+      "rssAfter": 432201728,
+      "htmlBytes": 5897653,
+      "pdfBytes": 1074107,
+      "pages": 52
+    },
+    {
+      "profileId": "unit-a4-90x45-v2",
+      "warmup": false,
+      "units": 500,
+      "elapsedMs": 3124.2646999999997,
+      "rssBefore": 432201728,
+      "rssAfter": 380530688,
+      "htmlBytes": 5897653,
+      "pdfBytes": 1074107,
+      "pages": 52
+    }
+  ],
+  "limitations": [
+    "Renderer-only benchmark; does not include network/database/native print time",
+    "One warmup and three measured samples per profile; no shop hardware certification"
+  ]
+}

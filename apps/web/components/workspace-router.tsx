@@ -5,7 +5,7 @@ import { CatalogueWorkspace } from './catalogue/catalogue-workspace';
 import { Dashboard } from './dashboard';
 import { HelpWorkspace } from './help-workspace';
 import { InventoryWorkspace } from './inventory-workspace';
-import { LabelWorkspace } from './labels/label-workspace';
+import { PrintingWorkspace } from './labels/printing-workspace';
 import { ProductionWorkspace } from './production-workspace';
 import { QrWorkspace } from './labels/qr-workspace';
 import { ReceiptsWorkspace } from './receiving/receipts-workspace';
@@ -72,7 +72,7 @@ export function WorkspaceRouter({
   catalogue: Catalogue;
   catalogueReady: boolean;
   user: Actor;
-  detail: { catalogue: string; stock: string; lot: string; receipt: string; labelJob: string; qrCode: string };
+  detail: { catalogue: string; stock: string; lot: string; receipt: string; labelJob: string; labelReceipt:string; qrCode: string };
   missing: boolean;
   error: string;
   navigate: (workspace: Workspace, id?: string, lotId?: string) => void;
@@ -150,7 +150,7 @@ export function WorkspaceRouter({
       return <QrWorkspace initialCode={detail.qrCode} />;
 
     case 'labels':
-      return <LabelWorkspace initialJobId={detail.labelJob} />;
+      return <PrintingWorkspace actorId={user.id} initialLegacyJobId={detail.labelJob} initialReceiptId={detail.labelReceipt} />;
 
     case 'suppliers':
       return (
@@ -177,6 +177,7 @@ export function WorkspaceRouter({
     case 'receiving':
       return (
         <ReceivingWorkspace
+          onUnitLabels={(id)=>navigate('labels','',id)}
           onCatalogueChanged={onCatalogueChanged}
           onHistory={() => navigate('receipts')}
           onInventory={(id) => navigate('inventory', id)}
@@ -187,6 +188,7 @@ export function WorkspaceRouter({
       return (
         <ReceiptsWorkspace
           initialReceiptId={detail.receipt}
+          onUnitLabels={(id)=>navigate('labels','',id)}
           onSelect={(id) => navigate('receipts', id)}
           onStock={(id) => navigate('inventory', id)}
           onReceive={onReceive}

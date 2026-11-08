@@ -190,3 +190,17 @@ Approved secure staff onboarding maps to SMTP adapter/configuration, delivery st
 ## Milestone 2 - serialized receiving
 
 Owner's complete V1 directive supersedes the earlier V1 shared-unit-only restriction for newly received physical units after an explicitly installed cutover. Six readable characters/UUID authority map to StockUnit, secure allocator and origin uniqueness. Exact receipt/movement membership, immutable initial events, manifest pages and state agreement map to migrations 014-018 and serialized-receiving integration tests. Existing receiving suite retains source/batch/quantity/negative-balance checks. Old quantity-only writer, including restricted-role SQL access, is rejected after cutover. Historical preservation rehearsal verifies unchanged catalogue/SKU/ledger/receipts/command/audit/print records and PDF bytes; dry-run planner creates no historical units or verification. Per-unit QR, lookup and production are subsequent milestones, not complete here.
+
+
+## Milestone 3 — exact-unit QR and printing
+
+| Approved requirement | Implementation | Verification |
+|---|---|---|
+| Six-character exact lookup, immutable UUID QR authority | UnitsService, DYI:2 contracts and role DTOs | unit-qr unit/integration tests |
+| Retain historical DYI:1 | Version dispatch; unchanged legacy renderers/records | existing labels regressions and 65-copy/three-identity comparison |
+| Exact individual label cart and selective replacements | UnitLabelJob/Line/Claim, actor/origin draft, native output and PDF | unit-labels integration/browser cases |
+| No inventory effects from printing | Separate immutable metadata, atomic audit/outbox/idempotency | scoped stock/unit/event/projection preservation and rollback assertions |
+| Genuine QR, offline output, separate damaged sheets | local QR library, embedded fonts, bounded profile geometry | independent final HTML/PDF raster decoding and bounds tests |
+| No compulsory success reporting | explicit handoff evidence only | browser native-dialog spy; no printed/failed form |
+
+Software checks do not certify physical printer/media reliability or authorize operational migration. Milestone report records actual executions separately.

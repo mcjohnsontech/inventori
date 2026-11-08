@@ -34,7 +34,7 @@ describe('QR lookup, A4 labels and immutable stock isolation',()=>{
   expect((await post('qr/resolve',{payload},randomUUID(),manager).expect(200)).body.damaged).toBe('2');
   expect((await post('qr/resolve',{payload:encodeQr(originId,zeroReceipt.lines[0].lotId)},randomUUID(),production).expect(200)).body.usable).toBe('0');
   await request(app.getHttpServer()).post('/v1/qr/resolve').send({payload}).expect(401);
-  await post('qr/resolve',{payload:payload+' '}).expect(400);await post('qr/resolve',{payload:payload.replace('DYI:1','DYI:2')}).expect(422);await post('qr/resolve',{payload:encodeQr(randomUUID(),receipt.lines[0].lotId)}).expect(404);await post('qr/resolve',{payload:encodeQr(originId,randomUUID())}).expect(404);
+  await post('qr/resolve',{payload:payload+' '}).expect(400);await post('qr/resolve',{payload:payload.replace('DYI:1','DYI:3')}).expect(422);await post('qr/resolve',{payload:encodeQr(randomUUID(),receipt.lines[0].lotId)}).expect(404);await post('qr/resolve',{payload:encodeQr(originId,randomUUID())}).expect(404);
   const lot=await db.stockLot.findUniqueOrThrow({where:{id:receipt.lines[0].lotId}}),source=await db.supplierSource.findUniqueOrThrow({where:{id:lot.sourceId}});
   expect((await post('qr/manual',{sourceId:source.id,originId,fullSku:receipt.lines[0].fullCode,publicBatchCode:receipt.batch.publicCode},randomUUID(),production).expect(200)).body.lotId).toBe(lot.id);
   await post('qr/manual',{sourceId:source.id,originId,fullSku:receipt.lines[0].fullCode+'X',publicBatchCode:receipt.batch.publicCode},randomUUID(),production).expect(404);

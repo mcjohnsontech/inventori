@@ -13,10 +13,10 @@ The PRD, current audit and repository were inspected. Existing catalogue/receipt
 | # | Milestone | Status | Evidence / next action |
 |---|---|---|---|
 | 1 | Baseline stabilization and CI | Completed and pushed | `1839aa71d52d0eb4633e0fc332be1399a8c0bbf0`; remote SHA verified. 50 unit/81 integration tests, fresh migration rehearsal, 22 distinct browser passes across runs, typecheck/build and visual review. Remote CI run not yet verified. |
-| 2 | Serialized receiving and six-character Unit Codes | Verified; publication pending | See serialized-receiving-implementation-report.md. Unit/integration/browser/build/type checks, isolated preservation, restricted-login denial and capacity proof completed. No operational migration. |
-| 3 | DYI:2 and unique-unit printing | Pending | Exact-unit manifests and no stock effects; retain historical DYI:1 artifacts. |
+| 2 | Serialized receiving and six-character Unit Codes | Completed and pushed | `11aa0ebac17944cbf5a94178831f3dd0a0c13b74`; remote SHA verified. See serialized-receiving-implementation-report.md. Unit/integration/browser/build/type checks, isolated preservation, restricted-login denial and capacity proof completed. No operational migration. |
+| 3 | DYI:2 and unique-unit printing | Verified; completion publication pending | 55 unit tests; 98-test full integration run plus final 8-case print suite (99 distinct successes); all 23 browser cases successful across runs; typecheck/build; 43-table preservation and 500-unit print capacity. |
 | 4 | Unit tracking and lifecycle timeline | Pending | Authorized exact lookup/details; only recorded events/locations. Extend as later domains arrive. |
-| 5 | Production checkout | Pending policy decisions | Optional reusable Order IDs and explicit confirmation approved; taxonomy requires confirmation; all three issue roles approved. |
+| 5 | Production checkout | Pending implementation | All three issue roles; Production use, Sample, Internal use and Other (explanation required); optional reusable Order IDs and explicit missing-reason reconciliation approved. |
 | 6 | Missing-reason reconciliation | Pending | Append classification; never deduct twice. |
 | 7 | BAD, recovery and disposition | Pending | Preserve damage lineage, approved authority and compensating accounting. |
 | 8 | Completion and physical reconciliation | Pending | Recorded versus physically verified evidence; no invented historical events. |
@@ -28,7 +28,7 @@ The PRD, current audit and repository were inspected. Existing catalogue/receipt
 
 ## Open business policies
 
-Final checkout reason catalogue remains open. Owner confirmed all three roles may issue and approved the 10,000-unit/100-line serialized receipt maximum subject to benchmark results, with explicit separate receipts for oversized deliveries. A missing reason is explicitly permitted and creates a reconciliation obligation. Order IDs are optional, reusable across sessions/dates/actors, never unique transaction identities. No quantity-only serialized checkout or negative-stock override.
+The owner approved checkout reasons Production use, Sample, Internal use and Other (explanation required). Owner confirmed all three roles may issue and approved the 10,000-unit/100-line serialized receipt maximum subject to benchmark results, with explicit separate receipts for oversized deliveries. A missing reason is explicitly permitted and creates a reconciliation obligation. Order IDs are optional, reusable across sessions/dates/actors, never unique transaction identities. No quantity-only serialized checkout or negative-stock override.
 
 Other unresolved lifecycle/disposition/closing policies will be matched to existing confirmed PRD decisions before any new question. Independent work continues when a policy blocks one domain. Historical enrollment UI/rehearsal does not authorize operational execution.
 
@@ -69,3 +69,16 @@ Browser full run: 20 passed/2 failed (new heading ambiguity and invitation total
 Capacity: one warmup/three measured runs at 100/1,000/10,000 units and 100 lines. Measured 10,000-unit maxima 9.85s (one line), 12.09s (100 lines), with unchanged 15s/20s application limits. 500-row chunks, collision retries, smaller-chunk comparison and same-origin 2x1,000-unit contention exercised. Development measurements do not certify future shop hardware. Initial timeout/slow-commit attempts led to indexed UUID membership joins, set-based provenance validation and once-per-batch whole-graph checks; no history/late-insert/balance/unit guard removed.
 
 Fresh isolated migration rehearsal preserved historical catalogue/SKU/P/L/receipts/ledger/command/audit/outbox/print tables, same-key receipt reply and exact PDF hash. Historical lots explicitly LEGACY, zero fabricated units/events. Read-only planner reports uncounted/unverified physical coverage with no apply mode. Final fresh-fixture utility/rehearsal and planner commands passed. Operational migration, enrollment, deployment, real invitations and hardware acceptance remain gated. Next: Milestone 3 DYI:2/exact-unit printing; checkout reason catalogue remains open for Milestone 5.
+
+Milestone 2 completion commit: `11aa0ebac17944cbf5a94178831f3dd0a0c13b74` (`feat(inventory): implement atomic serialized receiving and unit identities`), branch `feat/complete-application-systems`, https://github.com/mcjohnsontech/inventori/commit/11aa0ebac17944cbf5a94178831f3dd0a0c13b74. Push and exact remote SHA verified; working tree was clean. Remote CI execution remains unverified (GitHub CLI unavailable).
+
+
+### Milestone 3 verification (7–8 November)
+
+Exact origin-qualified DYI:2 lookup, six-character unit entry, Production field allowlists, immutable exact-unit label manifests/claims/artifacts/events and actor/origin draft-preserving print cart implemented. Native printing and PDF fallback preserve saved unit identities; shared DYI:1 tools remain available. Manifest review precedes preparation so partly used sheet positioning is selectable. No mandatory physical-success report.
+
+55/55 unit tests passed. Full PostgreSQL regression: 98/98; final expanded print suite: 8/8 including 500-unit capacity (99 distinct integration successes across runs). Full browser run: 21 passed/2 failed at outdated legacy navigation/review expectations; corrected 3-case focused rerun passed. All 23 distinct browser cases have successful results across runs, not one green full 23-case run. Final typecheck/build passed. The 65 final HTML and PDF QR symbols each decoded independently at 300 dpi, with exact unique saved membership. No physical printer/device acceptance is implied.
+
+Migration 019 isolated preservation: all 43 previous table fingerprints unchanged; zero fabricated print records. Maximum 500-unit API rehearsal: manifest 1.19s, artifact 3.73s, stock unchanged. Final renderer measured samples 2.37–3.30s; hardware/production performance still requires separate validation. Direct mobile/desktop captures and a contact sheet of 40 refreshed/new synthetic screenshots reviewed. See unit-qr-printing-implementation-report.md and sanitized evidence. Operational migration, historical enrollment, live email/deployment remain gated.
+
+Owner confirmed checkout reasons Production use, Sample, Internal use, and Other with explanation. Missing reason remains an explicit Manager reconciliation exception. Next: milestone 4 recorded unit tracking, then checkout under these approved rules.

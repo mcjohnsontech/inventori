@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import type { QrLookup } from '@dayari/contracts';
+import type { QrLookup, UnitIdentityLookup } from '@dayari/contracts';
+import { UnitIdentityResult } from './unit-identity-result';
 
 import { notifyAuthFailure } from '../../lib/api';
 import { cn } from '../../lib/cn';
@@ -28,8 +29,9 @@ type Source = { id: string; name: string; code: string; originId: string };
 
 export function QrWorkspace({ initialCode = '' }: { initialCode?: string }) {
   const [payload, setPayload] = useState('');
+  const [unitCode, setUnitCode] = useState('');
   const [prefix, setPrefix] = useState('');
-  const [result, setResult] = useState<QrLookup | null>(null);
+  const [result, setResult] = useState<QrLookup | UnitIdentityLookup | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [camera, setCamera] = useState(false);
@@ -93,7 +95,7 @@ export function QrWorkspace({ initialCode = '' }: { initialCode?: string }) {
     };
   }, []);
 
-  async function resolve(body: unknown, path = 'qr/resolve') {
+  async function resolve(body: unknown, path = 'qr/resolve', method: 'GET' | 'POST' = 'POST') {
     if (working.current) return;
     working.current = true;
 
@@ -107,9 +109,9 @@ export function QrWorkspace({ initialCode = '' }: { initialCode?: string }) {
 
     try {
       const response = await fetch(`/api/${path}`, {
-        method: 'POST',
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: method==='POST'?JSON.stringify(body):undefined,
         signal: controller.signal,
       });
       notifyAuthFailure(response);
@@ -267,7 +269,8 @@ export function QrWorkspace({ initialCode = '' }: { initialCode?: string }) {
       <div className="mt-8 space-y-4">
         <IdentityLookup initialCode={initialCode} />
 
-        <Panel title="Scan a lot QR" description="Camera, connected scanner, or pasted payload.">
+        <Panel title="Find an individual item"><form className="flex flex-col gap-3 sm:flex-row sm:items-end" onSubmit={event=>{event.preventDefault();stopCamera();void resolve({},'inventory/units/by-code/'+encodeURIComponent(unitCode.trim().toUpperCase()),'GET');}}><div className="min-w-0 flex-1"><Field label="Individual Unit Code" hint="Exactly six readable characters. Omit 0, O, 1, I and L.">{id=><Input id={id} value={unitCode} maxLength={6} required pattern="[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{6}" autoComplete="off" spellCheck={false} placeholder="A7K2M9" className="font-mono tracking-widest" onChange={event=>{clearLookup();setUnitCode(event.target.value.trim().toUpperCase());}} onPaste={event=>{event.preventDefault();clearLookup();const value=event.clipboardData.getData('text').trim().toUpperCase();if(/^[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{6}$/.test(value))setUnitCode(value);else setError('Paste exactly six Unit Code characters, or use the QR field for a complete payload.');}}/>}</Field></div><Button disabled={busy||unitCode.length!==6}>{busy?'Looking up…':'Find unit'}</Button></form></Panel>
+        <Panel title="Scan an inventory QR" description="Individual-unit DYI:2 and existing lot DYI:1 codes are supported.">
           <form
             onSubmit={(event) => {
               event.preventDefault();
@@ -361,7 +364,8 @@ export function QrWorkspace({ initialCode = '' }: { initialCode?: string }) {
 
         {error ? <ErrorNotice message={error} /> : null}
 
-        {result ? (
+        {result?.payloadVersion===2 ? <UnitIdentityResult unit={result}/> : null}
+        {result?.payloadVersion===1 ? (
           <section
             aria-label="Resolved stock lot"
             className={cn(card, 'border-brand/15 bg-brand-tint p-6')}

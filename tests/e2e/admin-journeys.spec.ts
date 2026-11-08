@@ -14,7 +14,7 @@ async function login(page: Page) {
 async function navigate(page: Page, label: string, expectedStatus=200) {
   const menu = page.getByRole('button', { name: 'Open navigation', exact: true });
   if (await menu.isVisible()) await menu.click();
-  const reads:Record<string,string>={'Inventory':'/api/stock','Receiving':'/api/receiving/options','Receipts & activity':'/api/receipts','Labels & printing':'/api/receipts','Account & shop':'/api/account'};
+  const reads:Record<string,string>={'Inventory':'/api/stock','Receiving':'/api/receiving/options','Receipts & activity':'/api/receipts','Labels & printing':'/api/unit-label-config','Account & shop':'/api/account'};
   const response=reads[label]?page.waitForResponse(r=>new URL(r.url()).pathname===reads[label]&&r.request().method()==='GET'&&r.status()===expectedStatus):null;
   await page.getByRole('navigation', { name: 'Workspace' }).getByRole('button', { name: label, exact: true }).click();
   if(response){const result=await response;expect(result.status()).toBe(expectedStatus);await result.finished();}
@@ -103,6 +103,7 @@ test('Admin product extension, deep links and complete responsive workspaces use
         await expect(page.getByRole('region', { name: 'Accepted receipt', exact: true })).toContainText(receipt.lines[0].lotCode);
       }
       if (key === 'labels') {
+        await page.getByRole('button', {name:'Shared lot labels',exact:true}).click();
         await page.getByLabel('Search label receipts', { exact: true }).fill(receipt.batch.publicCode);
         await choose(page, 'Accepted receipt', receipt.id);
         await expect(page.getByRole('heading', { name: '1. Print queue', exact: true })).toBeVisible();

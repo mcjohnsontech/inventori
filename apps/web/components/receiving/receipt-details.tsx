@@ -7,6 +7,7 @@ import { useApiRead } from '../../lib/api';
 import { formatDateTime } from '../../lib/format';
 import {
   Badge,
+  Button,
   Code,
   type Column,
   CopyButton,
@@ -26,9 +27,11 @@ import { ReceivedUnits } from './received-units';
 export function ReceiptDetails({
   receipt,
   onStock,
+  onUnitLabels,
 }: {
   receipt: AcceptedReceipt;
   onStock?: (productId: string) => void;
+  onUnitLabels?: (receiptId:string)=>void;
 }) {
   const [labelsOpen, setLabelsOpen] = useState(false);
   const [unitsOpen, setUnitsOpen] = useState(false);
@@ -162,6 +165,7 @@ export function ReceiptDetails({
       </Panel>
 
       <Panel className="overflow-visible" level={3} title="Labels" description="Printing never changes inventory.">
+        {receipt.serialization && onUnitLabels ? <div className="mb-4"><Button onClick={()=>onUnitLabels(receipt.id)}>Print individual unit labels</Button></div> : null}
         <Disclosure
           summary="Print labels for this receipt"
           onOpen={() => setLabelsOpen(true)}

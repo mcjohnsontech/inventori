@@ -110,3 +110,8 @@ QR resolution/manual lookup are reads, with no CommandResult/audit/outbox writes
 After serialization cutover, every positive receipt quantity has one exact immutable unit identity and initial E-to-U/D event; sums by receipt line/state equal accepted movement quantities. Every unit has an event-matching state projection and exactly one membership in the command's hashed, contiguous manifest pages (at most 500 members each). No zero movements or independent unit stock authority. State identity cannot be reassigned; initial receiving event kinds are the only enabled lifecycle events. Historical lots are explicitly LEGACY and remain unassigned.
 
 The full immutable receipt graph is validated once per DeliveryBatch at deferred commit, because all children have batch foreign keys and same-creation-transaction insertion guards. Independent balance reconciliation and once-per-receipt unit completeness remain. Replaying an accepted historical command returns original evidence without adding units. No operational migration or physical historical verification is implied.
+
+
+## Exact-unit print metadata — milestone 3
+
+A unit-label job contains each selected saved unit at most once. An initial immutable claim is unique per unit; reasoned selective reprints retain the original unit, QR and content. UnitLabelJob/Line/Claim/Artifact/Event are separate from stock authority. Command acceptance may advance the origin metadata sequence, but print selection/preparation/handoff/reprint cannot insert UnitEvent, change UnitState, or change a receipt, stock movement or balance. Physical success, attachment and verification are never inferred from a print dialog. Historical DYI:1 labels remain shared-lot identities.

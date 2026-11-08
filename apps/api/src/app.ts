@@ -10,12 +10,14 @@ import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fa
 import type { PrismaClient } from '@prisma/client';
 import type { FastifyReply } from 'fastify';
 import { LabelsService } from './labels.service.js';
+import { UnitsService } from './units.service.js';
+import { UnitLabelsService } from './unit-labels.service.js';
 import { ReceivingService } from './receiving.service.js';
 import { CatalogueService } from './catalogue.service.js';
 
 @Controller('v1')
 class ApiController {
-  constructor(@Inject(InvitationsService) private readonly invitations:InvitationsService,@Inject(AvailabilityService) private readonly availability:AvailabilityService,@Inject(AccountsService) private readonly accounts: AccountsService, @Inject(CatalogueService) private readonly service: CatalogueService, @Inject(ReceivingService) private readonly receiving: ReceivingService, @Inject(LabelsService) private readonly labels: LabelsService, @Inject(PublicIdentitiesService) private readonly identities: PublicIdentitiesService) {}
+  constructor(@Inject(InvitationsService) private readonly invitations:InvitationsService,@Inject(AvailabilityService) private readonly availability:AvailabilityService,@Inject(AccountsService) private readonly accounts: AccountsService, @Inject(CatalogueService) private readonly service: CatalogueService, @Inject(ReceivingService) private readonly receiving: ReceivingService, @Inject(LabelsService) private readonly labels: LabelsService, @Inject(PublicIdentitiesService) private readonly identities: PublicIdentitiesService, @Inject(UnitsService) private readonly units: UnitsService, @Inject(UnitLabelsService) private readonly unitLabels: UnitLabelsService) {}
   @Get('admin/invitations') async invitationsList(@Headers('authorization') auth?:string){return this.invitations.list(await this.service.actor(this.token(auth)));}
   @Post('admin/invitations') async invite(@Body() body:unknown,@Headers('idempotency-key') key:string|undefined,@Headers('authorization') auth?:string){const actor=await this.service.actor(this.token(auth));return this.invitationResult(()=>this.invitations.command(actor,'create',null,key,body));}
   @Post('admin/invitations/:id/:action') async invitationCommand(@Param('id') id:string,@Param('action') action:string,@Body() body:unknown,@Headers('idempotency-key') key:string|undefined,@Headers('authorization') auth?:string){if(action!=='resend'&&action!=='revoke')throw new BadRequestException('Unknown invitation command');const actor=await this.service.actor(this.token(auth));return this.invitationResult(()=>this.invitations.command(actor,action,id,key,body));}
@@ -30,6 +32,8 @@ class ApiController {
   @Post('admin/users/:id/revoke') async revokeUser(@Param('id') id:string,@Body() body:unknown,@Headers('idempotency-key') key:string|undefined,@Headers('authorization') auth?:string){return this.accounts.command(await this.service.actor(this.token(auth)),'revoke',id,key,body);}
   @Get('inventory/products/by-code/:code') async productCode(@Param('code') code:string,@Query() query:unknown,@Headers('authorization') auth?:string){return this.identities.lookup(await this.service.actor(this.token(auth)),'PRODUCT',code,query);}
   @Get('inventory/lots/by-code/:code') async lotCode(@Param('code') code:string,@Query() query:unknown,@Headers('authorization') auth?:string){return this.identities.lookup(await this.service.actor(this.token(auth)),'LOT',code,query);}
+  @Get('inventory/units/by-code/:code') async unitCode(@Param('code') code:string,@Query() query:unknown,@Headers('authorization') auth?:string){return this.units.byCode(await this.service.actor(this.token(auth)),code,query);}
+  @Get('units/:id') async unitIdentity(@Param('id') id:string,@Headers('authorization') auth?:string){return this.units.byId(await this.service.actor(this.token(auth)),this.service.originId,id);}
   @Get('health') health() { return { status: 'ok', service: 'dayari-api', authority: this.service.mode, cloudSync: 'not-configured' }; }
   @Post('sessions') @HttpCode(200) login(@Body() body: unknown) { return this.service.login(body); }
   @Post('sessions/logout') @HttpCode(200) async logout(@Headers('authorization') authorization?: string) {
@@ -58,6 +62,17 @@ class ApiController {
   @Get('qr/manual-sources') async manualSources(@Headers('authorization') auth?:string){return this.labels.manualSources(await this.service.actor(this.token(auth)));}
   @Post('qr/manual') @HttpCode(200) async manualQr(@Headers('authorization') auth:string|undefined,@Body() body:unknown){return this.labels.manual(await this.service.actor(this.token(auth)),body);}
   @Get('receipts/:id/label-plan') async labelPlan(@Headers('authorization') auth:string|undefined,@Param('id') id:string){return this.labels.plan(await this.service.actor(this.token(auth)),id);}
+  @Get('unit-label-config') async unitLabelConfig(@Headers('authorization') auth?:string){return this.unitLabels.configuration(await this.service.actor(this.token(auth)));}
+  @Post('unit-label-previews') @HttpCode(200) async unitLabelPreviews(@Headers('authorization') auth:string|undefined,@Body() body:unknown){return this.unitLabels.previews(await this.service.actor(this.token(auth)),body);}
+  @Get('unit-label-jobs/:id/handoffs') async unitLabelRequests(@Headers('authorization') auth:string|undefined,@Param('id') id:string,@Query() query:unknown){return this.unitLabels.requests(await this.service.actor(this.token(auth)),id,query);}
+  @Get('unit-label-options') async unitLabelOptions(@Headers('authorization') auth:string|undefined,@Query() query:unknown){return this.unitLabels.options(await this.service.actor(this.token(auth)),query);}
+  @Get('unit-label-jobs') async unitLabelJobs(@Headers('authorization') auth:string|undefined,@Query() query:unknown){return this.unitLabels.list(await this.service.actor(this.token(auth)),query);}
+  @Post('unit-label-jobs') async newUnitLabelJob(@Headers('authorization') auth:string|undefined,@Headers('idempotency-key') key:string|undefined,@Body() body:unknown){return this.unitLabels.create(await this.service.actor(this.token(auth)),key,body);}
+  @Get('unit-label-jobs/:id') async unitLabelJob(@Headers('authorization') auth:string|undefined,@Param('id') id:string){return this.unitLabels.get(await this.service.actor(this.token(auth)),id);}
+  @Post('unit-label-jobs/:id/artifact') async unitLabelPrepare(@Headers('authorization') auth:string|undefined,@Headers('idempotency-key') key:string|undefined,@Param('id') id:string,@Body() body:unknown){return this.unitLabels.prepare(await this.service.actor(this.token(auth)),id,key,body);}
+  @Get('unit-label-jobs/:id/artifacts/:artifact.html') async unitLabelHtml(@Headers('authorization') auth:string|undefined,@Param('id') id:string,@Param('artifact') artifact:string,@Res() reply:FastifyReply){const result=await this.unitLabels.artifact(await this.service.actor(this.token(auth)),id,artifact,'html');return reply.type('text/html; charset=utf-8').header('Content-Security-Policy',result.csp!).header('Referrer-Policy','no-referrer').header('Cross-Origin-Resource-Policy','same-origin').header('X-Artifact-SHA256',result.hash).send(result.bytes);}
+  @Get('unit-label-jobs/:id/artifacts/:artifact.pdf') async unitLabelPdf(@Headers('authorization') auth:string|undefined,@Param('id') id:string,@Param('artifact') artifact:string,@Res() reply:FastifyReply){const result=await this.unitLabels.artifact(await this.service.actor(this.token(auth)),id,artifact,'pdf');return reply.type('application/pdf').header('Content-Disposition',`attachment; filename="dayari-unit-labels-${id}.pdf"`).header('X-Artifact-SHA256',result.hash).send(result.bytes);}
+  @Post('unit-label-jobs/:id/handoffs') async unitLabelHandoff(@Headers('authorization') auth:string|undefined,@Headers('idempotency-key') key:string|undefined,@Param('id') id:string,@Body() body:unknown){return this.unitLabels.handoff(await this.service.actor(this.token(auth)),id,key,body);}
   @Get('label-print-jobs') async labelJobs(@Headers('authorization') auth?:string){return this.labels.list(await this.service.actor(this.token(auth)));}
   @Post('label-print-jobs') async newLabelJob(@Headers('authorization') auth:string|undefined,@Headers('idempotency-key') key:string|undefined,@Body() body:unknown){return this.labels.create(await this.service.actor(this.token(auth)),key,body);}
   @Post('label-print-jobs/:id/preview') @HttpCode(200) async previewLabels(@Headers('authorization') auth:string|undefined,@Param('id') id:string,@Body() body:unknown,@Res() reply:FastifyReply){const result=await this.labels.preview(await this.service.actor(this.token(auth)),id,body);return reply.type('application/pdf').header('X-Artifact-SHA256',result.hash).send(result.bytes);}
@@ -70,7 +85,8 @@ class ApiController {
 }
 
 export async function createApp(db: PrismaClient, originId: string, mode: string, invites:InvitationConfig|undefined=invitationConfig()) {
-  @Module({ controllers: [ApiController], providers: [{provide:InvitationsService,useValue:new InvitationsService(db,originId,mode,invites)},{provide:AvailabilityService,useValue:new AvailabilityService(db,originId)},{provide:AccountsService,useValue:new AccountsService(db,originId,mode)}, { provide: PublicIdentitiesService, useValue: new PublicIdentitiesService(db, originId) }, { provide: LabelsService, useValue: new LabelsService(db, originId, mode) }, { provide: ReceivingService, useValue: new ReceivingService(db, originId, mode) }, { provide: CatalogueService, useValue: new CatalogueService(db, originId, mode) }] })
+  const units=new UnitsService(db,originId);
+  @Module({ controllers: [ApiController], providers: [{provide:InvitationsService,useValue:new InvitationsService(db,originId,mode,invites)},{provide:AvailabilityService,useValue:new AvailabilityService(db,originId)},{provide:AccountsService,useValue:new AccountsService(db,originId,mode)}, { provide: PublicIdentitiesService, useValue: new PublicIdentitiesService(db, originId) }, {provide:UnitsService,useValue:units},{provide:UnitLabelsService,useValue:new UnitLabelsService(db,originId,mode)}, { provide: LabelsService, useValue: new LabelsService(db, originId, mode, units) }, { provide: ReceivingService, useValue: new ReceivingService(db, originId, mode) }, { provide: CatalogueService, useValue: new CatalogueService(db, originId, mode) }] })
   class AppModule {}
   const adapter = new FastifyAdapter({ bodyLimit: 32000 });
   adapter.getInstance().addHook('onSend', async (_request, reply, payload) => {

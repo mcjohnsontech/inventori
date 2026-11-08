@@ -1,6 +1,8 @@
 # Serialized receiving implementation report - milestone 2
 
-Status: implementation and verification complete; feature-branch publication pending. No operational migration or deployment.
+Status: implemented, verified, committed and pushed on the feature branch.
+
+Completion commit: `11aa0ebac17944cbf5a94178831f3dd0a0c13b74`; https://github.com/mcjohnsontech/inventori/commit/11aa0ebac17944cbf5a94178831f3dd0a0c13b74. Remote SHA verified; no merge/deployment. No operational migration or deployment.
 
 ## Implemented
 

@@ -24,11 +24,13 @@ export { ReceiptDetails } from './receipt-details';
 
 export function ReceivingWorkspace({
   initialReceiptId = '',
+  onUnitLabels,
   onHistory,
   onInventory,
   onCatalogueChanged,
 }: {
   initialReceiptId?: string;
+  onUnitLabels?: (receiptId:string)=>void;
   onHistory?: () => void;
   onInventory?: (id: string) => void;
   onCatalogueChanged?: (catalogue: Catalogue) => void;
@@ -89,7 +91,7 @@ export function ReceivingWorkspace({
         ) : null}
 
         {receipt ? (
-          <ReceiptDetails key={receipt.id} receipt={receipt} onStock={onInventory} />
+          <ReceiptDetails key={receipt.id} receipt={receipt} onStock={onInventory} onUnitLabels={onUnitLabels} />
         ) : null}
       </div>
 

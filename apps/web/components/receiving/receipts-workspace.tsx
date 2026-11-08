@@ -33,11 +33,13 @@ const PER_PAGE = 12;
 
 export function ReceiptsWorkspace({
   initialReceiptId = '',
+  onUnitLabels,
   onStock,
   onSelect,
   onReceive,
 }: {
   initialReceiptId?: string;
+  onUnitLabels?: (receiptId:string)=>void;
   onStock: (id: string) => void;
   onSelect: (id: string) => void;
   onReceive?: () => void;
@@ -108,7 +110,7 @@ export function ReceiptsWorkspace({
           ) : receipt.error ? (
             <ErrorNotice message={receipt.error} onRetry={receipt.refresh} />
           ) : receipt.data ? (
-            <ReceiptDetails key={receipt.data.id} receipt={receipt.data} onStock={onStock} />
+            <ReceiptDetails key={receipt.data.id} receipt={receipt.data} onStock={onStock} onUnitLabels={onUnitLabels} />
           ) : null}
         </div>
       ) : (

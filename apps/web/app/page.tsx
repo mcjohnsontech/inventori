@@ -58,6 +58,7 @@ export default function DayariInventory() {
     lot: '',
     receipt: '',
     labelJob: '',
+    labelReceipt: '',
     qrCode: '',
   });
   const [missing, setMissing] = useState(false);
@@ -76,7 +77,7 @@ export default function DayariInventory() {
       ...(key === 'catalogue' ? { catalogue: id } : {}),
       ...(key === 'inventory' ? { stock: id, lot: lotId } : {}),
       ...(key === 'receipts' ? { receipt: id } : {}),
-      ...(key === 'labels' ? { labelJob: id } : {}),
+      ...(key === 'labels' ? { labelJob: id, labelReceipt: lotId } : {}),
       ...(key === 'qr' ? { qrCode: id } : {}),
     }));
   }, []);
@@ -165,7 +166,7 @@ export default function DayariInventory() {
   function navigate(next: Workspace, id = '', lotId = '') {
     if (!mayNavigate()) return;
 
-    const hash = `#${next}${id ? `/${id}` : ''}${next === 'inventory' && id && lotId ? `/${lotId}` : ''}`;
+    const hash = next==='labels'&&!id&&lotId ? `#labels/receipt/${lotId}` : `#${next}${id ? `/${id}` : ''}${next === 'inventory' && id && lotId ? `/${lotId}` : ''}`;
     acceptedHash.current = hash;
     location.hash = hash;
 
@@ -214,7 +215,7 @@ export default function DayariInventory() {
       setUser(null);
       setCatalogue(EMPTY_CATALOGUE);
       setCatalogueReady(false);
-      setDetail({ catalogue: '', stock: '', lot: '', receipt: '', labelJob: '', qrCode: '' });
+      setDetail({ catalogue: '', stock: '', lot: '', receipt: '', labelJob: '', labelReceipt: '', qrCode: '' });
       setFlow(null);
       setReceiveOpen(false);
       setReceiveOptions(null);

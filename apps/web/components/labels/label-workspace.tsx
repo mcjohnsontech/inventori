@@ -1,7 +1,7 @@
 'use client';
 import { PagedItems } from '../ui/paged-items';
 import { PrinterIcon } from '@hugeicons/core-free-icons';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   chunkRange,
   defaultSheetStart,
@@ -87,10 +87,12 @@ export function LabelWorkspace({
   receiptId: initialReceiptId = '',
   initialJobId = '',
   compact = false,
+  topContent,
 }: {
   receiptId?: string;
   initialJobId?: string;
   compact?: boolean;
+  topContent?: ReactNode;
 }) {
   const working = useRef(false);
 
@@ -787,6 +789,7 @@ export function LabelWorkspace({
         title="Labels & printing"
         description="Choose a delivery, position your labels, inspect the PDF and print."
       />
+      {topContent ? <div className="mt-5">{topContent}</div> : null}
       <section aria-label="Label printing" className="mt-6">
         {body}
       </section>

@@ -96,3 +96,8 @@ SMTP implementation and isolated verification complete; local 011/012 upgrade ap
 ## Complete V1 directive - milestone 2 progress
 
 The 6 November directive authorizes sequential implementation beyond earlier stop points, retaining operational migration/deployment gates. Serialized receipt identity implementation and isolated migrations 014-018 are under verification; see serialized-receiving-implementation-design.md. No StockUnit deployment to operational data, historical enrollment, DYI:2 activation, production transitions, physical printer certification or synchronization is completed by this entry.
+
+
+## Complete V1 directive — milestones 2/3 software verification
+
+Serialized receiving milestone 2 was verified and pushed as 11aa0eb. Milestone 3 implements DYI:2 exact-unit lookup, exact-unit label manifests, native printing and PDF fallback while retaining DYI:1. Isolated migration 019 preserves all 43 existing table fingerprints. See unit-qr-printing-implementation-report.md for executed tests, browser evidence, capacity and remaining gates. Operational migration/enrollment and physical printer certification remain unapproved/unverified; production checkout and later lifecycle domains are subsequent milestones.

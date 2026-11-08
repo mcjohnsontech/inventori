@@ -151,3 +151,10 @@ The existing encrypted invitation queue now supports an explicit SMTP adapter al
 ## Serialized receiving implementation - 7 November 2026
 
 Milestone 2 adds origin-scoped StockUnit identities, initial immutable UnitEvent evidence, UnitState projections and bounded exact-command manifest pages. LotSerialization classifies historical lots without enrollment. Cutover occurs only when additive migration 014 is installed; operational installation remains unapproved. All native receiving routes use the existing origin lock, actor fencing, idempotency and atomic ledger command. New unit tables supplement, rather than replace or double-count, authoritative lot movements. Paginated receipt-unit reads are Admin/Manager-only. See serialized-receiving-implementation-design.md and the milestone report for database bypass and preservation proof. Unit QR/printing/checkout remain separate milestones.
+
+
+## Exact-unit QR and label metadata — milestone 3
+
+DYI:2 resolves origin UUID plus immutable StockUnit UUID through an explicit role allowlist. DYI:1 and its retained lot renderers are unchanged. Exact six-character manual lookup uses the configured origin; a short code is never a global database identity. Production receives generic availability and identification only.
+
+Five additive print tables keep exact unit membership, one initial claim per unit, frozen content/profile/renderer, HTML/PDF bytes and hashes, and append-only requested/prepared/handoff evidence. All metadata commands use origin locking, actor fencing, idempotency, audit/outbox and atomic commit. Preparation renders outside the transaction; no print/lookup path changes ledger or unit state. React individual-label previews and local self-contained native-print documents use genuine QR symbols, with a PDF fallback. No browser return implies physical success or attachment. See unit-qr-printing-implementation-design.md.

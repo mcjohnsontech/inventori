@@ -501,3 +501,71 @@ model UnitCommandManifestPage {
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   @@unique([commandId,ordinal])
 }
+
+// Exact-unit printing is separate from historical DYI:1 lot-label evidence.
+model UnitLabelJob {
+  id String @id @db.Uuid
+  originId String @db.Uuid
+  actorId String @db.Uuid
+  actorRole Role
+  commandId String @unique @db.Uuid
+  kind String
+  originalJobId String? @db.Uuid
+  reason String
+  profile Json
+  rendererVersion String
+  manifestHash String
+  canonicalManifest String
+  totalLabels Int
+  createdAt DateTime @db.Timestamptz(6)
+  @@index([originId,createdAt])
+}
+model UnitLabelLine {
+  id String @id @db.Uuid
+  jobId String @db.Uuid
+  unitId String @db.Uuid
+  lotId String @db.Uuid
+  receiptLineId String @db.Uuid
+  ordinal Int
+  purpose String
+  payload String
+  content Json
+  originalLineId String? @db.Uuid
+  @@unique([jobId,unitId])
+  @@unique([jobId,ordinal])
+  @@index([unitId])
+}
+model UnitLabelClaim {
+  unitId String @id @db.Uuid
+  lineId String @unique @db.Uuid
+  jobId String @db.Uuid
+}
+model UnitLabelArtifact {
+  id String @id @db.Uuid
+  jobId String @unique @db.Uuid
+  originId String @db.Uuid
+  actorId String @db.Uuid
+  actorRole Role
+  commandId String @unique @db.Uuid
+  html String
+  pdf Bytes
+  htmlHash String
+  pdfHash String
+  layout Json
+  pages Int
+  createdAt DateTime @db.Timestamptz(6)
+}
+model UnitLabelEvent {
+  id String @id @db.Uuid
+  jobId String @db.Uuid
+  artifactId String? @db.Uuid
+  originId String @db.Uuid
+  actorId String @db.Uuid
+  actorRole Role
+  commandId String @unique @db.Uuid
+  kind String
+  attemptId String @db.Uuid
+  recordedAt DateTime @db.Timestamptz(6)
+  @@unique([jobId,kind,attemptId])
+  @@index([jobId,recordedAt])
+}
