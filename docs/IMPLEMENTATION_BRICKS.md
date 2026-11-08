@@ -111,3 +111,8 @@ Recorded unit tracking adds an authorized drawer and immutable QR-presentation m
 ## Complete V1 directive — milestone 5
 
 Exact-unit checkout is under verification through additive isolated migration 021, authenticated all-role explicit confirmation, immutable ISSUE groups, actor/origin drafts, own-history Production filtering and classification exceptions. Only receiving and checkout stock transitions are enabled. O5 pending request workflows are authorized for later implementation, while cloud authorization execution/infrastructure stays deferred. O8 Manager-selected completion and O4 strict Manager closing are confirmed for their later slices. No operational migration or deployment is included. See production-checkout-implementation-report.md for actual results when finalized.
+
+
+## Complete V1 directive — milestone 6
+
+Manager missing-reason reconciliation is implemented with append-only classifications, original checkout preservation, Admin/Manager operational review and Production privacy. Additive migration 022 was exercised only on isolated fixtures. No stock transition, cloud approval execution or operational migration is introduced. See reason-reconciliation-implementation-report.md for actual checks and milestone publication. O6 damage scope is confirmed for milestone 7.

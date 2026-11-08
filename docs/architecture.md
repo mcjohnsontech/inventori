@@ -172,3 +172,10 @@ Additive UnitObservation records camera or keyboard/scanner QR presentations und
 CheckoutsService extends the existing modular monolith and origin-first transaction protocol. Separate immutable Checkout/CheckoutLine/CheckoutException records bind exact units to ISSUE movements/events and rebuildable balance/state projections. Migration 021 is additive and test-only until operational approval; it preserves historical receipt/SKU/Product/Lot/QR/print identities. A role-neutral accepted response avoids sensitive-field disclosure on replay after a role change. Production reads only its own checkout/presentation history. Browser drafts are actor/origin scoped and retain the exact pending payload/key after uncertain network results.
 
 Owner O5 explicitly defers cloud-delivered approval execution and infrastructure. Recovery/correction request slices may validate and record pending evidence, but may not execute local approval or stock changes. Independent checkout, BAD, Manager reconciliation/completion, closing and reporting continue. See recovery-correction-request-design.md; no new delivery trust mechanism or cloud transport is introduced.
+
+
+## Missing-reason reconciliation — milestone 6
+
+ReconciliationService appends immutable ReasonReconciliation and exact CheckoutReasonResolution records. Only a current shop Manager may classify; Admin/Manager read scoped operational evidence. Origin-first locking, current actor fencing, sorted exception locks, canonical idempotency and unique exception ownership prevent duplicate classification. Root, manifest, rows, audit, outbox and command result commit together. No stock transaction, movement, unit event or projection is created or changed.
+
+Original checkout acceptance JSON remains frozen, including replay. Separate live status reads expose outstanding obligations and status-as-of time. Production receives only own checkout status, never Manager remarks or reconciliation administration; operational timelines include the classification. Pre-022 schemas retain existing reads through readiness gating. See reason-reconciliation-implementation-report.md.

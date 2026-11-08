@@ -36,6 +36,12 @@ export class UnitTrackingService {
         WHERE p."unitId"=${id.data}::uuid AND p."originId"=${this.originId}::uuid
         ${user.role === 'PRODUCTION' ? Prisma.sql`AND p."actorId"=${user.id}::uuid` : Prisma.empty}`;
       const operational = user.role !== 'PRODUCTION';
+      const [reasonSchema] = operational ? await tx.$queryRaw<{ ready: boolean }[]>`SELECT to_regclass('"ReasonReconciliation"') IS NOT NULL AS ready` : [];
+      const classification = reasonSchema?.ready ? Prisma.sql`UNION ALL
+        SELECT resolved.id,'REASON_RECONCILED'::text,r."recordedAt",o."originSequence",r."actorId",u.name,r."actorRole",NULL::text,NULL::text,NULL::uuid,NULL::uuid,NULL::uuid,NULL::text
+        FROM "CheckoutReasonResolution" resolved JOIN "ReasonReconciliation" r ON r.id=resolved."reconciliationId" JOIN "User" u ON u.id=r."actorId"
+        JOIN "OutboxEvent" o ON o."commandId"=r."commandId" AND o."originId"=r."originId"
+        WHERE resolved."unitId"=${id.data}::uuid AND r."originId"=${this.originId}::uuid` : Prisma.empty;
       const history = operational ? Prisma.sql`${observations} UNION ALL
         SELECT e.id,e.kind,e."recordedAt",o."originSequence",e."actorId",u.name,e."actorRole",e."fromState",e."toState",r."receiptId",e."movementId",NULL::uuid,NULL::text
         FROM "UnitEvent" e JOIN "User" u ON u.id=e."actorId" JOIN "StockUnit" s ON s.id=e."unitId" JOIN "ReceiptLine" r ON r.id=s."receiptLineId"
@@ -44,19 +50,26 @@ export class UnitTrackingService {
         SELECT e.id,CASE e.kind WHEN 'REQUESTED' THEN 'LABEL_REQUESTED' WHEN 'ARTIFACT_READY' THEN 'LABEL_PREPARED' ELSE 'PRINT_DIALOG_REQUESTED' END,e."recordedAt",o."originSequence",e."actorId",u.name,e."actorRole",NULL::text,NULL::text,NULL::uuid,NULL::uuid,e."jobId",NULL::text
         FROM "UnitLabelEvent" e JOIN "UnitLabelLine" l ON l."jobId"=e."jobId" JOIN "User" u ON u.id=e."actorId"
         JOIN "OutboxEvent" o ON o."commandId"=e."commandId" AND o."originId"=e."originId"
-        WHERE l."unitId"=${id.data}::uuid AND e."originId"=${this.originId}::uuid` : Prisma.sql`${observations} UNION ALL
+        WHERE l."unitId"=${id.data}::uuid AND e."originId"=${this.originId}::uuid ${classification}` : Prisma.sql`${observations} UNION ALL
         SELECT e.id,e.kind,e."recordedAt",o."originSequence",e."actorId",u.name,e."actorRole",e."fromState",e."toState",NULL::uuid,e."movementId",NULL::uuid,NULL::text
         FROM "UnitEvent" e JOIN "User" u ON u.id=e."actorId"
         JOIN "OutboxEvent" o ON o."commandId"=e."commandId" AND o."originId"=e."originId"
         WHERE e."unitId"=${id.data}::uuid AND e."originId"=${this.originId}::uuid AND e.kind='ISSUED' AND e."actorId"=${user.id}::uuid`;
       const [count] = await tx.$queryRaw<{ n: bigint }[]>(Prisma.sql`SELECT count(*) AS n FROM (${history}) h`);
       const rows = await tx.$queryRaw<HistoryRow[]>(Prisma.sql`SELECT * FROM (${history}) h ORDER BY "originSequence",id LIMIT 20 OFFSET ${(query.data.page - 1) * 20}`);
+      const classificationIds = rows.filter(row => row.kind === 'REASON_RECONCILED').map(row => row.id);
+      const classifications = classificationIds.length ? await tx.$queryRaw<{ id: string; reconciliationId: string; checkoutId: string; orderReference: string | null; reasonCode: string; reasonNote: string; managerRemarks: string }[]>(Prisma.sql`
+        SELECT resolved.id,r.id AS "reconciliationId",resolved."checkoutId",x."orderReference",r."reasonCode",r."reasonNote",r.remarks AS "managerRemarks"
+        FROM "CheckoutReasonResolution" resolved JOIN "ReasonReconciliation" r ON r.id=resolved."reconciliationId" JOIN "CheckoutLine" x ON x.id=resolved."checkoutLineId"
+        WHERE resolved.id IN (${Prisma.join(classificationIds.map(id => Prisma.sql`${id}::uuid`))}) AND r."originId"=${this.originId}::uuid`) : [];
+      const classificationById = new Map(classifications.map(row => [row.id, row]));
       const issueIds = rows.filter(row => row.kind === 'ISSUED').map(row => row.id);
       const issueLines = issueIds.length ? await tx.checkoutLine.findMany({ where: { eventId: { in: issueIds }, originId: this.originId },
         select: { eventId: true, checkoutId: true, reasonCode: true, reasonNote: true, orderReference: true } }) : [];
       const issueByEvent = new Map(issueLines.map(line => [line.eventId, line]));
       const ownIssue = operational ? false : await tx.unitEvent.count({ where: { unitId: id.data, originId: this.originId, actorId: user.id, kind: 'ISSUED' } }) > 0;
       const events = rows.map(row => ({
+        ...(classificationById.get(row.id) ?? {}),
         ...(issueByEvent.get(row.id) ? { checkoutId: issueByEvent.get(row.id)!.checkoutId, orderReference: issueByEvent.get(row.id)!.orderReference, reasonCode: issueByEvent.get(row.id)!.reasonCode, reasonNote: issueByEvent.get(row.id)!.reasonNote } : {}),
         id: row.id, kind: row.kind, recordedAt: row.recordedAt.toISOString(), originSequence: row.originSequence.toString(),
         actor: { id: row.actorId, name: row.actorName, role: row.actorRole },

@@ -47,12 +47,24 @@ export class CheckoutsService {
     await this.allow(user);
     const id = idempotencyKeySchema.safeParse(input);
     if (!id.success) throw new BadRequestException('Invalid checkout identity.');
-    const checkout = await this.db.checkout.findFirst({ where: { id: id.data, originId: this.originId,
-      ...(user.role === 'PRODUCTION' ? { actorId: user.id } : {}) } });
-    if (!checkout) throw new NotFoundException('Checkout not available.');
-    const command = await this.db.commandResult.findUniqueOrThrow({ where: { id: checkout.commandId } });
-    // A recorded acceptance response, including balances as of acceptance; never pretend it is live stock.
-    return command.response as unknown as CheckoutView;
+    return this.db.$transaction(async tx => {
+      const readAt = new Date().toISOString();
+      const checkout = await tx.checkout.findFirst({ where: { id: id.data, originId: this.originId,
+        ...(user.role === 'PRODUCTION' ? { actorId: user.id } : {}) } });
+      if (!checkout) throw new NotFoundException('Checkout not available.');
+      const command = await tx.commandResult.findUniqueOrThrow({ where: { id: checkout.commandId } });
+      const saved = command.response as unknown as CheckoutView;
+      const [schema] = await tx.$queryRaw<{ ready: boolean }[]>`SELECT to_regclass('"CheckoutReasonResolution"') IS NOT NULL AS ready`;
+      if (!schema?.ready) return saved;
+      const exceptions = saved.lines.flatMap(line => line.exceptionId ? [line.exceptionId] : []);
+      const rows = exceptions.length ? await tx.checkoutReasonResolution.findMany({ where: { exceptionId: { in: exceptions }, originId: this.originId }, select: { exceptionId: true } }) : [];
+      const resolved = new Set(rows.map(row => row.exceptionId));
+      // Keep acceptance quantities/reasons untouched. Current obligation status is separately dated and contains no Manager-only evidence.
+      return { ...saved, exceptionStatusAsOf: readAt,
+        outstandingReasonCount: saved.lines.filter(line => line.exceptionId && !resolved.has(line.exceptionId)).length,
+        lines: saved.lines.map(line => ({ ...line, reconciliationStatus: line.exceptionId ? resolved.has(line.exceptionId) ? 'RESOLVED' as const : 'PENDING' as const : null })),
+      };
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
   }
 
   async list(user: User, input: unknown) {
@@ -64,10 +76,12 @@ export class CheckoutsService {
       ${user.role === 'PRODUCTION' ? Prisma.sql`AND c."actorId"=${user.id}::uuid` : Prisma.empty}
       ${query.orderReference ? Prisma.sql`AND EXISTS(SELECT 1 FROM "CheckoutLine" x WHERE x."checkoutId"=c.id AND x."orderReference"=${query.orderReference})` : Prisma.empty}`;
     return this.db.$transaction(async tx => {
+      const [schema] = await tx.$queryRaw<{ ready: boolean }[]>`SELECT to_regclass('"CheckoutReasonResolution"') IS NOT NULL AS ready`;
+      const unresolved = schema?.ready ? Prisma.sql`AND NOT EXISTS(SELECT 1 FROM "CheckoutReasonResolution" resolved WHERE resolved."exceptionId"=e.id)` : Prisma.empty;
       const [count] = await tx.$queryRaw<{ total: bigint }[]>(Prisma.sql`SELECT count(*) AS total FROM "Checkout" c WHERE ${filter}`);
       const rows = await tx.$queryRaw<{ id: string; acceptedAt: Date; actorName: string; unitCount: number; missing: bigint }[]>(Prisma.sql`
         SELECT c.id,c."acceptedAt",u.name AS "actorName",c."unitCount",
-        (SELECT count(*) FROM "CheckoutException" e WHERE e."checkoutId"=c.id) AS missing
+        (SELECT count(*) FROM "CheckoutException" e WHERE e."checkoutId"=c.id ${unresolved}) AS missing
         FROM "Checkout" c JOIN "User" u ON u.id=c."actorId" WHERE ${filter}
         ORDER BY c."acceptedAt" DESC,c.id DESC LIMIT 20 OFFSET ${(query.page - 1) * 20}`);
       return { page: query.page, pageSize: 20, total: Number(count!.total),

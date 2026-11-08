@@ -7,6 +7,7 @@ import { UnitIdentityResult } from './labels/unit-identity-result';
 import { Button, Code, DetailsDrawer, DetailSkeleton, Disclosure, EmptyState, ErrorNotice, Footnote, Pager } from './ui';
 
 const titles: Record<UnitHistoryItem['kind'], string> = {
+  REASON_RECONCILED: 'Missing reason classified by Manager',
   ISSUED: 'Checked out to Production',
   RECEIVED: 'Received and unit identity created',
   LABEL_REQUESTED: 'Individual label requested',
@@ -36,6 +37,7 @@ export function UnitTrackingDrawer({ unitId, onClose }: { unitId: string; onClos
             {event.fromState && event.toState ? <p className="mt-1 text-xs text-grey-2">{stockState(event.fromState)} → {stockState(event.toState)}</p> : null}
             {event.checkoutId ? <a className="inline-flex min-h-11 items-center text-sm font-semibold text-brand underline" href="#checkout" onClick={onClose}>Open checkout history</a> : null}
             {event.checkoutId ? <p className="break-words text-xs text-grey-2">Order ID: {event.orderReference ?? 'Not provided'} · Reason: {event.reasonCode ? checkoutReasonLabels[event.reasonCode as keyof typeof checkoutReasonLabels] ?? event.reasonCode : 'Manager follow-up required'}{event.reasonNote ? ` · ${event.reasonNote}` : ''}</p> : null}
+            {event.kind === 'REASON_RECONCILED' ? <><Footnote>The original checkout had no reason. This classification moved no stock.</Footnote>{event.managerRemarks ? <p className="mt-1 break-words text-sm">Manager remarks: {event.managerRemarks}</p> : null}</> : null}
             {event.kind === 'PRINT_DIALOG_REQUESTED' ? <Footnote>Physical printing and attachment are not confirmed.</Footnote> : null}
             {event.kind === 'QR_PRESENTED' ? <Footnote>{event.method === 'CAMERA' ? 'Camera input' : 'Keyboard / scanner input'} · identifies the item without deducting stock.</Footnote> : null}
             <Disclosure summary="Record references"><div className="space-y-1 text-xs"><p>Acceptance sequence <Code>{event.originSequence}</Code></p><Code>{event.id}</Code>{event.movementId ? <p>Movement <Code>{event.movementId}</Code></p> : null}</div></Disclosure>

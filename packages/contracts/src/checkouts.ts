@@ -52,9 +52,11 @@ export type CheckoutView = {
   id: string; originId: string; transactionId: string; acceptedAt: string; originSequence: string;
   actor: { id: string; name: string; role: AppRole };
   defaults: { reason: CheckoutReason | null; orderReference: string | null };
+  exceptionStatusAsOf?: string;
   totalUnits: number; initialMissingReasonCount: number; outstandingReasonCount: number;
   lines: { id: string; ordinal: number; unit: CheckoutItemIdentity; reason: CheckoutReason | null;
     orderReference: string | null; reasonInherited: boolean; orderInherited: boolean;
+    reconciliationStatus?: 'PENDING' | 'RESOLVED' | null;
     initiallyMissingReason: boolean; exceptionId: string | null; movementId: string; eventId: string }[];
   balances: { lotId: string; usable: string }[];
   unitManifest: { id: string; ordinal: number; hash: string }[];

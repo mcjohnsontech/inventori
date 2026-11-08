@@ -131,3 +131,10 @@ One origin-locked transaction accepts header, exact lines, missing-reason obliga
 A reason exception is classification evidence, not a second deduction. Order IDs are optional, unverified, reusable grouping references. A checkout is never completed merely because another transaction uses the same Order ID. Stored acceptance responses contain quantities as of acceptance, not live stock.
 
 O5 recovery/correction requests cannot change stock before valid future cloud-delivered authorization. O8 Manager completion must use selected eligible P units and avoid a second U deduction. O4 close is Manager-only, immutable and blocked by unresolved certification evidence; internally consistent fully accounted P/held D can carry forward. These later workflows are not enabled by checkout migration 021.
+
+
+## Reason classification — milestone 6
+
+A missing-reason exception remains immutable even after resolution. A unique appended resolution binds its exact checkout, line, unit and origin to a Manager classification and hashed manifest. One invalid or already-resolved target rejects the entire group. Concurrent classifications cannot both own one exception. Deferred graph checks prohibit stock transactions/events under this metadata command, require approved Manager authority and complete audit/outbox evidence, and reject orphan/late/mutated records.
+
+Classification does not require the unit still be In Production: it explains a historical issue without moving the item. Original reasons, Order IDs, acceptance timestamps and idempotency responses never change. Live outstanding counts are separate read projections. All receipt, stock, state and print fingerprints remain unchanged on acceptance and retry. Recovery/correction authorization is not supplied by reconciliation.

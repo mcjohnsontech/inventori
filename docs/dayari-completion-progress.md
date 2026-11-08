@@ -16,8 +16,8 @@ The PRD, current audit and repository were inspected. Existing catalogue/receipt
 | 2 | Serialized receiving and six-character Unit Codes | Completed and pushed | `11aa0ebac17944cbf5a94178831f3dd0a0c13b74`; remote SHA verified. See serialized-receiving-implementation-report.md. Unit/integration/browser/build/type checks, isolated preservation, restricted-login denial and capacity proof completed. No operational migration. |
 | 3 | DYI:2 and unique-unit printing | Completed and pushed: 1608ca2 | 55 unit tests; 98-test full integration run plus final 8-case print suite (99 distinct successes); all 23 browser cases successful across runs; typecheck/build; 43-table preservation and 500-unit print capacity. |
 | 4 | Unit tracking and lifecycle timeline | Completed and pushed: 926c58b | 57 unit / 106 integration tests, final 7-case tracking repeat, six browser regressions, typecheck/build, 48-table preservation and reviewed five-width drawer. |
-| 5 | Production checkout | Verified; publication pending | All three issue roles; Production use, Sample, Internal use and Other (explanation required); optional reusable Order IDs and explicit missing-reason reconciliation approved. |
-| 6 | Missing-reason reconciliation | Pending | Append classification; never deduct twice. |
+| 5 | Production checkout | Completed and pushed: 4cebb51 | All three issue roles; Production use, Sample, Internal use and Other (explanation required); optional reusable Order IDs and explicit missing-reason reconciliation approved. |
+| 6 | Missing-reason reconciliation | Verified; publication pending | 69 unit/123 integration tests, six browser cases successful across runs, typecheck/build and 52-table preservation. |
 | 7 | BAD, recovery and disposition | Pending | Preserve damage lineage, approved authority and compensating accounting. |
 | 8 | Completion and physical reconciliation | Pending | Recorded versus physically verified evidence; no invented historical events. |
 | 9 | Manager daily close | Pending | Approved blockers, immutable snapshot and post-close visibility. |
@@ -111,3 +111,14 @@ Exact-unit checkout is implemented for all three approved roles, with saved draf
 64/64 unit tests; full PostgreSQL repeat 114/114; final affected suites 37/37 including nine checkout cases after adding Manager acceptance and old-schema compatibility selects (115 distinct successful integration cases across runs). Eight relevant browser cases have successful results across broader/targeted runs, including final accepted-first keyboard focus and lost-response replay. Final production build and typecheck passed; milestone publication is next. Initial restricted SMTP, outdated incoming-only balance assertion, cold login, reusable-Order-ID fixture count and seeded-registry helper failures are recorded in production-checkout-implementation-report.md, not counted as passes.
 
 Six responsive checkout screenshots retained separately; earlier regenerated regression screenshots restored to preserve historical evidence. Next: publish milestone 5, then Manager missing-reason reconciliation without another stock deduction. O5 pending request/cloud-execution boundary, O8 Manager-selected completion and O4 strict Manager closing remain confirmed for their affected slices.
+
+
+Milestone 5 completion: `4cebb51b30bf7f82e512d8722cb8e1130ec3158f`, `feat(production): implement exact-unit checkout and stock deduction`, branch `feat/complete-application-systems`, https://github.com/mcjohnsontech/inventori/commit/4cebb51b30bf7f82e512d8722cb8e1130ec3158f. Push and exact remote SHA verified; working tree was clean. Final accepted-first/focus browser check, production build and typecheck passed. Operational database remains through 013. Milestone 6 has started.
+
+
+Owner confirmed the O6 BAD-reporting scope for milestone 7: Production own-checkout units only; Admin/Manager may report others' issued units and pre-issue stock. Backend enforcement is required. Reconciliation verification continues first; cloud recovery/correction approval execution remains deferred.
+
+
+### Milestone 6 verification checkpoint
+
+69/69 unit tests and 123/123 PostgreSQL integration tests passed; typecheck passed. Migration 022 preserved all 52 prior-table fingerprints on the populated synthetic fixture and introduced no artificial classifications. Classification then changed metadata only. The latest 500-exception sample took 1,054.669 ms on development hardware, not a production certification. Targeted reconciliation browser journey and responsive screenshots passed; broader receiving/QR/printing regressions and final build/publication are being completed. No operational migration, stock mutation or live email.

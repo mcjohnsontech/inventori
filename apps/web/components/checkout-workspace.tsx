@@ -1,22 +1,16 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { checkoutReasonCodes, checkoutReasonLabels, checkoutSchema, resolveCheckoutLines, type CheckoutCandidate, type CheckoutInput, type CheckoutReason, type CheckoutView, type UnitIdentityLookup } from '@dayari/contracts';
+import { checkoutReasonLabels, checkoutSchema, resolveCheckoutLines, type CheckoutCandidate, type CheckoutInput, type CheckoutView, type UnitIdentityLookup } from '@dayari/contracts';
 import { api, useApiRead } from '../lib/api';
 import { useCheckoutDraft } from '../lib/checkout-draft';
 import { useQrPresentation } from '../lib/qr-presentation';
 import { formatDateTime } from '../lib/format';
+import { ReasonField as Reason } from './reason-field';
 import { UnitCameraInput } from './unit-camera-input';
-import { Button, Code, DataTable, DetailSkeleton, EmptyState, ErrorNotice, Field, Input, Page, PageHeader, Pager, Panel, Select, WarningNotice } from './ui';
+import { Button, Code, DataTable, DetailSkeleton, EmptyState, ErrorNotice, Field, Input, Page, PageHeader, Pager, Panel, WarningNotice } from './ui';
 
 type Config = { originId: string; limit: number; writeEnabled: boolean };
 type History = { page: number; pageSize: number; total: number; checkouts: { id: string; acceptedAt: string; actorName: string; totalUnits: number; outstandingReasonCount: number }[] };
-function Reason({ value, onChange, label, disabled, inherited = false }: { value: CheckoutReason | null | undefined; onChange: (reason: CheckoutReason | null | undefined) => void; label: string; disabled: boolean; inherited?: boolean }) {
-  return <div className="space-y-3"><Field label={label}>{id => <Select id={id} label={label} disabled={disabled} value={value === undefined ? 'INHERIT' : value?.code ?? 'MISSING'}
-    options={[...(inherited ? [{ value: 'INHERIT', label: 'Use session reason' }] : []), { value: 'MISSING', label: 'Reason not provided — Manager follow-up' }, ...checkoutReasonCodes.map(code => ({ value: code, label: checkoutReasonLabels[code] }))]}
-    onChange={code => onChange(code === 'INHERIT' ? undefined : code === 'MISSING' ? null : { code: code as CheckoutReason['code'], note: '' })} />}</Field>
-    {value?.code === 'OTHER' ? <Field label={`${label} explanation`} hint="At least ten meaningful characters.">{id => <Input id={id} value={value.note} maxLength={2000} disabled={disabled} onChange={event => onChange({ ...value, note: event.target.value })} />}</Field> : null}</div>;
-}
-
 function Accepted({ receipt }: { receipt: CheckoutView }) {
   const [page, setPage] = useState(1);
   const result = useRef<HTMLDivElement>(null);
@@ -32,9 +26,10 @@ function Accepted({ receipt }: { receipt: CheckoutView }) {
       { key: 'code', label: 'Unit', cell: line => <Code>{line.unit.unitCode}</Code> },
       { key: 'item', label: 'Product / variant', cell: line => <>{line.unit.productName} · {line.unit.variantName}<Code className="block">{line.unit.fullSku}</Code></> },
       { key: 'lot', label: 'Lot / batch', cell: line => <>{line.unit.lotCode ?? 'Code not assigned'}<span className="block text-xs text-grey-2">{line.unit.publicBatchCode}</span></> },
-      { key: 'reason', label: 'Reason / Order ID', cell: line => <>{line.reason ? checkoutReasonLabels[line.reason.code] : 'Manager follow-up required'}{line.reason?.note ? <span className="block break-words text-xs">{line.reason.note}</span> : null}<span className="block break-words text-xs text-grey-2">{line.orderReference ?? 'No Order ID'}</span></> },
+      { key: 'reason', label: 'Reason / Order ID', cell: line => <>{line.reason ? checkoutReasonLabels[line.reason.code] : line.reconciliationStatus === 'RESOLVED' ? 'Originally not provided · Reconciled' : 'Manager follow-up required'}{line.reason?.note ? <span className="block break-words text-xs">{line.reason.note}</span> : null}<span className="block break-words text-xs text-grey-2">{line.orderReference ?? 'No Order ID'}</span></> },
     ]} />
     <Pager page={page} pageCount={Math.ceil(receipt.lines.length / 20)} total={receipt.lines.length} onChange={setPage} />
+    {receipt.exceptionStatusAsOf ? <p className="text-xs text-grey-2">Reason follow-up status refreshed {formatDateTime(receipt.exceptionStatusAsOf)}. Original employee reasons are preserved.</p> : null}
     <p className="text-xs text-grey-2">This is the recorded acceptance result. Balances in that result reflect acceptance time; use stock availability for current quantities. Order IDs are unverified grouping references.</p>
   </div></Panel></div>;
 }
@@ -146,3 +141,5 @@ export function CheckoutWorkspace({ actorId }: { actorId: string }) {
   const config = useApiRead<Config>('checkout-config');
   return <Page className="space-y-6"><PageHeader title="Production checkout" description="" />{config.loading ? <DetailSkeleton rows={4} /> : config.error ? <ErrorNotice message={config.error} onRetry={config.refresh} /> : config.data?.writeEnabled ? <CheckoutBody actorId={actorId} config={config.data} /> : <EmptyState title="Shop checkout is unavailable">Stock-changing commands are accepted only by the shop authority.</EmptyState>}</Page>;
 }
+
+export { Accepted as CheckoutAcceptance };

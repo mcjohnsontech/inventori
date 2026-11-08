@@ -240,3 +240,13 @@ CONFIRMED O8: only Inventory Manager confirms completion of individually selecte
 CONFIRMED O4: only Inventory Manager confirms daily closing; Admin reviews only, with no exception override. Backend blocks period-affecting unresolved missing checkout reasons, quantity anomalies/stock-ledger discrepancies, missing mandatory movement evidence and pending approvals necessary to certify quantities. Show actionable underlying records. Fully evidenced, internally consistent In Production and held-damage quantities may carry forward; pending approval does not automatically block unless required to certify quantities. Internet unavailability alone is not a blocker. Closing uses authoritative records, is atomic/idempotent/immutable and prevents concurrent changes from invalidating its certified snapshot. Subsequent corrections append new evidence. UI separates blocking issues, accounted carry-forward and daily movements. Deferred infrastructure is not authorized by this decision.
 
 IMPLEMENTATION STATUS: these are approved policies, not claims of completed workflows. Incorporate into affected slice designs, PRD addendum, tests and final report; exercise migrations only on isolated fixtures. Operational rollout remains gated.
+
+
+## O6 — BAD-reporting scope, owner confirmation 8 November 2026
+
+CONFIRMED: Production may report BAD/damage only for units from its own checkout. Admin and Inventory Manager may report other staff's issued units and pre-issue stock. Resolve exact unit, current eligible state and original checkout/intake provenance server-side; no cross-worker issue administration is granted to Production. Production responses retain the approved sensitive-field exclusions. This permission decision does not authorize recovery/correction execution, local Admin approvals, a new cloud trust mechanism or operational migrations. O5 pending-request boundary remains unchanged.
+
+
+## B04 — owner-confirmed disposition mapping, 8 November 2026
+
+CONFIRMED: Inventory Manager records Held or Reworked as damaged/unavailable; neither is recovery. Discarded or Returned to vendor transfers the exact damaged unit to terminal Removed, preserving all evidence. Removed units cannot return through this workflow. Recovery/correction execution remains gated on future cloud-delivered authorization under O5. No operational migration or stock execution is authorized by this design confirmation.

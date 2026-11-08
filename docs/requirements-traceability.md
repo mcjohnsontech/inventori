@@ -225,3 +225,16 @@ Later checkout/order/damage/count/closing histories are added only with their do
 FR-04/05/21: explicit checkout binds distinct exact units across products, suppliers and batches, optional opaque reusable Order IDs, approved reasons/defaults/overrides and missing-reason obligations. U-to-P occurs once per selected unit, atomically, with authentication/current shop authorization, idempotency, audit/outbox and origin sequencing. No quantity-only or DYI:1 shared-lot fallback. Production checkout reads are own-record only and omit supplier/invoice/damaged/print administration data.
 
 Implementation: checkouts.ts shared contracts, CheckoutsService, migration 021, CheckoutWorkspace and actor/origin draft hook. Verification: tests/unit/checkouts.test.ts, tests/integration/checkouts.test.ts and tests/e2e/checkouts.spec.ts; actual final results belong in production-checkout-implementation-report.md. Manager missing-reason reconciliation, BAD, selected-unit completion and closing remain subsequent milestones. O4/O5/O8 approved rules are recorded in decisions.md; pending cloud authorization is not an accepted stock recovery/correction.
+
+
+## Missing-reason reconciliation — milestone 6
+
+| Confirmed requirement | Implementation | Verification |
+|---|---|---|
+| Manager classifies unexplained issues without another deduction | ReconciliationService, immutable 022 root/exact rows | unchanged stock fingerprints, rollback, concurrency and 500-exception test |
+| Preserve original employee, time, Order ID and missing reason | append-only resolution; unchanged Checkout/Line/Exception and acceptance replay | original JSON equality, live outstanding count and original details drawer |
+| Scoped history and filterable queue | Admin/Manager date/employee/order/unit/status queue, 20-row pages | origin collision, filters, pagination, role denial |
+| Explicit review and resilient drafts | actor/origin draft, exact selection, retry key, review/Back/discard | browser lost-response/reload, cross-page selection, five widths |
+| Production privacy | own checkout status only, no reconciliation or Manager remarks | direct API negatives and timeline/DTO tests |
+
+Actual suite results are recorded in reason-reconciliation-implementation-report.md. O6 BAD scope is confirmed for the next milestone, not implemented by reconciliation.

@@ -1,0 +1,97 @@
+import { randomUUID } from 'node:crypto';
+import { mkdir } from 'node:fs/promises';
+import { expect, test } from '@playwright/test';
+import { choose } from './ui.js';
+
+test('Manager reconciles selected original exceptions across pages without another stock deduction', async ({ page }) => {
+  test.setTimeout(180_000);
+  await page.goto('/');
+  const login = async (email: string) => {
+    await page.getByLabel('Email address').fill(email);
+    await page.getByLabel('Password', { exact: true }).fill(process.env.E2E_PASSWORD!);
+    const response = page.waitForResponse(response => new URL(response.url()).pathname === '/api/sessions' && response.request().method() === 'POST');
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click(); expect((await response).status()).toBe(200);
+    await expect(page.getByRole('button', { name: 'Sign out', exact: true })).toBeVisible();
+  };
+  const post = async (path: string, body: object) => {
+    const response = await page.request.post('/api/' + path, { headers: { Origin: 'http://127.0.0.1:3101', 'Idempotency-Key': randomUUID() }, data: body });
+    expect(response.ok(), await response.text()).toBe(true); return response.json();
+  };
+  const get = async (path: string) => { const response = await page.request.get('/api/' + path); expect(response.ok(), await response.text()).toBe(true); return response.json(); };
+  await login('e2e-admin@dayari.test');
+  const catalogue = await get('catalogue');
+  const source = (await post('catalogue/supplier-setups', { supplier: { name: 'Reason browser ' + randomUUID().slice(0, 8) }, location: { registryId: catalogue.locations.find((row: any) => row.code === 'LG').id } })).source;
+  const product = await post('catalogue/product-setups', { sourceId: source.id, product: { name: 'Reason browser notebook ' + randomUUID().slice(0, 8) }, variants: [] });
+  const receipt = await post('receipts', { sourceId: source.id, deliveredOn: '2020-01-01', lines: [{ skuId: product.skus[0].id, usableQuantity: 25, damagedQuantity: 0, damageReason: '' }] });
+  const units = [...(await get(`receipts/${receipt.id}/units?page=1`)).units, ...(await get(`receipts/${receipt.id}/units?page=2`)).units];
+  const order = 'Reason-browser-' + randomUUID().slice(0, 8);
+  await page.getByRole('button', { name: 'Sign out', exact: true }).click(); await login('e2e-production@dayari.test');
+  const checkout = await post('checkouts', { reason: null, orderReference: order, lines: units.map((unit: any) => ({ unitId: unit.id })) });
+  expect(checkout.initialMissingReasonCount).toBe(25);
+  await expect(page.getByRole('button', { name: 'Reason reconciliation', exact: true })).toHaveCount(0);
+  expect((await page.request.get('/api/checkout-reasons')).status()).toBe(403);
+  await page.getByRole('button', { name: 'Sign out', exact: true }).click(); await login('e2e-admin@dayari.test');
+  await page.getByRole('button', { name: 'Reason reconciliation', exact: true }).click();
+  const filter = async () => {
+    const result = page.waitForResponse(response => new URL(response.url()).pathname === '/api/checkout-reasons' && new URL(response.url()).searchParams.get('orderReference') === order);
+    await page.getByLabel('Exact Order ID', { exact: true }).fill(order); expect((await result).ok()).toBe(true);
+  };
+  await filter();
+  const queue = page.getByRole('region', { name: 'Reason exception queue', exact: true });
+  await expect(queue.getByRole('checkbox')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Review classification', exact: true })).toHaveCount(0);
+  await queue.getByRole('button', { name: 'Original checkout', exact: true }).first().click();
+  await expect(page.getByRole('dialog')).toContainText('25 physical items');
+  await page.getByRole('button', { name: 'Close original checkout', exact: true }).click();
+  await expect(page.getByLabel('Exact Order ID', { exact: true })).toHaveValue(order);
+  await page.getByRole('button', { name: 'Sign out', exact: true }).click(); await login('e2e-manager@dayari.test');
+  await page.getByRole('button', { name: 'Reason reconciliation', exact: true }).click(); await filter();
+  await queue.getByRole('checkbox', { name: `Select exception for ${units[0].unitCode}`, exact: true }).check();
+  await queue.getByRole('button', { name: 'Next page', exact: true }).click();
+  await queue.getByRole('checkbox', { name: `Select exception for ${units[20].unitCode}`, exact: true }).check();
+  await choose(page, 'Manager classification', 'SAMPLE');
+  const remarks = 'Manager confirmed the original sample purpose';
+  await page.getByLabel('Manager remarks (optional)', { exact: true }).fill(remarks);
+  await page.getByRole('button', { name: 'Review classification', exact: true }).click();
+  await expect(queue).toHaveCount(0);
+  await page.getByRole('button', { name: 'Back to classification', exact: true }).click();
+  await expect(queue.getByRole('button', { name: 'Page 2', exact: true })).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByLabel('Manager remarks (optional)', { exact: true })).toHaveValue(remarks);
+  page.once('dialog', dialog => dialog.dismiss());
+  await page.getByRole('button', { name: 'Discard classification draft', exact: true }).click();
+  await expect(page.getByRole('table', { name: 'Selected reason obligations', exact: true }).getByText(units[0].unitCode, { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.getByLabel('Manager remarks (optional)', { exact: true })).toHaveValue(remarks);
+  await page.getByRole('button', { name: 'Review classification', exact: true }).click();
+  const stockBefore = (await get(`stock?batchId=${receipt.batch.id}`)).lots;
+  await mkdir('docs/images/completion/milestone-6', { recursive: true });
+  for (const width of [1440, 1024, 768, 390, 320]) {
+    await page.setViewportSize({ width, height: 1000 }); await page.evaluate(() => window.scrollTo(0, 0));
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: `docs/images/completion/milestone-6/reconciliation-review-${width}.png`, fullPage: true });
+  }
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  const keys: string[] = []; let lost = false;
+  await page.route('**/api/reason-reconciliations', async route => {
+    if (route.request().method() !== 'POST') return route.continue();
+    keys.push(route.request().headers()['idempotency-key']!);
+    if (lost) return route.continue();
+    const result = await route.fetch(); expect(result.ok()).toBe(true); lost = true; await route.abort('failed');
+  });
+  await page.getByRole('button', { name: 'Confirm classification of 2 exceptions', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Retry saved classification', exact: true })).toBeVisible();
+  await page.reload();
+  await page.getByRole('button', { name: 'Retry saved classification', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Classification recorded', exact: true })).toBeFocused();
+  expect(keys).toHaveLength(2); expect(keys[1]).toBe(keys[0]);
+  expect((await get(`stock?batchId=${receipt.batch.id}`)).lots).toEqual(stockBefore);
+  const live = await get('checkouts/' + checkout.id);
+  expect(live.initialMissingReasonCount).toBe(25); expect(live.outstandingReasonCount).toBe(23);
+  expect(live.lines.every((line: any) => line.reason === null)).toBe(true);
+  expect((await get('checkout-reasons?status=RESOLVED&orderReference=' + encodeURIComponent(order))).total).toBe(2);
+  await page.screenshot({ path: 'docs/images/completion/milestone-6/reconciliation-accepted-1440.png', fullPage: true });
+  await page.getByRole('button', { name: 'Sign out', exact: true }).click(); await login('e2e-production@dayari.test');
+  const own = await get('checkouts/' + checkout.id);
+  expect(own.outstandingReasonCount).toBe(23); expect(JSON.stringify(own)).not.toContain(remarks);
+  expect((await page.request.get('/api/checkout-reasons?status=RESOLVED')).status()).toBe(403);
+});

@@ -51,7 +51,9 @@ test('Production reviews exact units, preserves drafts and retries a lost checko
   await page.getByRole('button', { name: 'Back to items', exact: true }).click();
   await expect(page.getByLabel('Session Order ID (optional)', { exact: true })).toHaveValue('Reusable Order A');
   await expect(page.getByRole('button', { name: 'Overview', exact: true })).toHaveCount(0);
+  const restoredPreview = page.waitForResponse(response => new URL(response.url()).pathname === '/api/checkouts/preview' && response.request().method() === 'POST');
   await page.reload();
+  expect((await restoredPreview).status()).toBe(200);
   await expect(page.getByRole('button', { name: `Remove ${units[0].unitCode}`, exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Review checkout', exact: true }).click();
   await mkdir('docs/images/completion/milestone-5', { recursive: true });

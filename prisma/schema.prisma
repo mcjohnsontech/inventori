@@ -633,4 +633,34 @@ model CheckoutException {
   originId String @db.Uuid
   commandId String @db.Uuid
   createdAt DateTime @db.Timestamptz(6)
+  @@index([originId,createdAt,id])
+}
+
+
+model ReasonReconciliation {
+  id String @id @db.Uuid
+  originId String @db.Uuid
+  actorId String @db.Uuid
+  actorRole Role
+  commandId String @unique @db.Uuid
+  recordedAt DateTime @db.Timestamptz(6)
+  reasonCode String
+  reasonNote String
+  remarks String
+  exceptionCount Int
+  manifest Json
+  canonicalManifest String
+  manifestHash String
+  @@index([originId,recordedAt,id])
+}
+model CheckoutReasonResolution {
+  id String @id @db.Uuid
+  originId String @db.Uuid
+  reconciliationId String @db.Uuid
+  exceptionId String @unique @db.Uuid
+  checkoutLineId String @db.Uuid
+  checkoutId String @db.Uuid
+  unitId String @db.Uuid
+  @@index([reconciliationId])
+  @@index([unitId])
 }

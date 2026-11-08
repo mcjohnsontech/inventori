@@ -1,6 +1,7 @@
 'use client';
 import type { Catalogue, Role } from '@dayari/contracts';
 
+import { ReconciliationWorkspace } from './reconciliation-workspace';
 import { CheckoutWorkspace } from './checkout-workspace';
 import { CatalogueWorkspace } from './catalogue/catalogue-workspace';
 import { Dashboard } from './dashboard';
@@ -120,6 +121,9 @@ export function WorkspaceRouter({
   }
 
   switch (workspace) {
+    case 'reconciliation':
+      return <ReconciliationWorkspace actorId={user.id} />;
+
     case 'checkout':
       return <CheckoutWorkspace actorId={user.id} />;
 

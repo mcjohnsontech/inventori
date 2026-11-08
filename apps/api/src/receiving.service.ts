@@ -114,7 +114,7 @@ export class ReceivingService {
       return { asOf: new Date().toISOString(), lots, bySku: [...bySku.values()], byProduct: [...byProduct.values()] };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
   }
-  async create(user: User, keyInput: unknown, input: unknown) {
+  async create(user: User, keyInput: unknown, input: unknown): Promise<AcceptedReceipt> {
     this.allow(user);
     if (this.mode !== 'SHOP') throw new ForbiddenException('Only the shop may receive stock');
     const key = parse(idempotencyKeySchema, keyInput);
@@ -128,7 +128,7 @@ export class ReceivingService {
           await tx.$queryRaw`SELECT id FROM "User" WHERE id=${user.id}::uuid FOR SHARE`;
           const actor = await tx.user.findUniqueOrThrow({ where: { id: user.id } }); this.allow(actor); if(actor.authVersion!==user.authVersion||actor.mustChangePassword)throw new ForbiddenException('Session security state changed');
           const prior = await tx.commandResult.findUnique({ where: { originId_actorId_commandType_key: { originId: this.originId, actorId: user.id, commandType, key } } });
-          if (prior) { if (prior.requestHash !== requestHash) throw new ConflictException('Idempotency key reused with different receipt'); return prior.response; }
+          if (prior) { if (prior.requestHash !== requestHash) throw new ConflictException('Idempotency key reused with different receipt'); return prior.response as unknown as AcceptedReceipt; }
           const serialized = await hasUnitSchema(tx);
           if (serialized && data.lines.reduce((sum, line) => sum + line.usableQuantity + line.damagedQuantity, 0) > serializedReceiptLimit) throw new BadRequestException('A serialized receipt supports at most 10,000 units. Record larger deliveries as explicit separate receipts.');
           const unitIntakes: UnitIntake[] = [];
@@ -169,7 +169,7 @@ export class ReceivingService {
           await tx.auditEvent.create({ data: { originId: this.originId, actorId: actor.id, actorRole: actor.role, commandId, action: 'inventory.receipt.accepted', subjectId: receipt.id, snapshot: payload } });
           await tx.outboxEvent.create({ data: { originId: this.originId, originSequence: node.nextSequence, eventType: 'inventory.receipt.accepted', aggregateId: receipt.id, commandId, actorId: actor.id, payload, payloadHash: digest(canonical(payload)) } });
           await tx.commandResult.create({ data: { id: commandId, originId: this.originId, actorId: actor.id, commandType, key, requestHash, response } });
-          return response;
+          return response as unknown as AcceptedReceipt;
         }, { timeout: 15000, maxWait: 10000 });
       } catch (error) {
         if (error instanceof Prisma.PrismaClientKnownRequestError) {

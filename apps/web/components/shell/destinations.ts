@@ -19,6 +19,7 @@ import type { IconSpec } from '../ui/icon';
 
 export const destinations = {
   dashboard: { label: 'Overview', icon: DashboardSquare01Icon as IconSpec },
+  reconciliation: { label: 'Reason reconciliation', icon: Invoice01Icon as IconSpec },
   checkout: { label: 'Production checkout', icon: BoxesIcon as IconSpec },
   availability: { label: 'Usable stock', icon: PackageSearchIcon as IconSpec },
   inventory: { label: 'Inventory', icon: BoxesIcon as IconSpec },
@@ -39,6 +40,7 @@ export type Workspace = keyof typeof destinations;
 /** What a workspace requires. The sidebar and the router both read this. */
 const workspaceCapabilities: Record<Workspace, Capability> = {
   dashboard: 'OPERATIONAL_STOCK',
+  reconciliation: 'RECONCILIATION_READ',
   checkout: 'CHECKOUT',
   availability: 'IDENTIFY',
   inventory: 'OPERATIONAL_STOCK',
@@ -62,7 +64,7 @@ export function workspaceAllowed(role: Role, workspace: Workspace) {
  * Suppliers and Receiving are consolidated into Catalogue and the receipt
  * workflow; both workspaces stay routable so existing workflows and links work. */
 export const navGroups: { name: string; keys: Workspace[] }[] = [
-  { name: 'Stock & operations', keys: ['dashboard', 'availability', 'inventory', 'checkout', 'receipts'] },
+  { name: 'Stock & operations', keys: ['dashboard', 'availability', 'inventory', 'checkout', 'reconciliation', 'receipts'] },
   { name: 'Catalogue', keys: ['catalogue'] },
   { name: 'Tools & reports', keys: ['labels', 'qr', 'reports'] },
   { name: 'Workspace', keys: ['users', 'settings', 'help'] },

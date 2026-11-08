@@ -1,0 +1,11 @@
+{
+  "syntheticOnly": true,
+  "exceptions": 500,
+  "elapsedMs": 1054.6690000000017,
+  "accepted": true,
+  "stockUnchanged": true,
+  "samples": 1,
+  "limitations": [
+    "Development loopback sample only; not a production hardware certification"
+  ]
+}
