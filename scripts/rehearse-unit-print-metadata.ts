@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { execFileSync } from 'node:child_process';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, writeFile } from 'node:fs/promises';
 import { database } from '../apps/api/src/database.js';
 import { isolatedBackfillUrl } from '../apps/api/src/identity-backfill.js';
 
@@ -8,6 +8,9 @@ const url = isolatedBackfillUrl(process.env.TEST_DATABASE_URL);
 if (process.argv[2]) url.pathname = '/' + process.argv[2];
 if (!/^\/dayari_cutover_[a-z0-9_]+_test$/.test(url.pathname))
   throw Error('Use an isolated retained cutover rehearsal fixture only');
+const repositoryMigrations = (await readdir('prisma/migrations', { withFileTypes: true })).filter(entry => entry.isDirectory()).map(entry => entry.name).sort();
+if (repositoryMigrations.at(-1) !== '202611070019_unit_label_manifests')
+  throw Error('Run this rehearsal from its matching milestone commit; later migrations must not be applied silently');
 const db = database(url.toString());
 try {
   const applied = await db.$queryRawUnsafe<{ migration_name: string }[]>(

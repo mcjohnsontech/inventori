@@ -569,3 +569,17 @@ model UnitLabelEvent {
   @@unique([jobId,kind,attemptId])
   @@index([jobId,recordedAt])
 }
+
+model UnitObservation {
+  id String @id @db.Uuid
+  originId String @db.Uuid
+  unitId String @db.Uuid
+  lotId String @db.Uuid
+  actorId String @db.Uuid
+  actorRole Role
+  commandId String @unique @db.Uuid
+  method String
+  recordedAt DateTime @db.Timestamptz(6)
+  @@index([unitId,recordedAt,id])
+  @@index([originId,actorId,recordedAt])
+}

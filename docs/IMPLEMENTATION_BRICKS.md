@@ -101,3 +101,8 @@ The 6 November directive authorizes sequential implementation beyond earlier sto
 ## Complete V1 directive — milestones 2/3 software verification
 
 Serialized receiving milestone 2 was verified and pushed as 11aa0eb. Milestone 3 implements DYI:2 exact-unit lookup, exact-unit label manifests, native printing and PDF fallback while retaining DYI:1. Isolated migration 019 preserves all 43 existing table fingerprints. See unit-qr-printing-implementation-report.md for executed tests, browser evidence, capacity and remaining gates. Operational migration/enrollment and physical printer certification remain unapproved/unverified; production checkout and later lifecycle domains are subsequent milestones.
+
+
+## Complete V1 directive — milestone 4
+
+Recorded unit tracking adds an authorized drawer and immutable QR-presentation metadata through isolated migration 020. Existing lookup is read-only; observations/print requests are not labelled as physical verification or successful stock transitions. Operational migration, historical enrollment and hardware verification remain gated. See unit-tracking-implementation-design.md and its implementation report for actual verification.

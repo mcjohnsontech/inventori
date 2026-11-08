@@ -2,6 +2,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { QrLookup, UnitIdentityLookup } from '@dayari/contracts';
 import { UnitIdentityResult } from './unit-identity-result';
+import { UnitTrackingDrawer } from '../unit-tracking-drawer';
+import { useQrPresentation } from '../../lib/qr-presentation';
 
 import { notifyAuthFailure } from '../../lib/api';
 import { cn } from '../../lib/cn';
@@ -30,6 +32,8 @@ type Source = { id: string; name: string; code: string; originId: string };
 export function QrWorkspace({ initialCode = '' }: { initialCode?: string }) {
   const [payload, setPayload] = useState('');
   const [unitCode, setUnitCode] = useState('');
+  const [tracking, setTracking] = useState('');
+  const presentation = useQrPresentation();
   const [prefix, setPrefix] = useState('');
   const [result, setResult] = useState<QrLookup | UnitIdentityLookup | null>(null);
   const [error, setError] = useState('');
@@ -52,6 +56,7 @@ export function QrWorkspace({ initialCode = '' }: { initialCode?: string }) {
   const generation = useRef(0);
 
   function clearLookup() {
+    presentation.cancel();
     requestVersion.current += 1;
     request.current?.abort();
     working.current = false;
@@ -95,7 +100,7 @@ export function QrWorkspace({ initialCode = '' }: { initialCode?: string }) {
     };
   }, []);
 
-  async function resolve(body: unknown, path = 'qr/resolve', method: 'GET' | 'POST' = 'POST') {
+  async function resolve(body: unknown, path = 'qr/resolve', method: 'GET' | 'POST' = 'POST', qrMethod: 'CAMERA' | 'QR_INPUT' | null = null) {
     if (working.current) return;
     working.current = true;
 
@@ -119,7 +124,10 @@ export function QrWorkspace({ initialCode = '' }: { initialCode?: string }) {
       if (!response.ok) {
         throw new Error(typeof data.message === 'string' ? data.message : 'Lot lookup failed');
       }
-      if (ticket === requestVersion.current) setResult(data);
+      if (ticket === requestVersion.current) {
+        setResult(data);
+        if(data.payloadVersion===2 && qrMethod && typeof body==='object' && body && 'payload' in body && typeof body.payload==='string') presentation.record({payload:body.payload,method:qrMethod});
+      }
     } catch (failure) {
       if (ticket === requestVersion.current && !controller.signal.aborted) {
         setError(
@@ -139,7 +147,7 @@ export function QrWorkspace({ initialCode = '' }: { initialCode?: string }) {
     let framed = text.replace(/(?:\r\n|\r|\n)$/, '');
     if (prefix && framed.startsWith(prefix)) framed = framed.slice(prefix.length);
     setPayload(framed);
-    return resolve({ payload: framed });
+    return resolve({ payload: framed },'qr/resolve','POST','QR_INPUT');
   }
 
   async function startCamera() {
@@ -176,7 +184,7 @@ export function QrWorkspace({ initialCode = '' }: { initialCode?: string }) {
         stopCamera();
         clearLookup();
         setPayload(text);
-        void resolve({ payload: text });
+        void resolve({ payload: text },'qr/resolve','POST','CAMERA');
       };
 
       type NativeInstance = {
@@ -364,7 +372,9 @@ export function QrWorkspace({ initialCode = '' }: { initialCode?: string }) {
 
         {error ? <ErrorNotice message={error} /> : null}
 
-        {result?.payloadVersion===2 ? <UnitIdentityResult unit={result}/> : null}
+        {result?.payloadVersion===2 ? <div className="space-y-3"><UnitIdentityResult unit={result}/><Button variant="secondary" onClick={()=>setTracking(result.unitId)}>View unit history</Button>
+          {presentation.state!=='idle'?<section aria-label="QR presentation evidence" className="space-y-2 text-sm"><p>{presentation.state==='saved'?'QR presentation recorded. No stock was changed.':presentation.state==='saving'?'Saving QR presentation history…':'Identity resolved; QR presentation history was not confirmed.'}</p>{presentation.state==='error'?<><p className="text-grey-2">{presentation.error}</p><Button variant="secondary" onClick={presentation.retry}>Retry scan record</Button></>:null}</section>:null}
+        </div> : null}
         {result?.payloadVersion===1 ? (
           <section
             aria-label="Resolved stock lot"
@@ -498,6 +508,7 @@ export function QrWorkspace({ initialCode = '' }: { initialCode?: string }) {
           </form>
         </Panel>
       </div>
+      {tracking ? <UnitTrackingDrawer key={tracking} unitId={tracking} onClose={()=>setTracking('')} /> : null}
     </Page>
   );
 }

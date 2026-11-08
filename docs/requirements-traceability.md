@@ -204,3 +204,17 @@ Owner's complete V1 directive supersedes the earlier V1 shared-unit-only restric
 | No compulsory success reporting | explicit handoff evidence only | browser native-dialog spy; no printed/failed form |
 
 Software checks do not certify physical printer/media reliability or authorize operational migration. Milestone report records actual executions separately.
+
+
+## Milestone 4 — recorded unit history
+
+| Requirement | Implementation | Evidence |
+|---|---|---|
+| Trace a Unit Code without losing browsing context | ExactUnitMatch and UnitTrackingDrawer in inventory/receipts/QR | five-width browser journey, close/focus/filter restoration |
+| Actual chronology and responsible actors | UnitTrackingService union of recorded domain events ordered by accepted origin sequence | tracking integration chronology/actor assertions |
+| Who presented a QR, without scan-only deduction | immutable UnitObservation and strict idempotent metadata command | concurrency/replay/conflict/rollback and stock fingerprints |
+| Production privacy | server-side own-presentation query plus minimal identity DTO | negative field/event assertions including damaged unit and other actor |
+| Backdated delivery versus acceptance | separate deliveredOn and server receivedAt labels | backdated fixture checks |
+| No invented historical or physical verification | empty migration, explicit evidence labels and unknown verification | 48-table preservation and browser assertions |
+
+Later checkout/order/damage/count/closing histories are added only with their domain milestones.

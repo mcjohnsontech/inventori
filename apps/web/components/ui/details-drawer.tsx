@@ -13,11 +13,13 @@ export function DetailsDrawer({
   eyebrow = 'Inventory details',
   onClose,
   children,
+  closeLabel = 'Close lot details',
 }: {
   title: string;
   eyebrow?: string;
   onClose: () => void;
   children: ReactNode;
+  closeLabel?: string;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const id = useId();
@@ -62,7 +64,7 @@ export function DetailsDrawer({
         <button
           autoFocus
           type="button"
-          aria-label="Close lot details"
+          aria-label={closeLabel}
           onClick={onClose}
           className="grid size-9 shrink-0 place-items-center rounded-lg text-grey-3 transition-colors hover:bg-surface-muted hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
         >

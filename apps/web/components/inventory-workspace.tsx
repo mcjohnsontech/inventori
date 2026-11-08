@@ -39,6 +39,8 @@ import {
   card,
 } from './ui';
 import { IdentityLookup } from './identity-lookup';
+import { ExactUnitMatch } from './exact-unit-match';
+import { UnitTrackingDrawer } from './unit-tracking-drawer';
 
 const PER_PAGE = 18;
 
@@ -66,6 +68,7 @@ export function InventoryWorkspace({
   const [group, setGroup] = useState<Group>('lots');
   const [selected, setSelected] = useState(initialLotId);
   const [page, setPage] = useState(1);
+  const [unitSelected, setUnitSelected] = useState('');
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const details = useRef<HTMLElement>(null);
@@ -251,6 +254,7 @@ export function InventoryWorkspace({
       />
 
       <div className="mt-5"><IdentityLookup /></div>
+      <ExactUnitMatch query={search} onOpen={setUnitSelected} />
 
       {productId ? (
         <Breadcrumb>
@@ -267,7 +271,7 @@ export function InventoryWorkspace({
           <SearchInput
             label="Search inventory"
             value={search}
-            placeholder="Product, variant, SKU, lot or batch…"
+            placeholder="Product, variant, SKU, Unit Code, lot or batch…"
             onChange={(value) => {
               setSearch(value);
               reset();
@@ -499,6 +503,7 @@ export function InventoryWorkspace({
         Balances are server projections of the immutable movement ledger. Printing and
         identification never change stock.
       </Footnote>
+      {unitSelected ? <UnitTrackingDrawer key={unitSelected} unitId={unitSelected} onClose={()=>setUnitSelected('')} /> : null}
     </Page>
   );
 }

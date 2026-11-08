@@ -115,3 +115,8 @@ The full immutable receipt graph is validated once per DeliveryBatch at deferred
 ## Exact-unit print metadata — milestone 3
 
 A unit-label job contains each selected saved unit at most once. An initial immutable claim is unique per unit; reasoned selective reprints retain the original unit, QR and content. UnitLabelJob/Line/Claim/Artifact/Event are separate from stock authority. Command acceptance may advance the origin metadata sequence, but print selection/preparation/handoff/reprint cannot insert UnitEvent, change UnitState, or change a receipt, stock movement or balance. Physical success, attachment and verification are never inferred from a print dialog. Historical DYI:1 labels remain shared-lot identities.
+
+
+## QR presentations and tracking — milestone 4
+
+UnitObservation is append-only non-stock evidence. It references the exact immutable unit/origin/lot and authenticated actor, and commits with one idempotent command/audit/outbox group. It never changes UnitEvent, UnitState, custody, quantity, receipt or print records. A presentation cannot establish a checkout, physical attachment, count or successful print. Timeline reads create no observations and preserve authoritative projections.

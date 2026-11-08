@@ -1,5 +1,5 @@
 import { BadRequestException, HttpException, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
-import type { PrismaClient, User } from '@prisma/client';
+import type { Prisma, PrismaClient, User } from '@prisma/client';
 import { z } from 'zod';
 import { unitExactCodeSchema, type UnitIdentityLookup } from '@dayari/contracts';
 import { requireCapability } from './permissions.js';
@@ -20,11 +20,11 @@ export class UnitsService {
   if(!code.success||!scope.success)throw new BadRequestException('Enter exactly six readable Unit Code characters and a valid shop scope');
   return this.lookup(user,scope.data.originId??this.originId,null,code.data);
  }
- async byId(user:User,originId:string,id:string){this.allow(user);if(!z.uuid().safeParse(id).success)throw new BadRequestException('Invalid unit identity');return this.lookup(user,originId,id,null);}
- private async lookup(user:User,originId:string,id:string|null,code:string|null):Promise<UnitIdentityLookup>{
+ async byId(user:User,originId:string,id:string,reader:Prisma.TransactionClient=this.db){this.allow(user);if(!z.uuid().safeParse(id).success)throw new BadRequestException('Invalid unit identity');return this.lookup(user,originId,id,null,reader);}
+ private async lookup(user:User,originId:string,id:string|null,code:string|null,reader:Prisma.TransactionClient=this.db):Promise<UnitIdentityLookup>{
   if(originId!==this.originId)throw new NotFoundException('UNIT_NOT_AVAILABLE');
-  if(!await hasUnitSchema(this.db))throw new ServiceUnavailableException('Unit identity lookup requires the separately approved database upgrade');
-  const rows=await this.db.$queryRaw<(Omit<UnitIdentityLookup,'payloadVersion'|'availability'|'dataAsOf'|'receivedAt'> & {state:string;condition:string;receivedAt:Date})[]>`
+  if(!await hasUnitSchema(reader))throw new ServiceUnavailableException('Unit identity lookup requires the separately approved database upgrade');
+  const rows=await reader.$queryRaw<(Omit<UnitIdentityLookup,'payloadVersion'|'availability'|'dataAsOf'|'receivedAt'> & {state:string;condition:string;receivedAt:Date})[]>`
    SELECT u.id AS "unitId",u."unitCode",u."originId",u."lotId",li.code AS "lotCode",p.id AS "productId",pi.code AS "productCode",p.name AS "productName",
     v.id AS "variantId",v.name AS "variantName",s.id AS "skuId",s."fullCode" AS "fullSku",b.id AS "batchId",b."publicCode" AS "publicBatchCode",
     state.state,state.condition,u."recordedAt" AS "receivedAt",b.snapshot->>'supplierName' AS "supplierName",b.snapshot->>'sourceName' AS "sourceName"

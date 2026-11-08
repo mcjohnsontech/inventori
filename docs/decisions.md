@@ -222,3 +222,10 @@ ENGINEERING: separate additive unit-print metadata tables preserve historical lo
 ## Checkout reason catalogue — owner follow-up
 
 CONFIRMED: Production use, Sample, Internal use and Other. Other requires an explanation. An explicit blank reason remains permitted and creates the Manager reconciliation obligation; no default reason is silently assigned. All three existing roles may confirm checkout. This resolves the previously open taxonomy gate; inventory transitions still require the separate tested vertical-slice implementation.
+
+
+## Unit tracking interpretation — milestone 4
+
+CONFIRMED directive: actual unit history and authenticated scan attribution, with no invented events or physical locations and no scan-only deduction. ENGINEERING: store QR presentations in separate immutable UnitObservation metadata, leaving identity lookup read-only. Camera versus keyboard/scanner is a declared input method, not hardware or physical verification. Admin/Manager read operational history; Production sees only its own presentation history plus existing minimal identity/availability. Actor UUID/recorded role are immutable; display names reflect current staff profiles.
+
+Delivery business date and server recording time remain separately labelled. Product and prefix-free Unit Codes may share text across typed identity namespaces; exact inventory matches are explicitly labelled, never automatically renumbered or chosen. Operational migration 020 remains separately gated.

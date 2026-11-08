@@ -14,8 +14,8 @@ The PRD, current audit and repository were inspected. Existing catalogue/receipt
 |---|---|---|---|
 | 1 | Baseline stabilization and CI | Completed and pushed | `1839aa71d52d0eb4633e0fc332be1399a8c0bbf0`; remote SHA verified. 50 unit/81 integration tests, fresh migration rehearsal, 22 distinct browser passes across runs, typecheck/build and visual review. Remote CI run not yet verified. |
 | 2 | Serialized receiving and six-character Unit Codes | Completed and pushed | `11aa0ebac17944cbf5a94178831f3dd0a0c13b74`; remote SHA verified. See serialized-receiving-implementation-report.md. Unit/integration/browser/build/type checks, isolated preservation, restricted-login denial and capacity proof completed. No operational migration. |
-| 3 | DYI:2 and unique-unit printing | Verified; completion publication pending | 55 unit tests; 98-test full integration run plus final 8-case print suite (99 distinct successes); all 23 browser cases successful across runs; typecheck/build; 43-table preservation and 500-unit print capacity. |
-| 4 | Unit tracking and lifecycle timeline | Pending | Authorized exact lookup/details; only recorded events/locations. Extend as later domains arrive. |
+| 3 | DYI:2 and unique-unit printing | Completed and pushed: 1608ca2 | 55 unit tests; 98-test full integration run plus final 8-case print suite (99 distinct successes); all 23 browser cases successful across runs; typecheck/build; 43-table preservation and 500-unit print capacity. |
+| 4 | Unit tracking and lifecycle timeline | Verified; publication pending | 57 unit / 106 integration tests, final 7-case tracking repeat, six browser regressions, typecheck/build, 48-table preservation and reviewed five-width drawer. |
 | 5 | Production checkout | Pending implementation | All three issue roles; Production use, Sample, Internal use and Other (explanation required); optional reusable Order IDs and explicit missing-reason reconciliation approved. |
 | 6 | Missing-reason reconciliation | Pending | Append classification; never deduct twice. |
 | 7 | BAD, recovery and disposition | Pending | Preserve damage lineage, approved authority and compensating accounting. |
@@ -82,3 +82,15 @@ Exact origin-qualified DYI:2 lookup, six-character unit entry, Production field 
 Migration 019 isolated preservation: all 43 previous table fingerprints unchanged; zero fabricated print records. Maximum 500-unit API rehearsal: manifest 1.19s, artifact 3.73s, stock unchanged. Final renderer measured samples 2.37–3.30s; hardware/production performance still requires separate validation. Direct mobile/desktop captures and a contact sheet of 40 refreshed/new synthetic screenshots reviewed. See unit-qr-printing-implementation-report.md and sanitized evidence. Operational migration, historical enrollment, live email/deployment remain gated.
 
 Owner confirmed checkout reasons Production use, Sample, Internal use, and Other with explanation. Missing reason remains an explicit Manager reconciliation exception. Next: milestone 4 recorded unit tracking, then checkout under these approved rules.
+
+
+Milestone 3 completion: `1608ca257f0da67e0ffb907db81155e4e6a8491f`, `feat(labels): implement exact-unit QR and native printing`, branch `feat/complete-application-systems`, https://github.com/mcjohnsontech/inventori/commit/1608ca257f0da67e0ffb907db81155e4e6a8491f. Push and exact remote SHA verified; working tree was clean.
+
+
+### Milestone 4 verification (8 November)
+
+Unit tracking drawer and typed inventory matches added to existing inventory, receipt-unit and QR contexts. Immutable UnitObservation records authenticated QR presentations separately from read-only identity lookup and stock events. Server-side Production history is limited to own presentations; operational provenance is Admin/Manager-only. Delivery date and recording time are separate; physical verification is never inferred.
+
+57/57 unit tests and full 106/106 PostgreSQL integration tests passed. Final tracking suite 7/7 passed, including actual foreign units and same-text Product/Unit namespaces. Six relevant browser regressions passed together, including focus/context/escape, same-key lost-response retry, legacy/new printing and five-width captures. Final typecheck/build passed. Migration 020 retained all 48 prior table fingerprints, with zero fabricated observations. Final 21 loopback presentation requests measured maximum 67.05ms; no hardware/Wi-Fi/camera performance certification.
+
+Failed helper/global-fixture and host-pause attempts are documented in unit-tracking-implementation-report.md, not counted as passes. Initial visual review led to a compact identity header and corrected duplicated timezone text. Operational migration, historical enrollment, physical acceptance, real mail, deployment and sync remain gated. Checkout implementation is next; targeted O4/O5/O8 policy questions are pending for later affected slices.

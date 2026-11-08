@@ -158,3 +158,10 @@ Milestone 2 adds origin-scoped StockUnit identities, initial immutable UnitEvent
 DYI:2 resolves origin UUID plus immutable StockUnit UUID through an explicit role allowlist. DYI:1 and its retained lot renderers are unchanged. Exact six-character manual lookup uses the configured origin; a short code is never a global database identity. Production receives generic availability and identification only.
 
 Five additive print tables keep exact unit membership, one initial claim per unit, frozen content/profile/renderer, HTML/PDF bytes and hashes, and append-only requested/prepared/handoff evidence. All metadata commands use origin locking, actor fencing, idempotency, audit/outbox and atomic commit. Preparation renders outside the transaction; no print/lookup path changes ledger or unit state. React individual-label previews and local self-contained native-print documents use genuine QR symbols, with a PDF fallback. No browser return implies physical success or attachment. See unit-qr-printing-implementation-design.md.
+
+
+## Unit tracking and QR presentation metadata — milestone 4
+
+UnitTrackingService provides a role-filtered chronological read model from immutable receiving, exact-unit print and QR-presentation evidence. Production queries only its own QR presentations and the minimal identity DTO; it never queries then hides operational history in the frontend. Origin sequence provides accepted ordering. Delivery date is separate from recording time.
+
+Additive UnitObservation records camera or keyboard/scanner QR presentations under existing origin/actor/idempotency/audit/outbox transactions. Lookup remains read-only; observation acceptance changes no stock/unit-state/print records. The client preserves successful identification if history recording fails and offers explicit same-key retry. A QR presentation is not proof of physical custody, attachment or stock movement. Unit drawers preserve list/receipt context, and typed exact Unit matches do not override Product/Lot namespaces.
