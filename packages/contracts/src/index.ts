@@ -114,3 +114,4 @@ export * from './invitations.js';
 export * from './label-layout.js';
 
 export * from './reconciliation.js';
+export * from './damage.js';

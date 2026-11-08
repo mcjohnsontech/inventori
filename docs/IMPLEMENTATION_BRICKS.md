@@ -116,3 +116,8 @@ Exact-unit checkout is under verification through additive isolated migration 02
 ## Complete V1 directive — milestone 6
 
 Manager missing-reason reconciliation is implemented with append-only classifications, original checkout preservation, Admin/Manager operational review and Production privacy. Additive migration 022 was exercised only on isolated fixtures. No stock transition, cloud approval execution or operational migration is introduced. See reason-reconciliation-implementation-report.md for actual checks and milestone publication. O6 damage scope is confirmed for milestone 7.
+
+
+## Complete V1 directive — milestone 7A
+
+Exact-unit BAD reporting and Manager damage disposition passed software verification through additive isolated migrations 023/024. O6 limits Production to its own checkout; B04 keeps Held/Reworked damaged and transfers Discarded/Returned to terminal Removed. Recovery/correction request metadata follows as milestone 7B; no local approval or recovery/correction execution is enabled. See bad-reporting-implementation-report.md for actual checks. No operational migration or deployment.

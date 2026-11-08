@@ -17,8 +17,8 @@ The PRD, current audit and repository were inspected. Existing catalogue/receipt
 | 3 | DYI:2 and unique-unit printing | Completed and pushed: 1608ca2 | 55 unit tests; 98-test full integration run plus final 8-case print suite (99 distinct successes); all 23 browser cases successful across runs; typecheck/build; 43-table preservation and 500-unit print capacity. |
 | 4 | Unit tracking and lifecycle timeline | Completed and pushed: 926c58b | 57 unit / 106 integration tests, final 7-case tracking repeat, six browser regressions, typecheck/build, 48-table preservation and reviewed five-width drawer. |
 | 5 | Production checkout | Completed and pushed: 4cebb51 | All three issue roles; Production use, Sample, Internal use and Other (explanation required); optional reusable Order IDs and explicit missing-reason reconciliation approved. |
-| 6 | Missing-reason reconciliation | Verified; publication pending | 69 unit/123 integration tests, six browser cases successful across runs, typecheck/build and 52-table preservation. |
-| 7 | BAD, recovery and disposition | Pending | Preserve damage lineage, approved authority and compensating accounting. |
+| 6 | Missing-reason reconciliation | Completed and pushed: e6c158d | 69 unit/123 integration tests, six browser cases successful across runs, typecheck/build and 52-table preservation. |
+| 7 | BAD, recovery and disposition | In progress | O6 scope and B04 mapping confirmed; recovery/correction execution remains pending future cloud authorization. |
 | 8 | Completion and physical reconciliation | Pending | Recorded versus physically verified evidence; no invented historical events. |
 | 9 | Manager daily close | Pending | Approved blockers, immutable snapshot and post-close visibility. |
 | 10 | Admin analytics and investigation | Pending | Real movement/domain data, reusable Order ID investigation and unit drilldowns. |
@@ -122,3 +122,14 @@ Owner confirmed the O6 BAD-reporting scope for milestone 7: Production own-check
 ### Milestone 6 verification checkpoint
 
 69/69 unit tests and 123/123 PostgreSQL integration tests passed; typecheck passed. Migration 022 preserved all 52 prior-table fingerprints on the populated synthetic fixture and introduced no artificial classifications. Classification then changed metadata only. The latest 500-exception sample took 1,054.669 ms on development hardware, not a production certification. Targeted reconciliation browser journey and responsive screenshots passed; broader receiving/QR/printing regressions and final build/publication are being completed. No operational migration, stock mutation or live email.
+
+
+Milestone 6 completion: `e6c158d1620e9ad790ad010bc2511aaacf8ae8fa`, `feat(reconciliation): classify missing checkout reasons without stock changes`, branch `feat/complete-application-systems`, https://github.com/mcjohnsontech/inventori/commit/e6c158d1620e9ad790ad010bc2511aaacf8ae8fa. Push and exact remote SHA verified. Only the next BAD design remained untracked. B04 disposition mapping is confirmed in decisions.md; milestone 7 begins.
+
+
+### Milestone 7A verification checkpoint
+
+BAD reporting and Manager disposition are implemented through isolated migrations 023/024. Full 73-unit/131-integration suites passed; targeted BAD browser journey passed before final layout refinement, and 54-table prior-field migration preservation passed. Final browser regression/type/build/publication follows. Production own-checkout scope, B04 terminal mapping and O5 no-local-recovery boundary remain enforced. Pending recovery/correction request implementation follows as 7B; milestone 7 is not yet complete.
+
+
+Milestone 7A final checks: 73/73 unit tests; full integration 131/131 followed by final damage 9/9 (132 distinct integration successes across runs); six browser regressions passed together; final build/typecheck passed. Populated 54-table prior-field preservation and pre-upgrade receiving/checkout passed. Damage/disposition publication follows; 7B pending request workflows remain next.

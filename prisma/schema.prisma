@@ -299,6 +299,8 @@ model StockMovement {
   lotId String @db.Uuid
   receiptLineId String? @db.Uuid
   checkoutLineId String? @unique @db.Uuid
+  damageLineId String? @unique @db.Uuid
+  damageReviewLineId String? @unique @db.Uuid
   fromState String
   toState String
   quantity BigInt
@@ -479,6 +481,8 @@ model UnitEvent {
   details Json
   previousEventId String? @db.Uuid
   checkoutLineId String? @unique @db.Uuid
+  damageLineId String? @unique @db.Uuid
+  damageReviewLineId String? @unique @db.Uuid
   @@unique([unitId,ordinal])
   @@index([commandId])
 }
@@ -663,4 +667,68 @@ model CheckoutReasonResolution {
   unitId String @db.Uuid
   @@index([reconciliationId])
   @@index([unitId])
+}
+
+model DamageReport {
+ id String @id @db.Uuid
+ originId String @db.Uuid
+ actorId String @db.Uuid
+ actorRole Role
+ commandId String @unique @db.Uuid
+ transactionId String @unique @db.Uuid
+ recordedAt DateTime @db.Timestamptz(6)
+ cause String
+ description String
+ unitCount Int
+ manifest Json
+ canonicalManifest String
+ manifestHash String
+ @@index([originId,recordedAt,id])
+}
+model DamageLine {
+ id String @id @db.Uuid
+ reportId String @db.Uuid
+ originId String @db.Uuid
+ unitId String @db.Uuid
+ lotId String @db.Uuid
+ batchId String @db.Uuid
+ fromState String
+ previousEventId String @db.Uuid
+ checkoutLineId String? @db.Uuid
+ movementId String @unique @db.Uuid
+ eventId String @unique @db.Uuid
+ snapshot Json
+ @@unique([reportId,unitId])
+ @@index([unitId])
+}
+model DamageReview {
+ id String @id @db.Uuid
+ originId String @db.Uuid
+ actorId String @db.Uuid
+ actorRole Role
+ commandId String @unique @db.Uuid
+ transactionId String? @unique @db.Uuid
+ recordedAt DateTime @db.Timestamptz(6)
+ outcome String
+ note String
+ unitCount Int
+ manifest Json
+ canonicalManifest String
+ manifestHash String
+ @@index([originId,recordedAt,id])
+}
+model DamageReviewLine {
+ id String @id @db.Uuid
+ reviewId String @db.Uuid
+ originId String @db.Uuid
+ unitId String @db.Uuid
+ lotId String @db.Uuid
+ batchId String @db.Uuid
+ previousEventId String @db.Uuid
+ damageLineId String? @db.Uuid
+ movementId String? @unique @db.Uuid
+ eventId String? @unique @db.Uuid
+ snapshot Json
+ @@unique([reviewId,unitId])
+ @@index([unitId])
 }

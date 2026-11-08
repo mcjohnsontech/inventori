@@ -138,3 +138,10 @@ O5 recovery/correction requests cannot change stock before valid future cloud-de
 A missing-reason exception remains immutable even after resolution. A unique appended resolution binds its exact checkout, line, unit and origin to a Manager classification and hashed manifest. One invalid or already-resolved target rejects the entire group. Concurrent classifications cannot both own one exception. Deferred graph checks prohibit stock transactions/events under this metadata command, require approved Manager authority and complete audit/outbox evidence, and reject orphan/late/mutated records.
 
 Classification does not require the unit still be In Production: it explains a historical issue without moving the item. Original reasons, Order IDs, acceptance timestamps and idempotency responses never change. Live outstanding counts are separate read projections. All receipt, stock, state and print fingerprints remain unchanged on acceptance and retry. Recovery/correction authorization is not supplied by reconciliation.
+
+
+## BAD and damage disposition — milestone 7A
+
+Every reported unit has one exact positive quantity-one U-to-D or P-to-D movement, matching BAD line/event and prior event/version. P-to-D never deducts U again. Production may report only its own checkout's currently issued units; Admin/Manager may report other issued or pre-issue stock. One unavailable/foreign/duplicate target rejects the entire command.
+
+Manager Held/Reworked reviews append immutable evidence without ledger or UnitState effects. Discarded/Returned disposition appends D-to-X; Removed is terminal in this workflow. No D-to-U or X-to-anywhere transition is enabled. Review targets retain exact original BAD or damaged-intake lineage. All U/P/D/X projections remain nonnegative and equal net ledger sums and native unit census. Original unit UUID/code, receipt, checkout, QR and print history are unchanged. Scans and print metadata do not change stock.

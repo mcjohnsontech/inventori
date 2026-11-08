@@ -238,3 +238,16 @@ Implementation: checkouts.ts shared contracts, CheckoutsService, migration 021, 
 | Production privacy | own checkout status only, no reconciliation or Manager remarks | direct API negatives and timeline/DTO tests |
 
 Actual suite results are recorded in reason-reconciliation-implementation-report.md. O6 BAD scope is confirmed for the next milestone, not implemented by reconciliation.
+
+
+## Exact-unit damage — milestone 7A
+
+| Confirmed requirement | Implementation | Verification |
+|---|---|---|
+| Damage after issue never deducts usable twice | exact P-to-D BAD movement/event and origin-locked projections | concurrent replay, per-state quantities, original issue preservation |
+| Pre-issue damage and O6 authorization | U-to-D; Production own-checkout SQL, Admin/Manager broader scope | direct API negatives, mixed invalid selection rollback, role reduction and foreign origin |
+| Manager dispositions and B04 | immutable Held/Reworked metadata; exact D-to-X removal | unchanged stock/state for rework, terminal return rejection, intake and BAD lineage |
+| Immutable, replay-safe evidence | DamageReport/Line, DamageReview/Line, migration 023/024 graph/census guards | late/mutable denial, forced audit failure, 500-unit sample and populated migration fingerprints |
+| Actual unit lifecycle and privacy | filtered timeline, exact-code/QR draft/review/history workspace | Production note exclusions and five-width lost-response browser journey |
+
+Pending recovery/correction execution remains deferred under O5; requests are implemented separately. Actual verification results belong in bad-reporting-implementation-report.md.

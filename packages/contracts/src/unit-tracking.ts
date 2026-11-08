@@ -11,7 +11,7 @@ export const unitTrackingQuerySchema = z.object({
 }).strict();
 export type UnitHistoryItem = {
   id: string;
-  kind: 'REASON_RECONCILED' | 'ISSUED' | 'RECEIVED' | 'LABEL_REQUESTED' | 'LABEL_PREPARED' | 'PRINT_DIALOG_REQUESTED' | 'QR_PRESENTED';
+  kind: 'BAD_REPORTED' | 'DAMAGE_REMOVED' | 'DAMAGE_REVIEWED' | 'REASON_RECONCILED' | 'ISSUED' | 'RECEIVED' | 'LABEL_REQUESTED' | 'LABEL_PREPARED' | 'PRINT_DIALOG_REQUESTED' | 'QR_PRESENTED';
   recordedAt: string;
   originSequence: string;
   actor: { id: string; name: string; role: AppRole };
@@ -27,6 +27,10 @@ export type UnitHistoryItem = {
   reasonNote?: string;
   reconciliationId?: string;
   managerRemarks?: string;
+  damageId?: string;
+  damageCause?: string;
+  damageDescription?: string;
+  damageOutcome?: string | null;
 };
 export type UnitTracking = {
   unit: UnitIdentityLookup;
