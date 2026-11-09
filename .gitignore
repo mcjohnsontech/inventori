@@ -19,5 +19,3 @@ artifacts/
 *.pdf
 *.dump
 *.backup
-.vercel
-.env*

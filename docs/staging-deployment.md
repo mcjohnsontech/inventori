@@ -6,7 +6,7 @@ Owner approved isolated staging with a fresh database on 9 November 2026, then a
 
 Vercel hosts the Next.js frontend in `apps/web`, including its same-origin authenticated API proxy. Heroku hosts the existing NestJS modular monolith and a new PostgreSQL database. The staging API simulates exactly one isolated SHOP origin with a freshly generated UUID; it is not the operational shop writer or the deferred cloud synchronization/approval service. Internet connectivity is required for staging. No local database export, historical enrollment, cloud approvals or daily-close implementation is included.
 
-Created API app: `dayari-inventory-staging-api`, US region/heroku-24, https://dayari-inventory-staging-api-797073a989e1.herokuapp.com/. Fresh Essential-0 PostgreSQL 17 is attached. Deployment verification and frontend URL follow after actual publication.
+Created API app: `dayari-inventory-staging-api`, US region/heroku-24, https://dayari-inventory-staging-api-797073a989e1.herokuapp.com/. Fresh Essential-0 PostgreSQL 17 is attached. Frontend: https://dayari-inventory-staging.vercel.app/. Both deployments are published; actual verification is recorded below.
 
 ## Build and runtime
 
@@ -36,4 +36,16 @@ Official references: [Heroku Node build lifecycle](https://devcenter.heroku.com/
 
 ## Pre-publication checks executed
 
-Four deployment unit tests passed; isolated staging-bootstrap/authentication/RBAC integration tests passed 10/10. Current typecheck and full production build passed, with web output separated from the running local frontend. Package-lock comparison confirms zero dependency version changes; only runtime/dev classification changed. Private environment files/backups are not tracked or selected for deployment commits. Vercel project root, Node version and stable domain are verified. Hosted build/runtime/login verification remains next; no hosted success is claimed here yet.
+Four deployment unit tests passed; isolated staging-bootstrap/authentication/RBAC integration tests passed 10/10. Current typecheck and full production build passed, with web output separated from the running local frontend. Package-lock comparison confirms zero dependency version changes; only runtime/dev classification changed. Private environment files/backups are not tracked or selected for deployment commits. Vercel project root, Node version and stable domain are verified. Hosted build/runtime/login verification was subsequently executed as recorded below.
+
+## Publication verification — 9 November 2026
+
+Application source commit: `398e4b0df4b88de2421a1b1a1f06427a34035201`, pushed to `feat/complete-application-systems`. Heroku source release v5 completed successfully, including all 28 additive migrations on the fresh hosted database. Vercel deployment `dayari-inventory-staging-1bgvh40xq-mc-johnsons-projects.vercel.app` reached Ready and the stable staging alias is https://dayari-inventory-staging.vercel.app/.
+
+Executed hosted smoke checks: frontend HTTP 200; API health HTTP 200; unauthenticated proxy/me and protected API return 401; foreign-Origin sign-in returns 403. Owner sign-in through the Vercel proxy passed; mandatory first-password change is true; cookie is HttpOnly/Secure/SameSite=Strict; authenticated me returns 200; stock access before password change returns 403. Logout succeeded and reuse of the revoked session returns 401. No stock was created by smoke tests. Temporary bootstrap/email/password configuration was removed after provisioning.
+
+Owner: `240504047@live.unilag.edu.ng`. The generated initial password is handed over only in ignored local `.local/staging-deploy/private.json`; it is not published in source, logs or this report. Owner must choose a new password at first login. Live email remains disabled. Staging is internet-dependent, isolated from shop operations, and is not a production or offline/synchronization rollout. Existing completion/read-timeout risk and unfinished daily closing/final application QA remain outside this deployment milestone. No full application regression rerun is claimed for this deployment-only change.
+
+Previously uncommitted local-upgrade documentation, generated Next typings and the closing-design draft remain preserved and excluded from deployment commits. Documentation-only follow-up does not require redeploying application source.
+
+Read-only hosted database verification: 28 migration records; exactly one active ADMIN with mandatory password change, one origin and one shop membership; zero receipts, stock lots, stock units and movements. Platform verification confirms one Basic web dyno. Bootstrap settings are absent and invitations remain disabled.
