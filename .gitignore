@@ -12,9 +12,12 @@ test-results/
 *.log
 apps/api/generated/
 .local/
+.vercel/
 
 # Generated evidence/private local artifacts are not source.
 artifacts/
 *.pdf
 *.dump
 *.backup
+.vercel
+.env*

@@ -8,7 +8,7 @@
     "packages/*"
   ],
   "engines": {
-    "node": ">=24.15.0"
+    "node": "24.x"
   },
   "scripts": {
     "build:contracts": "npm run build -w @dayari/contracts",
@@ -29,7 +29,10 @@
     "units:plan-history": "tsx --tsconfig apps/api/tsconfig.json scripts/plan-historical-units.ts",
     "units:rehearse-cutover": "tsx --tsconfig apps/api/tsconfig.json scripts/rehearse-unit-cutover.ts",
     "units:create-cutover-fixture": "node scripts/create-cutover-fixture.mjs",
-    "units:benchmark-contention": "tsx --tsconfig apps/api/tsconfig.json scripts/benchmark-unit-contention.ts"
+    "units:benchmark-contention": "tsx --tsconfig apps/api/tsconfig.json scripts/benchmark-unit-contention.ts",
+    "build:api": "npm run build:contracts && npm run db:generate && npm run build -w @dayari/api",
+    "build:web": "npm run build:contracts && npm run build -w @dayari/web",
+    "heroku-postbuild": "npm run build:api"
   },
   "devDependencies": {
     "@napi-rs/canvas": "1.1.0",
@@ -40,16 +43,18 @@
     "@types/qrcode": "1.5.6",
     "@types/smtp-server": "3.5.13",
     "@types/supertest": "^6.0.0",
-    "dotenv": "^17.0.0",
     "embedded-postgres": "17.11.0-beta.19",
     "jsqr": "1.4.0",
     "pdfjs-dist": "6.5.438",
-    "prisma": "^7.0.0",
     "selfsigned": "5.5.0",
     "smtp-server": "3.21.3",
     "supertest": "^7.1.0",
     "tsx": "^4.20.0",
     "typescript": "^5.9.0",
     "vitest": "^4.0.0"
+  },
+  "dependencies": {
+    "prisma": "^7.0.0",
+    "dotenv": "^17.0.0"
   }
 }

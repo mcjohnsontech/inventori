@@ -1,0 +1,15 @@
+import {randomUUID} from 'node:crypto';
+import {readFile,readdir} from 'node:fs/promises';
+import {Client} from 'pg';
+import {beforeAll,afterAll,expect,it} from 'vitest';
+import {database} from '../../apps/api/src/database.js';
+import {bootstrapStagingOwner} from '../../apps/api/src/staging-bootstrap.js';
+import {verifyPassword} from '../../apps/api/src/security.js';
+const configured=new URL(process.env.TEST_DATABASE_URL??'');
+if(!configured.pathname.endsWith('_test')||!['localhost','127.0.0.1'].includes(configured.hostname))throw Error('Isolated loopback fixture required');
+const fixture=new URL(configured),name='dayari_staging_bootstrap_'+randomUUID().replaceAll('-','')+'_test';fixture.pathname='/'+name;
+const db=database(fixture.toString()),originId=randomUUID(),email='owner-'+originId+'@staging.test',password=randomUUID();
+beforeAll(async()=>{const admin=new Client({connectionString:configured.toString()});await admin.connect();try{await admin.query('CREATE DATABASE "'+name+'"');}finally{await admin.end();}const sql=new Client({connectionString:fixture.toString()});await sql.connect();try{for(const migration of (await readdir('prisma/migrations')).filter(v=>/^2026/.test(v)).sort())await sql.query(await readFile('prisma/migrations/'+migration+'/migration.sql','utf8'));}finally{await sql.end();}});
+afterAll(async()=>{await db.$disconnect();});
+it('provisions a fresh scoped owner atomically, hashes the secret, requires password change and creates no stock',async()=>{await bootstrapStagingOwner(db,{originId,email,password});const user=await db.user.findUniqueOrThrow({where:{email}});expect(user).toMatchObject({role:'ADMIN',active:true,mustChangePassword:true});expect(user.passwordHash).not.toBe(password);expect(verifyPassword(password,user.passwordHash)).toBe(true);expect(await db.shopMembership.findUnique({where:{userId:user.id}})).toMatchObject({originId});expect(await db.stockUnit.count()).toBe(0);expect(await db.stockMovement.count()).toBe(0);expect(await db.auditEvent.count({where:{action:'staging.owner.provisioned'}})).toBe(1);expect(await db.outboxEvent.count()).toBe(1);const result=await db.commandResult.findFirstOrThrow();expect(JSON.stringify(result.response)).not.toContain(password);expect((await db.originNode.findUniqueOrThrow({where:{id:originId}})).nextSequence).toBe(1n);});
+it('refuses rerun, existing accounts/origins and weak bootstrap secrets without changing records',async()=>{await expect(bootstrapStagingOwner(db,{originId,email,password})).rejects.toThrow('refuses');await expect(bootstrapStagingOwner(db,{originId:randomUUID(),email:'different@staging.test',password:'short'})).rejects.toThrow('private random');expect(await db.user.count()).toBe(1);expect(await db.originNode.count()).toBe(1);expect(await db.commandResult.count()).toBe(1);});
