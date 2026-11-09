@@ -128,8 +128,12 @@ Pending recovery/correction evidence is implemented through isolated additive mi
 
 
 ## Complete V1 directive — milestone 8A
-Manager-selected Production completion is implemented through additive isolated migration 027. Explicit P-to-C accounting preserves original checkout references and never deducts U twice. Other same-Order-ID work remains independent. Software verification is recorded in production-completion-implementation-report.md. Physical counts are separate 8B work; remaining concurrency/recount policy is pending. No operational migration or deployment.
+Manager-selected Production completion is implemented through additive isolated migration 027. Explicit P-to-C accounting preserves original checkout references and never deducts U twice. Other same-Order-ID work remains independent. Software verification is recorded in production-completion-implementation-report.md. Physical counts were separate 8B work at that checkpoint; the concurrency/recount policy was subsequently approved. No operational migration or deployment.
 
 
 ## Complete V1 directive — milestone 10
 Operational ledger/state/flow reports and exact reused-Order-ID investigation verified. Admin/Manager only, origin-scoped read-only snapshots; no migration. Source receipt/lot-print records retained. Not certified closing history. See operational-reporting-implementation-report.md.
+
+
+## Complete V1 directive — milestone 8B
+Targeted physical-count implementation and isolated migration 028 passed checkpoint verification (82 unit / 169 integration / six browser regressions, final typecheck/build). Development paused at owner request. B05 concurrency/recount rule is now approved. Count evidence is immutable and stock-neutral; Manager records and Admin reviews. Strict closing is separate milestone 9. See targeted-count-implementation-report.md for executed checks; no operational migration or real count enrollment.

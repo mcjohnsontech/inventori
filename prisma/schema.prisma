@@ -800,3 +800,61 @@ model ProductionCompletionLine {
  snapshot Json
  @@index([completionId])
 }
+
+model CountSession {
+ id String @id @db.Uuid
+ originId String @db.Uuid
+ actorId String @db.Uuid
+ commandId String @db.Uuid
+ recordedAt DateTime @default(now()) @db.Timestamptz(6)
+ lotId String @db.Uuid
+ state String
+ purpose String
+ @@index([originId,recordedAt,id])
+}
+model CountAttempt {
+ id String @id @db.Uuid
+ originId String @db.Uuid
+ actorId String @db.Uuid
+ commandId String @db.Uuid
+ recordedAt DateTime @default(now()) @db.Timestamptz(6)
+ sessionId String @db.Uuid
+ snapshot Json
+ @@index([originId,recordedAt,id])
+}
+model CountObservation {
+ id String @id @db.Uuid
+ originId String @db.Uuid
+ actorId String @db.Uuid
+ commandId String @db.Uuid
+ recordedAt DateTime @default(now()) @db.Timestamptz(6)
+ attemptId String @db.Uuid
+ unitId String @db.Uuid
+ @@unique([attemptId,unitId])
+ @@index([originId,recordedAt,id])
+}
+model CountResult {
+ id String @id @db.Uuid
+ originId String @db.Uuid
+ actorId String @db.Uuid
+ commandId String @db.Uuid
+ recordedAt DateTime @default(now()) @db.Timestamptz(6)
+ attemptId String @unique @db.Uuid
+ observedQuantity BigInt
+ unidentifiedExtras BigInt
+ status String
+ explanation String
+ evidence String
+ @@index([originId,recordedAt,id])
+}
+model CountResolution {
+ id String @id @db.Uuid
+ originId String @db.Uuid
+ actorId String @db.Uuid
+ commandId String @db.Uuid
+ recordedAt DateTime @default(now()) @db.Timestamptz(6)
+ resultId String @unique @db.Uuid
+ matchingResultId String @db.Uuid
+ explanation String
+ @@index([originId,recordedAt,id])
+}

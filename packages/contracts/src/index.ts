@@ -120,3 +120,5 @@ export * from './authorization-requests.js';
 export * from './completions.js';
 
 export * from './reports.js';
+
+export * from './counts.js';

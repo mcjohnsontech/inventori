@@ -198,3 +198,6 @@ CompletionsService admits current shop Managers only for an explicit exact-unit 
 
 ## Operational reporting — independent milestone 10 scope
 ReportsService provides origin-scoped operational reads under RepeatableRead, with local timestamp/sequence freshness and decimal-string quantities. Period state balances and flow totals derive from accepted immutable movements per exact supplier SKU; Lagos acceptance dates remain separate from delivery dates. Exact case-preserved Order ID investigation spans independent sessions/actors without merging their identities. Reason classifications, damage review evidence and pending requests remain distinct from stock execution. Production is denied these read models; existing Admin/Manager operational allowlists apply. No audit-security endpoint or stock mutation is added. Certified daily-close history remains dependent on the separate count/closing slices.
+
+
+Targeted count evidence uses five immutable sidecars (migration 028, isolated verification). Origin-locked acceptance retains scope/attempt/explicit unit observations/derived result/recount resolution without stock writes. Relevant movement fingerprints stale open attempts. B05 roles and 9 November recount policy govern closing obligations; strict closing remains its separate slice.

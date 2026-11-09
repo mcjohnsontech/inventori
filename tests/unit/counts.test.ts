@@ -1,0 +1,5 @@
+import { expect, it } from 'vitest';
+import { randomUUID } from 'node:crypto';
+import { countResultSchema, countObservationSchema, countSessionSchema } from '@dayari/contracts';
+it('count evidence accepts decimal BIGINTs and exact scopes but rejects negatives, overflow, duplicate units and empty evidence', () => { const a = randomUUID(); expect(countResultSchema.safeParse({ attemptId: a, observedQuantity: '9223372036854775807', unidentifiedExtras: '0', explanation: 'Reviewed count evidence', evidence: 'Actual physical count evidence' }).success).toBe(true); for (const v of ['-1', '01', '9223372036854775808'])
+    expect(countResultSchema.safeParse({ attemptId: a, observedQuantity: v, unidentifiedExtras: '0', explanation: 'Reviewed count evidence', evidence: 'Actual physical count evidence' }).success).toBe(false); expect(countObservationSchema.safeParse({ attemptId: a, unitIds: [a, a] }).success).toBe(false); expect(countSessionSchema.safeParse({ lotId: a, state: 'E', purpose: 'Valid count purpose' }).success).toBe(false); });

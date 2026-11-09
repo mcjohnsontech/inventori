@@ -38,14 +38,14 @@ export function Select({
         // A native select exposes its value; this keeps it assertable.
         data-value={value}
         className={cn(
-          'inline-flex w-full items-center justify-between gap-3 rounded-lg border border-black/13 bg-white font-sans tracking-[-0.02em] text-ink outline-none transition-colors',
+          'inline-flex min-w-0 w-full items-center justify-between gap-3 rounded-lg border border-black/13 bg-white font-sans tracking-[-0.02em] text-ink outline-none transition-colors',
           'data-[placeholder]:text-grey-3 hover:border-black/25 focus-visible:border-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand',
           'disabled:cursor-not-allowed disabled:bg-surface-muted disabled:opacity-70',
           size === 'compact' ? 'h-9 px-2.5 text-[13px]' : 'h-11 px-3 text-sm',
           className,
         )}
       >
-        <span className="truncate text-left">
+        <span className="min-w-0 flex-1 truncate text-left">
           <RadixSelect.Value placeholder={placeholder} />
         </span>
         <RadixSelect.Icon>

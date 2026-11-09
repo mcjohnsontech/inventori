@@ -282,3 +282,7 @@ Pending recovery/correction execution remains deferred under O5; requests are im
 | Opening/ending and consumption | Ledger-derived U/P/D/C/X and per-SKU flow totals | Not certified closing; no unlike-product quantity total |
 | Security and preservation | Production/origin denial and fingerprint tests | No raw security audit, valuation or mutations |
 | Certified closing history | Dependent on B05/O4 slices | Not implemented or fabricated by these reports |
+
+
+## B05 targeted physical counts — milestone 8B
+Owner-confirmed roles/scope and 9 November stale/recount policy map to CountSession/Attempt/Observation/Result/Resolution, `counts.service.ts`, count contracts, count workspace and count unit/integration/browser tests. Native identity mismatch blocks at equal quantity; legacy evidence creates no units; stock movements stale attempts; explained matching recount retains findings. No stock write. Migration 028 isolated only; actual results in targeted-count-implementation-report.md. O4 closing enforcement follows separately.

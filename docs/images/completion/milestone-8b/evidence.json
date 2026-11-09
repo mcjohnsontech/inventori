@@ -1,0 +1,17 @@
+{
+  "syntheticOnly": true,
+  "migration": "202611090028_targeted_counts",
+  "priorTables": 62,
+  "priorFieldsPreserved": true,
+  "legacyQuantityOnly": true,
+  "physicalVerificationPerformed": false,
+  "rehearsalEvidenceSha256": "28c5c0d11cff14a7f8c58798093aaa5845b80bc1fef7ad1d5734a74a479c4e10",
+  "screenshots": [
+    "count-320.png",
+    "count-390.png",
+    "count-768.png",
+    "count-1024.png",
+    "count-1440.png"
+  ],
+  "operationalMigration": false
+}

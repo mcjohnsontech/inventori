@@ -153,3 +153,7 @@ AuthorizationRequest is immutable evidence, never an accepted stock transaction.
 
 ## Manager completion — O8
 Only selected currently In Production units may transition P -> C under a complete new Manager completion domain group. Each exact unit gets quantity-one movement, contiguous prior-event link and preserved checkout reference. U is not touched. C remains accounted, unavailable stock. No automatic Order ID completion, reopening, damaged completion, generic transition or terminal removal recovery. Census checks include C and X when later checkout/damage affects a lot. Completion history is immutable; projections must reconcile.
+
+
+## Targeted count evidence (B05, 9 November)
+Counts append immutable observations/results and never adjust stock. Native exact identity mismatch blocks even at equal quantity; historical counts never fabricate units. Origin-locked acceptance freezes lot/state movement fingerprints; changes during an attempt produce STALE and require explicit recount. Explain and retain mistaken findings resolved by later matching recount; genuine discrepancies remain pending correction. Initiated scope evidence is mandatory for closing. Admin review; Manager records; Production denied. Migration 028 is isolated-test only pending operational authorization.
