@@ -15,7 +15,7 @@ export const damageReviewSchema = z.object({ unitIds: selection, outcome: z.enum
   .refine(value => new TextEncoder().encode(JSON.stringify(value)).length <= 30000, 'Use a smaller explicit review; no partial acceptance');
 export const damageQuerySchema = z.object({ page: z.coerce.number().int().min(1).max(1_000_000).default(1),
   unitCode: z.string().trim().toUpperCase().regex(/^[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{6}$/).optional() }).strict();
-export type DamageCandidate = { unit: CheckoutItemIdentity; state: 'U' | 'P' | 'D' | 'X';
+export type DamageCandidate = { unit: CheckoutItemIdentity; state: 'U' | 'P' | 'D' | 'C' | 'X';
   checkoutId: string | null; checkoutLineId: string | null; orderReference: string | null;
   holder: { id: string; name: string } | null; receiptId: string; damageLineId: string | null; eligible: boolean };
 export type DamageReportInput = z.infer<typeof damageReportSchema>;

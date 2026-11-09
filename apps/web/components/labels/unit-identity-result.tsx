@@ -15,6 +15,7 @@ export function UnitIdentityResult({ unit, compact = false }: { unit: UnitIdenti
         <div className="mt-3 flex flex-wrap gap-2">
           <Badge tone={unit.availability === 'USABLE' ? 'usable' : 'neutral'}>{unit.availability === 'USABLE' ? 'Available for checkout' : 'Unavailable for checkout'}</Badge>
           {unit.state === 'P' ? <Badge>In Production</Badge> : null}
+          {unit.state === 'C' ? <Badge>Completed</Badge> : null}
           {unit.state === 'X' ? <Badge>Removed</Badge> : null}
           {unit.condition === 'DAMAGED' ? <Badge tone="damaged">Damaged</Badge> : null}
         </div>

@@ -11,7 +11,7 @@ export const unitTrackingQuerySchema = z.object({
 }).strict();
 export type UnitHistoryItem = {
   id: string;
-  kind: 'RECOVERY_REQUESTED' | 'BAD_REPORTED' | 'DAMAGE_REMOVED' | 'DAMAGE_REVIEWED' | 'REASON_RECONCILED' | 'ISSUED' | 'RECEIVED' | 'LABEL_REQUESTED' | 'LABEL_PREPARED' | 'PRINT_DIALOG_REQUESTED' | 'QR_PRESENTED';
+  kind: 'COMPLETED' | 'RECOVERY_REQUESTED' | 'BAD_REPORTED' | 'DAMAGE_REMOVED' | 'DAMAGE_REVIEWED' | 'REASON_RECONCILED' | 'ISSUED' | 'RECEIVED' | 'LABEL_REQUESTED' | 'LABEL_PREPARED' | 'PRINT_DIALOG_REQUESTED' | 'QR_PRESENTED';
   recordedAt: string;
   originSequence: string;
   actor: { id: string; name: string; role: AppRole };
@@ -22,6 +22,7 @@ export type UnitHistoryItem = {
   labelJobId?: string;
   method?: 'CAMERA' | 'QR_INPUT';
   checkoutId?: string;
+  completionId?: string;
   orderReference?: string | null;
   reasonCode?: string | null;
   reasonNote?: string;

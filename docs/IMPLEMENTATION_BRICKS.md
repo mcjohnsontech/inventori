@@ -125,3 +125,7 @@ Exact-unit BAD reporting and Manager damage disposition passed software verifica
 
 ## Complete V1 directive — milestone 7B
 Pending recovery/correction evidence is implemented through isolated additive migrations 025/026. Manager submission, Admin/Manager scoped review, exact damaged-unit provenance, independently resolved correction quantities, stable retry keys and stock-neutral timeline metadata preserve O5. Cloud approval delivery and execution remain deferred. See pending-authorization-requests-implementation-report.md for actual verification and publication status. Manager-selected completion and targeted counts follow separately; no operational migration or deployment.
+
+
+## Complete V1 directive — milestone 8A
+Manager-selected Production completion is implemented through additive isolated migration 027. Explicit P-to-C accounting preserves original checkout references and never deducts U twice. Other same-Order-ID work remains independent. Software verification is recorded in production-completion-implementation-report.md. Physical counts are separate 8B work; remaining concurrency/recount policy is pending. No operational migration or deployment.

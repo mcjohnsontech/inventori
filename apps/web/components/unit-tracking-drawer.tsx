@@ -7,6 +7,7 @@ import { UnitIdentityResult } from './labels/unit-identity-result';
 import { Button, Code, DetailsDrawer, DetailSkeleton, Disclosure, EmptyState, ErrorNotice, Footnote, Pager } from './ui';
 
 const titles: Record<UnitHistoryItem['kind'], string> = {
+  COMPLETED: 'Production completed by Manager',
   RECOVERY_REQUESTED: 'Recovery requested — pending cloud authorization',
   BAD_REPORTED: 'Reported BAD',
   DAMAGE_REMOVED: 'Damaged item removed',
@@ -19,7 +20,7 @@ const titles: Record<UnitHistoryItem['kind'], string> = {
   PRINT_DIALOG_REQUESTED: 'Device print dialog requested',
   QR_PRESENTED: 'QR identity presented',
 };
-const stockStates: Record<string, string> = { E: 'External intake', U: 'Usable', P: 'In Production', D: 'Damaged', X: 'Removed' };
+const stockStates: Record<string, string> = { E: 'External intake', U: 'Usable', P: 'In Production', C: 'Completed', D: 'Damaged', X: 'Removed' };
 const stockState = (value: string) => stockStates[value] ?? value;
 
 export function UnitTrackingDrawer({ unitId, onClose }: { unitId: string; onClose: () => void }) {
@@ -30,7 +31,7 @@ export function UnitTrackingDrawer({ unitId, onClose }: { unitId: string; onClos
     {read.loading ? <DetailSkeleton rows={6} /> : read.error ? <ErrorNotice message={read.error} onRetry={read.refresh} /> : data ? <div className="space-y-5">
       <UnitIdentityResult unit={data.unit} compact />
       {data.historyScope === 'OPERATIONAL' ? <section aria-label="Recorded unit provenance" className="space-y-3 rounded-xl border border-black/10 p-4">
-        <dl className="grid grid-cols-2 gap-4 text-sm"><div><dt className="text-grey-2">Initial condition</dt><dd className="mt-1 font-medium">{data.initialCondition === 'USABLE' ? 'Usable' : 'Damaged intake'}</dd></div><div><dt className="text-grey-2">Recorded custody</dt><dd className="mt-1 font-medium break-words">{data.recordedCustody === 'SHOP_STORAGE' ? 'Shop storage' : data.recordedCustody === 'ISSUED_TO_STAFF' ? 'Issued to recorded staff' : data.recordedCustody === 'REMOVED' ? 'Removed from stock' : data.recordedCustody ?? 'Not recorded'}</dd></div></dl>
+        <dl className="grid grid-cols-2 gap-4 text-sm"><div><dt className="text-grey-2">Initial condition</dt><dd className="mt-1 font-medium">{data.initialCondition === 'USABLE' ? 'Usable' : 'Damaged intake'}</dd></div><div><dt className="text-grey-2">Recorded custody</dt><dd className="mt-1 font-medium break-words">{data.recordedCustody === 'SHOP_STORAGE' ? 'Shop storage' : data.recordedCustody === 'ISSUED_TO_STAFF' ? 'Issued to recorded staff' : data.recordedCustody === 'COMPLETED' ? 'Completed production' : data.recordedCustody === 'REMOVED' ? 'Removed from stock' : data.recordedCustody ?? 'Not recorded'}</dd></div></dl>
         {data.deliveredOn ? <p className="text-sm">Delivery date <span className="font-medium">{formatDate(data.deliveredOn)}</span></p> : null}
         {data.receiptId ? <a href={`#receipts/${data.receiptId}`} onClick={onClose} className="inline-flex min-h-11 items-center text-sm font-semibold text-brand underline">Open accepted receipt</a> : null}
         <Footnote>Recorded custody does not establish a physically verified shelf, holder or count.</Footnote>

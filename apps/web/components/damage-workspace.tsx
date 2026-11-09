@@ -14,7 +14,7 @@ import { UnitCameraInput } from './unit-camera-input';
 type Config = { originId: string; limit: number; canReport: boolean; canReview: boolean; ownIssuedOnly: boolean; canViewReviews: boolean };
 const outcomes = [{ value: 'HELD', label: 'Held — remains damaged' }, { value: 'REWORKED', label: 'Reworked — remains damaged' },
   { value: 'DISCARDED', label: 'Discarded — remove from stock' }, { value: 'RETURNED_TO_VENDOR', label: 'Returned to vendor — remove from stock' }];
-const stateNames: Record<string, string> = { U: 'Usable', P: 'In Production', D: 'Damaged', X: 'Removed' };
+const stateNames: Record<string, string> = { U: 'Usable', P: 'In Production', D: 'Damaged', C: 'Completed', X: 'Removed' };
 type History = { page: number; pageSize: number; total: number; rows: { id: string; recordedAt: string; actorName: string; unitCount: number; cause?: string; outcome?: string }[] };
 function Recorded({ value, onTrack }: { value: DamageView; onTrack: (id: string) => void }) {
   const root = useRef<HTMLDivElement>(null), [page, setPage] = useState(1);

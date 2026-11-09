@@ -261,3 +261,13 @@ Pending recovery/correction execution remains deferred under O5; requests are im
 | Atomic, replay-safe evidence | Origin lock, canonical command result, audit/outbox, rollback/concurrency tests | Original stock and unit fingerprints unchanged |
 | Preserve historical identities | 58-table populated migration rehearsal | Isolated fixtures only; no operational migration |
 | B05 targeted counts | Owner-approved roles/scope/zero tolerance in decisions.md | Separate concurrency/recount policy remains open |
+
+
+## Milestone 8A — O8 selected production completion
+| Requirement | Implementation and evidence | Boundary |
+|---|---|---|
+| Manager confirms individually selected issued units | CompletionsService, migration 027, completion integration/browser tests | Admin reviews; Production cannot administer |
+| Preserve checkout, Unit Codes and reusable Order IDs | Immutable root/lines and original checkout/holder snapshots | No implicit group completion or reopened history |
+| No second usable deduction | P-to-C movement/event and P/C projections; U preservation tests | No recovery/correction execution |
+| Atomic/replay-safe/concurrent operation | Origin lock, exact manifest, current Manager fence, canonical result, rollback/BAD-race tests | Isolated fixtures only |
+| B05 physical counts | Approved baseline in decisions.md | Separate concurrency/recount policy still pending |

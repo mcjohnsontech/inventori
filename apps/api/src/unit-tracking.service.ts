@@ -77,6 +77,11 @@ export class UnitTrackingService {
         FROM "CheckoutReasonResolution" resolved JOIN "ReasonReconciliation" r ON r.id=resolved."reconciliationId" JOIN "CheckoutLine" x ON x.id=resolved."checkoutLineId"
         WHERE resolved.id IN (${Prisma.join(classificationIds.map(id => Prisma.sql`${id}::uuid`))}) AND r."originId"=${this.originId}::uuid`) : [];
       const classificationById = new Map(classifications.map(row => [row.id, row]));
+      const completedIds = rows.filter(row => row.kind === 'COMPLETED').map(row => row.id);
+      const completions = completedIds.length ? await tx.$queryRaw<{id:string;completionId:string;checkoutId:string;orderReference:string|null}[]>(Prisma.sql`
+        SELECT x."eventId" AS id,x."completionId",cl."checkoutId",cl."orderReference" FROM "ProductionCompletionLine" x JOIN "CheckoutLine" cl ON cl.id=x."checkoutLineId"
+        WHERE x."eventId" IN (${Prisma.join(completedIds.map(id => Prisma.sql`${id}::uuid`))}) AND x."originId"=${this.originId}::uuid`) : [];
+      const completionById = new Map(completions.map(row => [row.id,row]));
       const issueIds = rows.filter(row => row.kind === 'ISSUED').map(row => row.id);
       const issueLines = issueIds.length ? await tx.checkoutLine.findMany({ where: { eventId: { in: issueIds }, originId: this.originId },
         select: { eventId: true, checkoutId: true, reasonCode: true, reasonNote: true, orderReference: true } }) : [];
@@ -99,6 +104,7 @@ export class UnitTrackingService {
       const ownIssue = operational ? false : await tx.unitEvent.count({ where: { unitId: id.data, originId: this.originId, actorId: user.id, kind: 'ISSUED' } }) > 0;
       const events = rows.map(row => ({
         ...(classificationById.get(row.id) ?? {}),
+        ...(completionById.get(row.id) ?? {}),
         ...(damageByEvent.get(row.id) ?? {}),
         ...(requestByEvent.get(row.id) ?? {}),
         ...(issueByEvent.get(row.id) ? { checkoutId: issueByEvent.get(row.id)!.checkoutId, orderReference: issueByEvent.get(row.id)!.orderReference, reasonCode: issueByEvent.get(row.id)!.reasonCode, reasonNote: issueByEvent.get(row.id)!.reasonNote } : {}),

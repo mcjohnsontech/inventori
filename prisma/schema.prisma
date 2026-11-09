@@ -301,6 +301,7 @@ model StockMovement {
   checkoutLineId String? @unique @db.Uuid
   damageLineId String? @unique @db.Uuid
   damageReviewLineId String? @unique @db.Uuid
+  completionLineId String? @unique @db.Uuid
   fromState String
   toState String
   quantity BigInt
@@ -483,6 +484,7 @@ model UnitEvent {
   checkoutLineId String? @unique @db.Uuid
   damageLineId String? @unique @db.Uuid
   damageReviewLineId String? @unique @db.Uuid
+  completionLineId String? @unique @db.Uuid
   @@unique([unitId,ordinal])
   @@index([commandId])
 }
@@ -768,4 +770,33 @@ model AuthorizationRequestUnit {
  snapshot Json
  @@unique([requestId,unitId])
  @@index([unitId])
+}
+
+model ProductionCompletion {
+ id String @id @db.Uuid
+ originId String @db.Uuid
+ actorId String @db.Uuid
+ actorRole Role
+ commandId String @unique @db.Uuid
+ transactionId String @unique @db.Uuid
+ recordedAt DateTime @db.Timestamptz(6)
+ unitCount Int
+ manifest Json
+ canonicalManifest String
+ manifestHash String
+ @@index([originId,recordedAt,id])
+}
+model ProductionCompletionLine {
+ id String @id @db.Uuid
+ completionId String @db.Uuid
+ originId String @db.Uuid
+ unitId String @unique @db.Uuid
+ lotId String @db.Uuid
+ batchId String @db.Uuid
+ checkoutLineId String @unique @db.Uuid
+ previousEventId String @unique @db.Uuid
+ movementId String @unique @db.Uuid
+ eventId String @unique @db.Uuid
+ snapshot Json
+ @@index([completionId])
 }

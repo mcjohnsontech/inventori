@@ -149,3 +149,7 @@ Manager Held/Reworked reviews append immutable evidence without ledger or UnitSt
 
 ## Pending request boundary — milestone 7B
 AuthorizationRequest is immutable evidence, never an accepted stock transaction. Its command must not own StockTransaction or UnitEvent records. Recovery membership must retain exact current damaged-unit provenance and versions at acceptance. Correction quantities are server-resolved ledger/projection snapshots with client review preconditions, not stock authority. Positive observations create no units. All accepted requests remain PENDING_CLOUD_AUTHORIZATION; future execution requires separately approved delivered authorization and current-state revalidation. Fully accounted damaged carry-forward is distinct from unresolved quantity discrepancies requiring certification.
+
+
+## Manager completion — O8
+Only selected currently In Production units may transition P -> C under a complete new Manager completion domain group. Each exact unit gets quantity-one movement, contiguous prior-event link and preserved checkout reference. U is not touched. C remains accounted, unavailable stock. No automatic Order ID completion, reopening, damaged completion, generic transition or terminal removal recovery. Census checks include C and X when later checkout/damage affects a lot. Completion history is immutable; projections must reconcile.

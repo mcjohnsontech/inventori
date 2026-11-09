@@ -1,6 +1,7 @@
 'use client';
 import type { Catalogue, Role } from '@dayari/contracts';
 
+import { CompletionWorkspace } from './completion-workspace';
 import { AuthorizationRequestsWorkspace } from './authorization-requests-workspace';
 import { DamageWorkspace } from './damage-workspace';
 import { ReconciliationWorkspace } from './reconciliation-workspace';
@@ -123,6 +124,8 @@ export function WorkspaceRouter({
   }
 
   switch (workspace) {
+    case 'completion':
+      return <CompletionWorkspace actorId={user.id} />;
     case 'requests':
       return <AuthorizationRequestsWorkspace actorId={user.id} />;
 

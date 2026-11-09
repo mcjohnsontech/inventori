@@ -18,8 +18,8 @@ The PRD, current audit and repository were inspected. Existing catalogue/receipt
 | 4 | Unit tracking and lifecycle timeline | Completed and pushed: 926c58b | 57 unit / 106 integration tests, final 7-case tracking repeat, six browser regressions, typecheck/build, 48-table preservation and reviewed five-width drawer. |
 | 5 | Production checkout | Completed and pushed: 4cebb51 | All three issue roles; Production use, Sample, Internal use and Other (explanation required); optional reusable Order IDs and explicit missing-reason reconciliation approved. |
 | 6 | Missing-reason reconciliation | Completed and pushed: e6c158d | 69 unit/123 integration tests, six browser cases successful across runs, typecheck/build and 52-table preservation. |
-| 7 | BAD, recovery and disposition | Software checks complete; publication follows | O6 scope and B04 mapping confirmed; recovery/correction execution remains pending future cloud authorization. |
-| 8 | Completion and physical reconciliation | Pending | Recorded versus physically verified evidence; no invented historical events. |
+| 7 | BAD, recovery and disposition | Completed and pushed: f1ca55a | O6 scope and B04 mapping confirmed; recovery/correction execution remains pending future cloud authorization. |
+| 8 | Completion and physical reconciliation | 8A verification complete; publication follows; 8B policy pending | Manager exact-unit completion implemented. B05 scope approved; separate concurrency/recount policy still pending. |
 | 9 | Manager daily close | Pending | Approved blockers, immutable snapshot and post-close visibility. |
 | 10 | Admin analytics and investigation | Pending | Real movement/domain data, reusable Order ID investigation and unit drilldowns. |
 | 11 | Authentication/staff hardening | Pending | Extend existing architecture; isolated email testing only. |
@@ -142,3 +142,9 @@ Owner approved B05 count scope/roles/zero-tolerance baseline. The separate concu
 
 
 Milestone 7B final checks: 77 unit tests, 141 PostgreSQL integration tests, seven browser regressions together, typecheck and production build passed. All 58 prior table fingerprints preserved on isolated rehearsal; pending request stock fingerprints unchanged. Cloud approval delivery/execution remains deferred. No operational migration.
+
+
+Milestone 7B published: `f1ca55afbbdb311077f13f0854225a1c9c1bf11b`, https://github.com/mcjohnsontech/inventori/commit/f1ca55afbbdb311077f13f0854225a1c9c1bf11b. Push and exact remote SHA verified. Milestone 8A Manager completion now starts; B05 concurrency/recount policy remains pending.
+
+
+Milestone 8A verification: isolated migration 027 preserved 60 prior-table field fingerprints; completion preserves original checkout/receipt/QR/print/request evidence and does not deduct U twice. 79 unit tests passed; 151 successful cases in full integration run plus final completion 13/13 (154 distinct successful cases across runs). Eight browser journeys successful across runs; final screenshot refresh/type/build checks recorded in production-completion-implementation-report.md. Targeted counts remain separate pending-policy work; no operational migration.
