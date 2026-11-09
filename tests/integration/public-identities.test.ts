@@ -22,8 +22,19 @@ const originId=randomUUID(),password=randomUUID();let db:ReturnType<typeof datab
 let admin:string,manager:string,production:string,adminId:string,sourceId:string,product:any,receipt:any,job:any;
 const post=(path:string,body:object,key=randomUUID(),token=admin)=>request(app.getHttpServer()).post('/v1/'+path).set('Authorization','Bearer '+token).set('Idempotency-Key',key).send(body);
 const get=(path:string,token=admin)=>request(app.getHttpServer()).get('/v1/'+path).set('Authorization','Bearer '+token);
+const fixtureOrigins=new Set([originId]);
 const frozenTables=['Supplier','SupplierSource','SupplierLocationPrefix','Product','Variant','ProductSourcing','SupplierVariantSku','DeliveryBatch','Receipt','ReceiptLine','StockLot','StockTransaction','StockMovement','StockBalance','CommandResult','LabelPrintJob','LabelPrintJobLine','LabelPrintEvent'];
-async function snapshot(client:Prisma.TransactionClient|PrismaClient){const data:Record<string,unknown>={};for(const t of frozenTables)data[t]=await client.$queryRawUnsafe(`SELECT to_jsonb(t)::text AS row FROM "${t}" t ORDER BY to_jsonb(t)::text COLLATE "C"`);return JSON.stringify(data);}
+async function snapshot(client:Prisma.TransactionClient|PrismaClient){
+ const data:Record<string,unknown>={};
+ for(const t of frozenTables){
+  const scope=['Receipt','ReceiptLine','StockMovement'].includes(t)?'t."batchId" IN (SELECT id FROM "DeliveryBatch" WHERE "originId"=ANY($1::uuid[]))'
+   :t==='StockBalance'?'t."lotId" IN (SELECT id FROM "StockLot" WHERE "originId"=ANY($1::uuid[]))'
+   :t==='LabelPrintJobLine'?'t."jobId" IN (SELECT id FROM "LabelPrintJob" WHERE "originId"=ANY($1::uuid[]))'
+   :'t."originId"=ANY($1::uuid[])';
+  data[t]=await client.$queryRawUnsafe(`SELECT to_jsonb(t)::text AS row FROM "${t}" t WHERE ${scope} ORDER BY to_jsonb(t)::text COLLATE "C"`,[...fixtureOrigins]);
+ }
+ return JSON.stringify(data);
+}
 beforeAll(async()=>{
  db=database(url);await db.originNode.create({data:{id:originId,mode:'SHOP'}});app=await createApp(db,originId,'SHOP');
  for(const role of ['ADMIN','MANAGER','PRODUCTION'] as const){const u=await db.user.create({data:{email:`${role.toLowerCase()}-${originId}@identity.test`,name:role,role,passwordHash:passwordHash(password),membership:{create:{originId}}}});const r=await request(app.getHttpServer()).post('/v1/sessions').send({email:u.email,password}).expect(200);if(role==='ADMIN'){admin=r.body.token;adminId=u.id;}else if(role==='MANAGER')manager=r.body.token;else production=r.body.token;}
@@ -49,7 +60,7 @@ it('allocates P/L atomically on every create path and replays exact identities w
  const separate=(await post('receipts',rBody,randomUUID(),manager).expect(201)).body;expect(separate.lines[0].lotCode).not.toBe(r1.body.lines[0].lotCode);expect(separate.lines[0].lotId).not.toBe(r1.body.lines[0].lotId);
 });
 
-async function forcedProduct(draw:()=>string,origin=originId,omit=false,fail=false){return db.$transaction(async tx=>{
+async function forcedProduct(draw:()=>string,origin=originId,omit=false,fail=false){fixtureOrigins.add(origin);return db.$transaction(async tx=>{
  await tx.$queryRaw`SELECT id FROM "OriginNode" WHERE id=${origin}::uuid FOR UPDATE`;
  const p=await tx.product.create({data:{name:'Collision fixture',originId:origin,variants:{create:{name:'Default',combinationKey:'',originId:origin}}}}),commandId=randomUUID();
  const code=omit?null:await allocatePublicIdentity(tx,'PRODUCT',p.id,origin,commandId,draw);
@@ -101,7 +112,7 @@ it('rolls new lot identities back with a late receiving failure and rejects forg
  const prior=await db.productPublicIdentity.findUniqueOrThrow({where:{productId:product.id}});
  await expect(db.productPublicIdentity.create({data:{productId:randomUUID(),originId,code:'P88888',commandId:prior.commandId}})).rejects.toThrow();
  for(const code of [prior.code,'P00000'])await expect(forcedProduct(()=>code)).rejects.toThrow();
- const foreign=await db.originNode.findFirstOrThrow({where:{id:{not:originId},mode:'SHOP'}});
+ const foreign=await db.originNode.findFirstOrThrow({where:{id:{in:[...fixtureOrigins].filter(id=>id!==originId)},mode:'SHOP'}});
  await expect(db.$transaction(async tx=>{const p=await tx.product.create({data:{name:'Forged origin',originId}});await tx.productPublicIdentity.create({data:{productId:p.id,originId:foreign.id,code:'P99999',commandId:prior.commandId}});})).rejects.toThrow();
  expect(await snapshot(db)).toBe(before);
 });

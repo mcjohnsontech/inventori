@@ -15,7 +15,7 @@ import { ProductionWorkspace } from './production-workspace';
 import { QrWorkspace } from './labels/qr-workspace';
 import { ReceiptsWorkspace } from './receiving/receipts-workspace';
 import { ReceivingWorkspace } from './receiving/receiving-workspace';
-import { ReportsWorkspace } from './reports-workspace';
+import { ReportsWorkspace } from './operational-reports-workspace';
 import { SettingsWorkspace } from './settings-workspace';
 import { SuppliersWorkspace } from './suppliers-workspace';
 import { UsersWorkspace } from './users-workspace';

@@ -271,3 +271,14 @@ Pending recovery/correction execution remains deferred under O5; requests are im
 | No second usable deduction | P-to-C movement/event and P/C projections; U preservation tests | No recovery/correction execution |
 | Atomic/replay-safe/concurrent operation | Origin lock, exact manifest, current Manager fence, canonical result, rollback/BAD-race tests | Isolated fixtures only |
 | B05 physical counts | Approved baseline in decisions.md | Separate concurrency/recount policy still pending |
+
+
+## Independent milestone 10 reporting scope
+| Requirement | Implementation and evidence | Boundary |
+|---|---|---|
+| Period movements and stock provenance | ReportsService, paginated movement DTO and source/unit drawers | Read only, exact SKU/state quantities |
+| Reusable Order ID investigation | Exact case-preserved lookup across all matching checkout lines/sessions | No unique-order identity or implicit completion |
+| Reconciliation and damage evidence | Original/classified reasons, pending exceptions, review outcomes and pending requests | Metadata does not become executed recovery/correction |
+| Opening/ending and consumption | Ledger-derived U/P/D/C/X and per-SKU flow totals | Not certified closing; no unlike-product quantity total |
+| Security and preservation | Production/origin denial and fingerprint tests | No raw security audit, valuation or mutations |
+| Certified closing history | Dependent on B05/O4 slices | Not implemented or fabricated by these reports |

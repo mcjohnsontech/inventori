@@ -129,3 +129,7 @@ Pending recovery/correction evidence is implemented through isolated additive mi
 
 ## Complete V1 directive — milestone 8A
 Manager-selected Production completion is implemented through additive isolated migration 027. Explicit P-to-C accounting preserves original checkout references and never deducts U twice. Other same-Order-ID work remains independent. Software verification is recorded in production-completion-implementation-report.md. Physical counts are separate 8B work; remaining concurrency/recount policy is pending. No operational migration or deployment.
+
+
+## Complete V1 directive — milestone 10
+Operational ledger/state/flow reports and exact reused-Order-ID investigation verified. Admin/Manager only, origin-scoped read-only snapshots; no migration. Source receipt/lot-print records retained. Not certified closing history. See operational-reporting-implementation-report.md.

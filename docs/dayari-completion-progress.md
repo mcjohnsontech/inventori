@@ -19,9 +19,9 @@ The PRD, current audit and repository were inspected. Existing catalogue/receipt
 | 5 | Production checkout | Completed and pushed: 4cebb51 | All three issue roles; Production use, Sample, Internal use and Other (explanation required); optional reusable Order IDs and explicit missing-reason reconciliation approved. |
 | 6 | Missing-reason reconciliation | Completed and pushed: e6c158d | 69 unit/123 integration tests, six browser cases successful across runs, typecheck/build and 52-table preservation. |
 | 7 | BAD, recovery and disposition | Completed and pushed: f1ca55a | O6 scope and B04 mapping confirmed; recovery/correction execution remains pending future cloud authorization. |
-| 8 | Completion and physical reconciliation | 8A verification complete; publication follows; 8B policy pending | Manager exact-unit completion implemented. B05 scope approved; separate concurrency/recount policy still pending. |
+| 8 | Completion and physical reconciliation | 8A pushed: 6c0f43c; 8B policy pending | Manager exact-unit completion implemented. B05 scope approved; separate concurrency/recount policy still pending. |
 | 9 | Manager daily close | Pending | Approved blockers, immutable snapshot and post-close visibility. |
-| 10 | Admin analytics and investigation | Pending | Real movement/domain data, reusable Order ID investigation and unit drilldowns. |
+| 10 | Admin analytics and investigation | Verified; publication in progress | Real movement/domain data, reusable Order ID investigation and unit drilldowns. |
 | 11 | Authentication/staff hardening | Pending | Extend existing architecture; isolated email testing only. |
 | 12 | Cross-application UX review | Pending | Every milestone also requires responsive browser inspection and refinement. |
 | 13 | Full scenario/regressions/final report | Pending | Final report only after actual execution; blocked work clearly distinguished. |
@@ -148,3 +148,9 @@ Milestone 7B published: `f1ca55afbbdb311077f13f0854225a1c9c1bf11b`, https://gith
 
 
 Milestone 8A verification: isolated migration 027 preserved 60 prior-table field fingerprints; completion preserves original checkout/receipt/QR/print/request evidence and does not deduct U twice. 79 unit tests passed; 151 successful cases in full integration run plus final completion 13/13 (154 distinct successful cases across runs). Eight browser journeys successful across runs; final screenshot refresh/type/build checks recorded in production-completion-implementation-report.md. Targeted counts remain separate pending-policy work; no operational migration.
+
+
+Milestone 8A published: `6c0f43ca68b64e54908a95dc1346fe949de9e667`, https://github.com/mcjohnsontech/inventori/commit/6c0f43ca68b64e54908a95dc1346fe949de9e667. Push/exact remote SHA verified; working tree clean. Remaining B05 concurrency/recount policy prevents silently implementing physical-count certification and its closing dependency. Continue independent milestone 10 reporting; do not mark 8B/9 complete.
+
+
+Milestone 10: 81 unit tests, full 162 PostgreSQL integration tests, five browser regressions, final typecheck/build passed. Five-width reporting evidence reviewed; no migration or stock change. Remaining B05 concurrency/recount rule now owner-approved on 9 November; targeted counts and strict closing can proceed next.

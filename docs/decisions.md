@@ -257,3 +257,7 @@ CONFIRMED: Inventory Manager records Held or Reworked as damaged/unavailable; ne
 CONFIRMED: Inventory Managers count; Admin reviews; Production has no count administration. Each targeted count covers one exact stock lot and stock state. Native inventory records explicit verified-unit observations plus unidentified extras; legacy inventory records quantity evidence without fabricated unit identities. Any unexplained quantity or identity mismatch blocks closing for the affected period, with no tolerance. Counts are required for selected samples/suspicious scopes, not the entire warehouse. No stock change or automatic historical enrollment is authorized by a count.
 
 OPEN: the separately asked concurrency/recount/resolution baseline is awaiting the owner answer. Independent pending-request verification and approved O8 completion may continue; do not silently treat this first answer as approval of the second question.
+
+
+## B05 count validation — owner confirmation 9 November 2026
+CONFIRMED: operations continue while counting. A relevant movement invalidates an in-progress attempt and requires explicit recount. Preserve all attempts/findings. A Manager may resolve a mistaken finding only with an explained matching recount, without stock change. Genuine discrepancies remain pending correction. Starting a targeted count makes its evidence mandatory for closing. This resolves the remaining count concurrency/recount policy; implementation and isolated validation follow. No operational migration or stock correction execution is authorized.

@@ -8,6 +8,8 @@ export type Column<T> = {
   label: string;
   cell: (row: T) => ReactNode;
   wide?: boolean;
+  /** Give long item descriptions the full mobile row while retaining labels for quantities. */
+  mobileFullWidth?: boolean;
   align?: 'left' | 'right';
 };
 
@@ -115,10 +117,11 @@ export function DataTable<T>({
                           column.align === 'right' && 'text-right',
                           mobileStack &&
                             'max-sm:flex max-sm:min-w-0 max-sm:items-start max-sm:justify-between max-sm:gap-3 max-sm:border-0 max-sm:px-5 max-sm:py-2 max-sm:whitespace-normal max-sm:before:w-20 max-sm:before:shrink-0 max-sm:before:text-left max-sm:before:text-xs max-sm:before:text-grey-2 max-sm:before:content-[attr(data-label)]',
+                          mobileStack && column.mobileFullWidth && 'max-sm:block max-sm:before:hidden',
                         )}
                       >
                         {mobileStack ? (
-                          <div className="min-w-0 max-sm:flex-1 max-sm:text-right max-sm:break-words">
+                          <div className={cn('min-w-0 max-sm:flex-1 max-sm:text-right max-sm:break-words', column.mobileFullWidth && 'max-sm:text-left')}>
                             {column.cell(row)}
                           </div>
                         ) : (

@@ -14,17 +14,21 @@ export function DetailsDrawer({
   onClose,
   children,
   closeLabel = 'Close lot details',
+  active = true,
 }: {
   title: string;
   eyebrow?: string;
   onClose: () => void;
   children: ReactNode;
   closeLabel?: string;
+  /** Keep record state mounted while a drilldown temporarily owns the modal. */
+  active?: boolean;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const id = useId();
 
   useEffect(() => {
+    if (!active) return;
     const element = dialog.current!;
     const previous = document.activeElement as HTMLElement | null;
 
@@ -37,7 +41,7 @@ export function DetailsDrawer({
       document.body.style.overflow = overflow;
       if (previous?.isConnected) previous.focus();
     };
-  }, []);
+  }, [active]);
 
   return (
     <dialog

@@ -118,3 +118,5 @@ export * from './damage.js';
 export * from './authorization-requests.js';
 
 export * from './completions.js';
+
+export * from './reports.js';
