@@ -64,6 +64,7 @@ export default function DayariInventory() {
   const [missing, setMissing] = useState(false);
 
   const acceptedHash = useRef('');
+  const receiveAfterSupplier = useRef(false);
 
   /** An open wizard can veto a route change to protect its unsaved draft. */
   const mayNavigate = useCallback(
@@ -259,7 +260,12 @@ export default function DayariInventory() {
     try {
       const options = await api<ReceivingOptions>('receiving/options');
       if (!options.suppliers.length) {
-        setNotice('Ask Admin to register a supplier and its location prefix before receiving.');
+        if (user?.role === 'ADMIN') {
+          receiveAfterSupplier.current = true;
+          openSupplier();
+        } else {
+          setNotice('No receiving suppliers are configured yet. Ask an Admin to register a supplier and its location prefix.');
+        }
         return;
       }
       setReceiveOptions(options);
@@ -277,6 +283,11 @@ export default function DayariInventory() {
 
     try {
       await load(user);
+      setDataVersion((version) => version + 1);
+      if (receiveAfterSupplier.current) {
+        receiveAfterSupplier.current = false;
+        await openReceive();
+      }
     } catch {
       setError('Saved successfully. Refresh the page to reload the catalogue.');
     }
@@ -360,7 +371,7 @@ export default function DayariInventory() {
         <SupplierWizard
           catalogue={catalogue}
           initialSupplierId={supplierContext}
-          onClose={() => setFlow(null)}
+          onClose={() => { receiveAfterSupplier.current = false; setFlow(null); }}
           onSaved={saved}
         />
       ) : null}

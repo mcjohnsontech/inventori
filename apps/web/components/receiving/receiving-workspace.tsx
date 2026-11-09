@@ -1,7 +1,7 @@
 'use client';
 import { TruckDeliveryIcon } from '@hugeicons/core-free-icons';
 import { useEffect, useState } from 'react';
-import type { AcceptedReceipt, ReceivingOptions, Catalogue } from '@dayari/contracts';
+import type { AcceptedReceipt, ReceivingOptions, Catalogue, Role } from '@dayari/contracts';
 
 import { cn } from '../../lib/cn';
 import { useApiRead } from '../../lib/api';
@@ -23,12 +23,16 @@ import { ReceiveWizard } from './receive-wizard';
 export { ReceiptDetails } from './receipt-details';
 
 export function ReceivingWorkspace({
+  role,
+  onSupplier,
   initialReceiptId = '',
   onUnitLabels,
   onHistory,
   onInventory,
   onCatalogueChanged,
 }: {
+  role: Role;
+  onSupplier: () => void;
   initialReceiptId?: string;
   onUnitLabels?: (receiptId:string)=>void;
   onHistory?: () => void;
@@ -61,10 +65,10 @@ export function ReceivingWorkspace({
               </Button>
             ) : null}
             <Button
-              disabled={options.loading || !options.data?.suppliers.length}
-              onClick={() => setOpen(true)}
+              disabled={options.loading || Boolean(options.error) || (!options.data?.suppliers.length && role !== 'ADMIN')}
+              onClick={() => options.data?.suppliers.length ? setOpen(true) : onSupplier()}
             >
-              Receive delivery
+              {!options.loading && !options.data?.suppliers.length && role === 'ADMIN' ? 'Add supplier' : 'Receive delivery'}
             </Button>
           </>
         }
@@ -78,7 +82,11 @@ export function ReceivingWorkspace({
         ) : options.error ? (
           <ErrorNotice message={options.error} onRetry={options.refresh} />
         ) : !options.data?.suppliers.length ? (
-          <EmptyState title="No receiving suppliers configured" icon={TruckDeliveryIcon}>Ask Admin to register a supplier and its location prefix first.</EmptyState>
+          <EmptyState title="No receiving suppliers configured" icon={TruckDeliveryIcon}>
+            {role === 'ADMIN'
+              ? 'Add your first supplier and its saved location prefix to start receiving deliveries.'
+              : 'Ask an Admin to register a supplier and its location prefix first.'}
+          </EmptyState>
         ) : null}
 
         {selected.loading ? (

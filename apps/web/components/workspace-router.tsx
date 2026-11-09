@@ -200,6 +200,8 @@ export function WorkspaceRouter({
     case 'receiving':
       return (
         <ReceivingWorkspace
+          role={user.role}
+          onSupplier={onReceive}
           onUnitLabels={(id)=>navigate('labels','',id)}
           onCatalogueChanged={onCatalogueChanged}
           onHistory={() => navigate('receipts')}
