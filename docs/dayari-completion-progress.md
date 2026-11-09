@@ -18,7 +18,7 @@ The PRD, current audit and repository were inspected. Existing catalogue/receipt
 | 4 | Unit tracking and lifecycle timeline | Completed and pushed: 926c58b | 57 unit / 106 integration tests, final 7-case tracking repeat, six browser regressions, typecheck/build, 48-table preservation and reviewed five-width drawer. |
 | 5 | Production checkout | Completed and pushed: 4cebb51 | All three issue roles; Production use, Sample, Internal use and Other (explanation required); optional reusable Order IDs and explicit missing-reason reconciliation approved. |
 | 6 | Missing-reason reconciliation | Completed and pushed: e6c158d | 69 unit/123 integration tests, six browser cases successful across runs, typecheck/build and 52-table preservation. |
-| 7 | BAD, recovery and disposition | In progress | O6 scope and B04 mapping confirmed; recovery/correction execution remains pending future cloud authorization. |
+| 7 | BAD, recovery and disposition | Software checks complete; publication follows | O6 scope and B04 mapping confirmed; recovery/correction execution remains pending future cloud authorization. |
 | 8 | Completion and physical reconciliation | Pending | Recorded versus physically verified evidence; no invented historical events. |
 | 9 | Manager daily close | Pending | Approved blockers, immutable snapshot and post-close visibility. |
 | 10 | Admin analytics and investigation | Pending | Real movement/domain data, reusable Order ID investigation and unit drilldowns. |
@@ -133,3 +133,12 @@ BAD reporting and Manager disposition are implemented through isolated migration
 
 
 Milestone 7A final checks: 73/73 unit tests; full integration 131/131 followed by final damage 9/9 (132 distinct integration successes across runs); six browser regressions passed together; final build/typecheck passed. Populated 54-table prior-field preservation and pre-upgrade receiving/checkout passed. Damage/disposition publication follows; 7B pending request workflows remain next.
+
+
+Milestone 7A published: `33c62d3c42025fe9f9bd6e25d87069f5809791a5`, `feat(damage): implement exact-unit BAD reporting and Manager disposition`, branch `feat/complete-application-systems`, https://github.com/mcjohnsontech/inventori/commit/33c62d3c42025fe9f9bd6e25d87069f5809791a5. Push and exact remote SHA verified; working tree was clean. Continue 7B pending recovery/correction request evidence with no stock execution.
+
+
+Owner approved B05 count scope/roles/zero-tolerance baseline. The separate concurrency/recount question remains pending. Milestone 7B verification continues; this does not block independent Manager-selected completion under O8.
+
+
+Milestone 7B final checks: 77 unit tests, 141 PostgreSQL integration tests, seven browser regressions together, typecheck and production build passed. All 58 prior table fingerprints preserved on isolated rehearsal; pending request stock fingerprints unchanged. Cloud approval delivery/execution remains deferred. No operational migration.

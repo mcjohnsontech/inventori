@@ -251,3 +251,13 @@ Actual suite results are recorded in reason-reconciliation-implementation-report
 | Actual unit lifecycle and privacy | filtered timeline, exact-code/QR draft/review/history workspace | Production note exclusions and five-width lost-response browser journey |
 
 Pending recovery/correction execution remains deferred under O5; requests are implemented separately. Actual verification results belong in bad-reporting-implementation-report.md.
+
+
+## Milestone 7B — O5 pending requests
+| Requirement | Implementation / evidence | Boundary |
+|---|---|---|
+| Manager recovery/correction requests | AuthorizationRequestsService, immutable migrations 025/026, authorization-requests integration/browser tests | Evidence only; no stock execution |
+| Scoped operational review | Admin/Manager history and operational unit timeline; Production negative tests | No unrestricted audit or substitute local approval |
+| Atomic, replay-safe evidence | Origin lock, canonical command result, audit/outbox, rollback/concurrency tests | Original stock and unit fingerprints unchanged |
+| Preserve historical identities | 58-table populated migration rehearsal | Isolated fixtures only; no operational migration |
+| B05 targeted counts | Owner-approved roles/scope/zero tolerance in decisions.md | Separate concurrency/recount policy remains open |

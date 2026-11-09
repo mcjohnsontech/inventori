@@ -732,3 +732,40 @@ model DamageReviewLine {
  @@unique([reviewId,unitId])
  @@index([unitId])
 }
+
+model AuthorizationRequest {
+ id String @id @db.Uuid
+ originId String @db.Uuid
+ actorId String @db.Uuid
+ actorRole Role
+ commandId String @unique @db.Uuid
+ recordedAt DateTime @db.Timestamptz(6)
+ kind String
+ status String
+ reason String
+ evidence String
+ lotId String? @db.Uuid
+ state String?
+ ledgerQuantity BigInt?
+ projectionQuantity BigInt?
+ observedQuantity BigInt?
+ requestedDelta BigInt? @default(dbgenerated())
+ unitCount Int
+ payload Json
+ canonicalEvidence String
+ evidenceHash String
+ @@index([originId,recordedAt,id])
+}
+model AuthorizationRequestUnit {
+ id String @id @db.Uuid
+ requestId String @db.Uuid
+ originId String @db.Uuid
+ unitId String @db.Uuid
+ lotId String @db.Uuid
+ previousEventId String @db.Uuid
+ recordedVersion BigInt
+ damageLineId String? @db.Uuid
+ snapshot Json
+ @@unique([requestId,unitId])
+ @@index([unitId])
+}

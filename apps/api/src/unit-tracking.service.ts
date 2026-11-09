@@ -36,18 +36,26 @@ export class UnitTrackingService {
         WHERE p."unitId"=${id.data}::uuid AND p."originId"=${this.originId}::uuid
         ${user.role === 'PRODUCTION' ? Prisma.sql`AND p."actorId"=${user.id}::uuid` : Prisma.empty}`;
       const operational = user.role !== 'PRODUCTION';
-      const [reasonSchema] = operational ? await tx.$queryRaw<{ ready: boolean }[]>`SELECT to_regclass('"ReasonReconciliation"') IS NOT NULL AS ready` : [];
+      const [domains] = operational ? await tx.$queryRaw<{ reasons: boolean; damage: boolean; requests: boolean }[]>`SELECT
+        to_regclass('"ReasonReconciliation"') IS NOT NULL AS reasons,to_regclass('"DamageReview"') IS NOT NULL AS damage,
+        to_regclass('"AuthorizationRequest"') IS NOT NULL AS requests` : [];
+      const reasonSchema = { ready: domains?.reasons }, damageSchema = { ready: domains?.damage };
       const classification = reasonSchema?.ready ? Prisma.sql`UNION ALL
         SELECT resolved.id,'REASON_RECONCILED'::text,r."recordedAt",o."originSequence",r."actorId",u.name,r."actorRole",NULL::text,NULL::text,NULL::uuid,NULL::uuid,NULL::uuid,NULL::text
         FROM "CheckoutReasonResolution" resolved JOIN "ReasonReconciliation" r ON r.id=resolved."reconciliationId" JOIN "User" u ON u.id=r."actorId"
         JOIN "OutboxEvent" o ON o."commandId"=r."commandId" AND o."originId"=r."originId"
         WHERE resolved."unitId"=${id.data}::uuid AND r."originId"=${this.originId}::uuid` : Prisma.empty;
-      const [damageSchema] = operational ? await tx.$queryRaw<{ ready: boolean }[]>`SELECT to_regclass('"DamageReview"') IS NOT NULL AS ready` : [];
+
       const damageReviews = damageSchema?.ready ? Prisma.sql`UNION ALL
         SELECT x.id,'DAMAGE_REVIEWED'::text,r."recordedAt",o."originSequence",r."actorId",u.name,r."actorRole",NULL::text,NULL::text,NULL::uuid,NULL::uuid,NULL::uuid,NULL::text
         FROM "DamageReviewLine" x JOIN "DamageReview" r ON r.id=x."reviewId" JOIN "User" u ON u.id=r."actorId"
         JOIN "OutboxEvent" o ON o."commandId"=r."commandId" AND o."originId"=r."originId"
         WHERE x."unitId"=${id.data}::uuid AND r."originId"=${this.originId}::uuid AND r."transactionId" IS NULL` : Prisma.empty;
+      const recoveryRequests = domains?.requests ? Prisma.sql`UNION ALL
+        SELECT x.id,'RECOVERY_REQUESTED'::text,r."recordedAt",o."originSequence",r."actorId",u.name,r."actorRole",NULL::text,NULL::text,NULL::uuid,NULL::uuid,NULL::uuid,NULL::text
+        FROM "AuthorizationRequestUnit" x JOIN "AuthorizationRequest" r ON r.id=x."requestId" JOIN "User" u ON u.id=r."actorId"
+        JOIN "OutboxEvent" o ON o."commandId"=r."commandId" AND o."originId"=r."originId"
+        WHERE x."unitId"=${id.data}::uuid AND r."originId"=${this.originId}::uuid` : Prisma.empty;
       const history = operational ? Prisma.sql`${observations} UNION ALL
         SELECT e.id,e.kind,e."recordedAt",o."originSequence",e."actorId",u.name,e."actorRole",e."fromState",e."toState",r."receiptId",e."movementId",NULL::uuid,NULL::text
         FROM "UnitEvent" e JOIN "User" u ON u.id=e."actorId" JOIN "StockUnit" s ON s.id=e."unitId" JOIN "ReceiptLine" r ON r.id=s."receiptLineId"
@@ -56,7 +64,7 @@ export class UnitTrackingService {
         SELECT e.id,CASE e.kind WHEN 'REQUESTED' THEN 'LABEL_REQUESTED' WHEN 'ARTIFACT_READY' THEN 'LABEL_PREPARED' ELSE 'PRINT_DIALOG_REQUESTED' END,e."recordedAt",o."originSequence",e."actorId",u.name,e."actorRole",NULL::text,NULL::text,NULL::uuid,NULL::uuid,e."jobId",NULL::text
         FROM "UnitLabelEvent" e JOIN "UnitLabelLine" l ON l."jobId"=e."jobId" JOIN "User" u ON u.id=e."actorId"
         JOIN "OutboxEvent" o ON o."commandId"=e."commandId" AND o."originId"=e."originId"
-        WHERE l."unitId"=${id.data}::uuid AND e."originId"=${this.originId}::uuid ${classification} ${damageReviews}` : Prisma.sql`${observations} UNION ALL
+        WHERE l."unitId"=${id.data}::uuid AND e."originId"=${this.originId}::uuid ${classification} ${damageReviews} ${recoveryRequests}` : Prisma.sql`${observations} UNION ALL
         SELECT e.id,e.kind,e."recordedAt",o."originSequence",e."actorId",u.name,e."actorRole",e."fromState",e."toState",NULL::uuid,e."movementId",NULL::uuid,NULL::text
         FROM "UnitEvent" e JOIN "User" u ON u.id=e."actorId"
         JOIN "OutboxEvent" o ON o."commandId"=e."commandId" AND o."originId"=e."originId"
@@ -82,10 +90,17 @@ export class UnitTrackingService {
         UNION ALL SELECT COALESCE(x."eventId",x.id),r.id,''::text,r.note,r.outcome FROM "DamageReviewLine" x JOIN "DamageReview" r ON r.id=x."reviewId"
         WHERE ${operational} AND COALESCE(x."eventId",x.id) IN (${Prisma.join(damageEvents.map(id => Prisma.sql`${id}::uuid`))}) AND r."originId"=${this.originId}::uuid`) : [];
       const damageByEvent = new Map(damageDetails.map(row => [row.id,row]));
+      const requestIds = rows.filter(row => row.kind === 'RECOVERY_REQUESTED').map(row => row.id);
+      const requests = requestIds.length ? await tx.$queryRaw<{ id: string; requestId: string; requestReason: string; requestEvidence: string; requestStatus: 'PENDING_CLOUD_AUTHORIZATION' }[]>(Prisma.sql`
+        SELECT x.id,r.id AS "requestId",r.reason AS "requestReason",r.evidence AS "requestEvidence",r.status AS "requestStatus"
+        FROM "AuthorizationRequestUnit" x JOIN "AuthorizationRequest" r ON r.id=x."requestId"
+        WHERE x.id IN (${Prisma.join(requestIds.map(id => Prisma.sql`${id}::uuid`))}) AND r."originId"=${this.originId}::uuid`) : [];
+      const requestByEvent = new Map(requests.map(row => [row.id,row]));
       const ownIssue = operational ? false : await tx.unitEvent.count({ where: { unitId: id.data, originId: this.originId, actorId: user.id, kind: 'ISSUED' } }) > 0;
       const events = rows.map(row => ({
         ...(classificationById.get(row.id) ?? {}),
         ...(damageByEvent.get(row.id) ?? {}),
+        ...(requestByEvent.get(row.id) ?? {}),
         ...(issueByEvent.get(row.id) ? { checkoutId: issueByEvent.get(row.id)!.checkoutId, orderReference: issueByEvent.get(row.id)!.orderReference, reasonCode: issueByEvent.get(row.id)!.reasonCode, reasonNote: issueByEvent.get(row.id)!.reasonNote } : {}),
         id: row.id, kind: row.kind, recordedAt: row.recordedAt.toISOString(), originSequence: row.originSequence.toString(),
         actor: { id: row.actorId, name: row.actorName, role: row.actorRole },

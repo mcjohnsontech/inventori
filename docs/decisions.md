@@ -250,3 +250,10 @@ CONFIRMED: Production may report BAD/damage only for units from its own checkout
 ## B04 — owner-confirmed disposition mapping, 8 November 2026
 
 CONFIRMED: Inventory Manager records Held or Reworked as damaged/unavailable; neither is recovery. Discarded or Returned to vendor transfers the exact damaged unit to terminal Removed, preserving all evidence. Removed units cannot return through this workflow. Recovery/correction execution remains gated on future cloud-delivered authorization under O5. No operational migration or stock execution is authorized by this design confirmation.
+
+
+## B05 targeted-count baseline — owner confirmation 8 November 2026
+
+CONFIRMED: Inventory Managers count; Admin reviews; Production has no count administration. Each targeted count covers one exact stock lot and stock state. Native inventory records explicit verified-unit observations plus unidentified extras; legacy inventory records quantity evidence without fabricated unit identities. Any unexplained quantity or identity mismatch blocks closing for the affected period, with no tolerance. Counts are required for selected samples/suspicious scopes, not the entire warehouse. No stock change or automatic historical enrollment is authorized by a count.
+
+OPEN: the separately asked concurrency/recount/resolution baseline is awaiting the owner answer. Independent pending-request verification and approved O8 completion may continue; do not silently treat this first answer as approval of the second question.

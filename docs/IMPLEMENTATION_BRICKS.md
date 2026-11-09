@@ -121,3 +121,7 @@ Manager missing-reason reconciliation is implemented with append-only classifica
 ## Complete V1 directive — milestone 7A
 
 Exact-unit BAD reporting and Manager damage disposition passed software verification through additive isolated migrations 023/024. O6 limits Production to its own checkout; B04 keeps Held/Reworked damaged and transfers Discarded/Returned to terminal Removed. Recovery/correction request metadata follows as milestone 7B; no local approval or recovery/correction execution is enabled. See bad-reporting-implementation-report.md for actual checks. No operational migration or deployment.
+
+
+## Complete V1 directive — milestone 7B
+Pending recovery/correction evidence is implemented through isolated additive migrations 025/026. Manager submission, Admin/Manager scoped review, exact damaged-unit provenance, independently resolved correction quantities, stable retry keys and stock-neutral timeline metadata preserve O5. Cloud approval delivery and execution remain deferred. See pending-authorization-requests-implementation-report.md for actual verification and publication status. Manager-selected completion and targeted counts follow separately; no operational migration or deployment.

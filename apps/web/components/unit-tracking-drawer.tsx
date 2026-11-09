@@ -7,6 +7,7 @@ import { UnitIdentityResult } from './labels/unit-identity-result';
 import { Button, Code, DetailsDrawer, DetailSkeleton, Disclosure, EmptyState, ErrorNotice, Footnote, Pager } from './ui';
 
 const titles: Record<UnitHistoryItem['kind'], string> = {
+  RECOVERY_REQUESTED: 'Recovery requested — pending cloud authorization',
   BAD_REPORTED: 'Reported BAD',
   DAMAGE_REMOVED: 'Damaged item removed',
   DAMAGE_REVIEWED: 'Manager reviewed damage',
@@ -40,6 +41,7 @@ export function UnitTrackingDrawer({ unitId, onClose }: { unitId: string; onClos
             {event.fromState && event.toState ? <p className="mt-1 text-xs text-grey-2">{stockState(event.fromState)} → {stockState(event.toState)}</p> : null}
             {event.checkoutId ? <a className="inline-flex min-h-11 items-center text-sm font-semibold text-brand underline" href="#checkout" onClick={onClose}>Open checkout history</a> : null}
             {event.checkoutId ? <p className="break-words text-xs text-grey-2">Order ID: {event.orderReference ?? 'Not provided'} · Reason: {event.reasonCode ? checkoutReasonLabels[event.reasonCode as keyof typeof checkoutReasonLabels] ?? event.reasonCode : 'Manager follow-up required'}{event.reasonNote ? ` · ${event.reasonNote}` : ''}</p> : null}
+            {event.requestId ? <div className="mt-2 space-y-1 text-sm"><p className="break-words">{event.requestReason}</p><p className="break-words">{event.requestEvidence}</p><Footnote>This request changed no stock. Approval delivery is deferred.</Footnote><a href="#requests" onClick={onClose} className="inline-flex min-h-11 items-center font-semibold text-brand underline">Open pending requests</a></div> : null}
             {event.damageId ? <div className="mt-2 space-y-1 text-sm">{event.damageCause ? <p>{event.damageCause}</p> : null}{event.damageOutcome ? <p>{event.damageOutcome.replaceAll('_', ' ')}</p> : null}<p className="break-words">{event.damageDescription}</p><a href="#damage" onClick={onClose} className="inline-flex min-h-11 items-center font-semibold text-brand underline">Open damage records</a></div> : null}
             {event.kind === 'REASON_RECONCILED' ? <><Footnote>The original checkout had no reason. This classification moved no stock.</Footnote>{event.managerRemarks ? <p className="mt-1 break-words text-sm">Manager remarks: {event.managerRemarks}</p> : null}</> : null}
             {event.kind === 'PRINT_DIALOG_REQUESTED' ? <Footnote>Physical printing and attachment are not confirmed.</Footnote> : null}

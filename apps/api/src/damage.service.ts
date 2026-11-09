@@ -6,7 +6,7 @@ import { damageQuerySchema, damageReportSchema, damageReviewSchema, damageSelect
 import { requireCapability } from './permissions.js';
 import { canonical, digest } from './security.js';
 
-type Selected = CheckoutItemIdentity & { state: string; version: bigint; lastEventId: string; receiptId: string;
+export type DamageSelection = CheckoutItemIdentity & { state: string; version: bigint; lastEventId: string; receiptId: string;
   checkoutLineId: string | null; checkoutId: string | null; orderReference: string | null; holderId: string | null; holderName: string | null; damageLineId: string | null };
 const json = (value: unknown): Prisma.InputJsonValue => JSON.parse(JSON.stringify(value));
 export class DamageService {
@@ -21,8 +21,8 @@ export class DamageService {
     return { originId: this.originId, limit: 500, canReport: this.mode === 'SHOP', canReview: user.role === 'MANAGER' && this.mode === 'SHOP',
       ownIssuedOnly: user.role === 'PRODUCTION', canViewReviews: user.role !== 'PRODUCTION' };
   }
-  private async selection(tx: Prisma.TransactionClient, user: User, ids: string[]): Promise<Selected[]> {
-    return tx.$queryRaw<Selected[]>(Prisma.sql`SELECT u.id AS "unitId",u."unitCode",u."lotId",li.code AS "lotCode",p.id AS "productId",pi.code AS "productCode",
+  async selection(tx: Prisma.TransactionClient, user: User, ids: string[]): Promise<DamageSelection[]> {
+    return tx.$queryRaw<DamageSelection[]>(Prisma.sql`SELECT u.id AS "unitId",u."unitCode",u."lotId",li.code AS "lotCode",p.id AS "productId",pi.code AS "productCode",
       p.name AS "productName",v.id AS "variantId",v.name AS "variantName",sku.id AS "skuId",sku."fullCode" AS "fullSku",
       b.id AS "batchId",b."publicCode" AS "publicBatchCode",s.state,s.version,s."lastEventId",r."receiptId",
       x.id AS "checkoutLineId",c.id AS "checkoutId",x."orderReference",s."holderId",holder.name AS "holderName",bad.id AS "damageLineId"
@@ -37,7 +37,7 @@ export class DamageService {
       ${user.role === 'PRODUCTION' ? Prisma.sql`AND s.state='P' AND c."actorId"=${user.id}::uuid AND s."holderId"=${user.id}::uuid` : Prisma.empty}
       ORDER BY u.id`);
   }
-  private identity(row: Selected): CheckoutItemIdentity {
+  identity(row: DamageSelection): CheckoutItemIdentity {
     const { state, version, lastEventId, receiptId, checkoutLineId, checkoutId, orderReference, holderId, holderName, damageLineId, ...identity } = row;
     return identity;
   }
