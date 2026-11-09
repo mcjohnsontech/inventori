@@ -6,14 +6,13 @@ import { CompletionWorkspace } from './completion-workspace';
 import { AuthorizationRequestsWorkspace } from './authorization-requests-workspace';
 import { DamageWorkspace } from './damage-workspace';
 import { ReconciliationWorkspace } from './reconciliation-workspace';
-import { CheckoutWorkspace } from './checkout-workspace';
+import { CheckoutLookupWorkspace } from './checkout-lookup-workspace';
 import { CatalogueWorkspace } from './catalogue/catalogue-workspace';
 import { Dashboard } from './dashboard';
 import { HelpWorkspace } from './help-workspace';
 import { InventoryWorkspace } from './inventory-workspace';
 import { PrintingWorkspace } from './labels/printing-workspace';
 import { ProductionWorkspace } from './production-workspace';
-import { QrWorkspace } from './labels/qr-workspace';
 import { ReceiptsWorkspace } from './receiving/receipts-workspace';
 import { ReceivingWorkspace } from './receiving/receiving-workspace';
 import { ReportsWorkspace } from './operational-reports-workspace';
@@ -139,7 +138,7 @@ export function WorkspaceRouter({
       return <ReconciliationWorkspace actorId={user.id} />;
 
     case 'checkout':
-      return <CheckoutWorkspace actorId={user.id} />;
+      return <CheckoutLookupWorkspace key="checkout" actorId={user.id} />;
 
     case 'help':
       return <HelpWorkspace role={user.role} navigate={navigate} />;
@@ -170,7 +169,7 @@ export function WorkspaceRouter({
       return <SettingsWorkspace user={user} onPasswordChanged={onPasswordChanged} />;
 
     case 'qr':
-      return <QrWorkspace initialCode={detail.qrCode} />;
+      return <CheckoutLookupWorkspace key={`lookup:${detail.qrCode}`} actorId={user.id} initialCode={detail.qrCode} initialMode="lookup" />;
 
     case 'labels':
       return <PrintingWorkspace actorId={user.id} initialLegacyJobId={detail.labelJob} initialReceiptId={detail.labelReceipt} />;

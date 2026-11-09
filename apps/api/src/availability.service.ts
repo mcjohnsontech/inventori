@@ -1,6 +1,6 @@
 import {BadRequestException} from '@nestjs/common';
 import {Prisma,type PrismaClient,type User} from '@prisma/client';
-import {availabilityQuery,type AvailableLot,type AvailabilityPage} from '@dayari/contracts';
+import {availabilityQuery,type AvailableLot,type AvailableProduct,type AvailabilityPage} from '@dayari/contracts';
 import {requireCapability} from './permissions.js';
 export class AvailabilityService{
  constructor(readonly db:PrismaClient,readonly originId:string){}
@@ -20,6 +20,11 @@ export class AvailabilityService{
    ${q.lotId?Prisma.sql`AND l.id=${q.lotId}::uuid`:Prisma.empty}
    ${q.q?Prisma.sql`AND position(lower(${q.q}) in lower(concat_ws(' ',p.name,v.name,s."fullCode",b."publicCode",pi.code,li.code)))>0`:Prisma.empty}`;
   return this.db.$transaction(async tx=>{
+   if(q.view==='products'){
+    const counts=await tx.$queryRaw<{total:bigint}[]>(Prisma.sql`SELECT count(DISTINCT p.id) AS total ${from}`);
+    const products=await tx.$queryRaw<AvailableProduct[]>(Prisma.sql`SELECT p.id AS "productId",pi.code AS "productCode",p.name AS "productName",count(DISTINCT v.id)::int AS "variantCount",count(*)::int AS "lotCount" ${from} GROUP BY p.id,pi.code,p.name ORDER BY p.name,p.id LIMIT 20 OFFSET ${(q.page-1)*20}`);
+    return {lots:[],products,total:Number(counts[0]!.total),page:q.page,pageSize:20,originId:this.originId,dataAsOf:new Date().toISOString()};
+   }
    const counts=await tx.$queryRaw<{total:bigint}[]>(Prisma.sql`SELECT count(*) AS total ${from}`);
    const lots=await tx.$queryRaw<AvailableLot[]>(Prisma.sql`SELECT l.id AS "lotId",li.code AS "lotCode",p.id AS "productId",pi.code AS "productCode",p.name AS "productName",v.id AS "variantId",v.name AS "variantName",s.id AS "skuId",s."fullCode" AS "fullSku",b.id AS "batchId",b."publicCode" AS "publicBatchCode",u.quantity::text AS usable ${from} ORDER BY p.name,v.name,s."fullCode",b."acceptedAt" DESC,l.id LIMIT 20 OFFSET ${(q.page-1)*20}`);
    return {lots,total:Number(counts[0]!.total),page:q.page,pageSize:20,originId:this.originId,dataAsOf:new Date().toISOString()};

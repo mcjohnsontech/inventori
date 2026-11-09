@@ -46,6 +46,7 @@ test('Production reviews exact units, preserves drafts and retries a lost checko
   await expect(page.getByRole('button', { name: `Remove ${units[1].unitCode}`, exact: true })).toBeVisible();
   await choose(page, 'Session reason', 'SAMPLE');
   await page.getByLabel('Session Order ID (optional)', { exact: true }).fill('Reusable Order A');
+  await page.getByRole('button',{name:'QR & code lookup',exact:true}).click();await expect(page.getByRole('heading',{name:'QR lookup',exact:true})).toBeVisible();await page.getByRole('button',{name:'Checkout items',exact:true}).click();await expect(page.getByLabel('Session Order ID (optional)',{exact:true})).toHaveValue('Reusable Order A');
   await page.getByRole('button', { name: 'Review checkout', exact: true }).click();
   await expect(page.getByText('Sample · Reusable Order A', { exact: true })).toHaveCount(2);
   await page.getByRole('button', { name: 'Back to items', exact: true }).click();

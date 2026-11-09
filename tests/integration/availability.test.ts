@@ -33,3 +33,14 @@ it('preserves batch provenance, literal filters and shop isolation without inven
  const foreignToken=await shopToken(db,other,foreign,'PRODUCTION');expect((await request(other.getHttpServer()).get('/v1/availability?lotId='+first.lots[0].lotId).set('Authorization','Bearer '+foreignToken).expect(200)).body.total).toBe(0);
  expect(await db.stockMovement.count({where:{batchId:receipt.batch.id}})).toBe(before);
 });
+it('groups the shared parent once across variants and batches with product-level pagination',async()=>{
+ const sourceId=receipt.batch.sourceId ?? (await db.stockLot.findFirstOrThrow({where:{batchId:receipt.batch.id}})).sourceId;
+ await post('receipts',{sourceId,deliveredOn:'2020-01-02',lines:[{skuId:product.skus[0].id,usableQuantity:2,damagedQuantity:0},{skuId:product.skus[1].id,usableQuantity:5,damagedQuantity:0}]}).expect(201);
+ const grouped=(await get('?view=products').expect(200)).body;
+ expect(grouped.total).toBe(1);expect(grouped.lots).toEqual([]);expect(grouped.products).toHaveLength(1);
+ expect(grouped.products[0]).toMatchObject({productId:product.product.id,variantCount:2,lotCount:3});
+ expect(JSON.stringify(grouped)).not.toMatch(/supplier|invoice|damaged|audit|password/i);
+ expect((await get('?view=products&page=2').expect(200)).body.products).toEqual([]);
+ const detail=(await get('?productId='+product.product.id).expect(200)).body;expect(detail.total).toBe(3);expect(detail.lots.map((lot:any)=>lot.usable).sort()).toEqual(['2','5','8']);
+ await get('?view=invalid').expect(400);
+});

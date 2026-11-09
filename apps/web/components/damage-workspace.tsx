@@ -1,4 +1,5 @@
 'use client';
+import { ReportModal } from './ui/report-modal';
 import { useEffect, useRef, useState } from 'react';
 import { damageReportSchema, damageReviewSchema, type DamageCandidate, type DamageView, type UnitIdentityLookup } from '@dayari/contracts';
 import { api, useApiRead } from '../lib/api';
@@ -35,9 +36,14 @@ function DamageDetail({ id, review, onClose, onTrack }: { id: string; review: bo
   const result = useApiRead<DamageView>(`${review ? 'damage-reviews' : 'damage-reports'}/${id}`);
   return <DetailsDrawer title={review ? 'Damage review' : 'BAD report'} eyebrow="Damage evidence" closeLabel="Close damage details" onClose={onClose}>{result.loading ? <DetailSkeleton rows={4} /> : result.error ? <ErrorNotice message={result.error} onRetry={result.refresh} /> : result.data ? <Recorded value={result.data} onTrack={onTrack} /> : null}</DetailsDrawer>;
 }
+function ReportContainer({review,children,...props}: {review:boolean;children:React.ReactNode;open:boolean;busy:boolean;onClose:()=>void}) {
+  return review ? <>{children}</> : <ReportModal {...props}>{children}</ReportModal>;
+}
 function Workflow({ actorId, config, review }: { actorId: string; config: Config; review: boolean }) {
   const { saved, ready, busy, update, send, route } = useDamageDraft(actorId, config.originId, review, config.ownIssuedOnly);
   const presentation = useQrPresentation();
+  const [reportOpen,setReportOpen] = useState(false);
+  useEffect(() => { if(ready && !review && (saved.pending || saved.body.unitIds.length || saved.body.cause || saved.body.description)) setReportOpen(true); }, [ready,review]);
   const [input, setInput] = useState(''), [error, setError] = useState(''), [adding, setAdding] = useState(false), [camera, setCamera] = useState(false), [announcement, setAnnouncement] = useState('');
   const [confirming, setConfirming] = useState(false), [page, setPage] = useState(1), [historyPage, setHistoryPage] = useState(1), [tracking, setTracking] = useState(''), [detail, setDetail] = useState('');
   const [units, setUnits] = useState<DamageCandidate[]>([]), [previewError, setPreviewError] = useState(''), [previewBusy, setPreviewBusy] = useState(false), [revision, setRevision] = useState(0);
@@ -79,7 +85,8 @@ function Workflow({ actorId, config, review }: { actorId: string; config: Config
   const canConfirm = valid.success && !previewBusy && !previewError && units.length === saved.body.unitIds.length && units.every(unit => unit.eligible);
   return <div className="space-y-5">
     {showingSaved ? accepted.loading ? <DetailSkeleton rows={4} /> : accepted.error ? <ErrorNotice message={accepted.error} onRetry={accepted.refresh} /> : accepted.data ? <><Recorded value={accepted.data} onTrack={setTracking} />{canWrite ? <Button variant="secondary" onClick={() => change({ ...saved.body, unitIds: [] })}>Start another {review ? 'review' : 'BAD report'}</Button> : null}</> : null : null}
-    {canWrite && !showingSaved && ready ? <Panel title={confirming ? review ? 'Review disposition' : 'Review BAD report' : review ? 'Review damaged items' : 'Report an item as BAD'}><div className="space-y-4">
+    {canWrite && !showingSaved && ready && !review ? <Button onClick={()=>setReportOpen(true)}>Report damaged / BAD items</Button> : null}
+    {canWrite && !showingSaved && ready ? <ReportContainer review={review} open={reportOpen} busy={busy || adding} onClose={()=>{setCamera(false);setReportOpen(false);}}><Panel title={confirming ? review ? 'Review disposition' : 'Review BAD report' : review ? 'Review damaged items' : 'Report an item as BAD'}><div className="space-y-4">
       {error ? <ErrorNotice message={error} /> : null}{presentation.state === 'error' ? <ErrorNotice message={`Identification is available, but QR presentation evidence was not confirmed: ${presentation.error}`} onRetry={presentation.retry} /> : null}{saved.pending && !busy ? <WarningNotice>The response is unresolved. Retry this saved request with the same key.<Button disabled={busy} className="mt-2" onClick={() => void confirm()}>Retry saved damage command</Button></WarningNotice> : null}
       {!confirming ? <>
         <form ref={form} onSubmit={event => { event.preventDefault(); void add(); }} className="flex flex-wrap items-end gap-3"><div className="min-w-0 flex-1"><Field label="Scan individual QR or enter Unit Code">{id => <Input id={id} value={input} disabled={disabled} maxLength={200} placeholder="DYI:2 or six characters" onChange={event => setInput(event.target.value)} />}</Field></div><Button type="submit" disabled={disabled || !input.trim()}>{adding ? 'Checking…' : 'Add item'}</Button><Button variant="secondary" disabled={disabled} onClick={() => setCamera(value => !value)}>Use camera</Button></form>
@@ -96,7 +103,7 @@ function Workflow({ actorId, config, review }: { actorId: string; config: Config
       ]} /><Pager page={page} pageCount={Math.ceil(units.length / 12)} total={units.length} onChange={setPage} /></> : <EmptyState title="No items selected">Scan or enter an exact Unit Code.</EmptyState>}
       {review ? <p className="text-sm text-grey-2">Held and Reworked remain damaged. Discarded and Returned to vendor remove the selected items. <a className="inline-flex min-h-11 items-center font-semibold text-brand underline" href="#requests">Record a pending recovery request</a>; execution still requires future cloud authorization.</p> : <p className="text-sm text-grey-2">Confirmation records damage for every selected item atomically. Original receiving and checkout evidence remains unchanged.</p>}
       <div className="flex flex-wrap justify-between gap-3"><Button variant="secondary" disabled={disabled} onClick={() => { if (confirming) setConfirming(false); else if (window.confirm('Discard this damage draft? Saved inventory history will remain unchanged.')) change({ unitIds: [], cause: '', description: '', outcome: 'HELD', note: '' }); }}>{confirming ? 'Back to items' : 'Discard draft'}</Button><Button disabled={disabled || !canConfirm} onClick={() => { if (confirming) void confirm(); else { setConfirming(true); setPage(1); } }}>{busy ? 'Recording…' : confirming ? `Confirm ${review ? 'review' : 'BAD report'} for ${units.length} ${units.length === 1 ? 'item' : 'items'}` : 'Review selected items'}</Button></div>
-    </div></Panel> : null}
+    </div></Panel></ReportContainer> : null}
     {review && !config.canReview ? <p className="text-sm text-grey-2">Read-only disposition history. Only Inventory Managers confirm damage outcomes.</p> : null}
     {!confirming ? <Panel title={review ? 'Disposition history' : config.ownIssuedOnly ? 'Your BAD reports' : 'BAD report history'}><div className="space-y-4">{history.loading ? <DetailSkeleton rows={4} /> : history.error ? <ErrorNotice message={history.error} onRetry={history.refresh} /> : history.data ? <><DataTable label="Damage history" rows={history.data.rows} rowKey={row => row.id} mobileStack emptyMessage="No recorded damage commands." columns={[
       { key: 'record', label: 'Recorded', cell: row => <><span>{formatDateTime(row.recordedAt)}</span><span className="block text-xs">{row.actorName}</span></> },

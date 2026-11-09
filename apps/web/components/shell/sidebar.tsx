@@ -61,7 +61,7 @@ function Items({
                     onClick={() => onNavigate(key)}
                     className={cn(
                       'flex w-full items-center rounded-xl font-sans text-sm font-medium tracking-[-0.02em] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand',
-                      collapsed ? 'h-10 w-10 justify-center' : 'h-9 gap-3 px-3',
+                      collapsed ? 'h-9 w-9 justify-center' : 'h-10 gap-3 px-3 lg:h-8',
                       active
                         ? 'bg-brand-tint font-semibold text-brand'
                         : 'text-grey-2 hover:bg-surface-muted hover:text-ink',

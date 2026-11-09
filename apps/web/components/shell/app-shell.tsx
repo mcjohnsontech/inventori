@@ -47,7 +47,7 @@ export function AppShell({
       <div className="min-h-dvh">
         <Sidebar
           available={available}
-          current={workspace}
+          current={workspace === 'qr' ? 'checkout' : workspace}
           account={account}
           collapsed={collapsed}
           busy={busy}

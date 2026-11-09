@@ -26,10 +26,12 @@ test('Production reports its own exact issued item and Manager reviews damaged s
   const checkout = await post('checkouts', { reason: { code: 'PRODUCTION_USE' }, orderReference: 'BAD browser order', lines: units.slice(0, 2).map((unit: any) => ({ unitId: unit.id })) });
   await page.getByRole('button', { name: 'Damage & BAD reports', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Damage & BAD reports', exact: true })).toBeVisible();
+  await page.getByRole('button', {name:'Report damaged / BAD items',exact:true}).click();
   await expect(page.getByRole('button', { name: 'Manager dispositions', exact: true })).toHaveCount(0);
   const add = async (code: string) => { await page.getByLabel('Scan individual QR or enter Unit Code', { exact: true }).fill(code); await page.getByRole('button', { name: 'Add item', exact: true }).click(); await expect(page.getByRole('button', { name: `Remove ${code}`, exact: true })).toBeVisible(); };
   await add(units[0].unitCode);
   await page.getByLabel('Damage cause', { exact: true }).fill('Cover torn'); await page.getByLabel('What happened', { exact: true }).fill('The cover tore during preparation of this item');
+  await page.getByRole('button',{name:'Close report',exact:true}).click();await expect(page.getByRole('dialog')).toHaveCount(0);await page.getByRole('button',{name:'Report damaged / BAD items',exact:true}).click();await expect(page.getByLabel('Damage cause',{exact:true})).toHaveValue('Cover torn');
   await page.getByRole('button', { name: 'Review selected items', exact: true }).click(); await page.getByRole('button', { name: 'Back to items', exact: true }).click();
   await expect(page.getByLabel('Damage cause', { exact: true })).toHaveValue('Cover torn');
   page.once('dialog', dialog => dialog.dismiss()); await page.getByRole('button', { name: 'Discard draft', exact: true }).click();

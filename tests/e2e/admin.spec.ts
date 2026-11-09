@@ -33,7 +33,7 @@ test('workspace navigation is usable across shop screen sizes', async ({ page })
   for (const width of [1440, 1024, 768, 390, 320]) {
     await page.setViewportSize({ width, height: 900 });
     if (width < 1024) await page.getByRole('button', { name: 'Open navigation' }).click();
-    await page.getByRole('navigation', { name: 'Workspace' }).getByRole('button', { name: 'QR lookup', exact: true }).click();
+    await page.getByRole('navigation', { name: 'Workspace' }).getByRole('button', { name: 'Production checkout', exact: true }).click();await page.getByRole('button',{name:'QR & code lookup',exact:true}).click();
     await expect(page.getByRole('heading', { name: 'QR lookup', exact: true })).toBeVisible();
     await expect(page).toHaveURL(/#qr$/);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

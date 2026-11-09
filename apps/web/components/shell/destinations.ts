@@ -1,5 +1,11 @@
 import {
   Analytics01Icon,
+  ClipboardCheckIcon,
+  CheckListIcon,
+  PackageDelivered01Icon,
+  Alert02Icon,
+  ArrowTurnBackwardIcon,
+  ClipboardPenIcon,
   Book02Icon,
   BoxesIcon,
   Building03Icon,
@@ -19,12 +25,12 @@ import type { IconSpec } from '../ui/icon';
 
 export const destinations = {
   dashboard: { label: 'Overview', icon: DashboardSquare01Icon as IconSpec },
-  counts: {label: 'Physical counts', icon: BoxesIcon as IconSpec},
-  completion: { label: 'Production completion', icon: BoxesIcon as IconSpec },
-  requests: { label: 'Recovery & corrections', icon: Invoice01Icon as IconSpec },
-  damage: { label: 'Damage & BAD reports', icon: Invoice01Icon as IconSpec },
-  reconciliation: { label: 'Reason reconciliation', icon: Invoice01Icon as IconSpec },
-  checkout: { label: 'Production checkout', icon: BoxesIcon as IconSpec },
+  counts: {label: 'Physical counts', icon: CheckListIcon as IconSpec},
+  completion: { label: 'Production completion', icon: ClipboardCheckIcon as IconSpec },
+  requests: { label: 'Recovery & corrections', icon: ArrowTurnBackwardIcon as IconSpec },
+  damage: { label: 'Damage & BAD reports', icon: Alert02Icon as IconSpec },
+  reconciliation: { label: 'Reason reconciliation', icon: ClipboardPenIcon as IconSpec },
+  checkout: { label: 'Production checkout', icon: PackageDelivered01Icon as IconSpec },
   availability: { label: 'Usable stock', icon: PackageSearchIcon as IconSpec },
   inventory: { label: 'Inventory', icon: BoxesIcon as IconSpec },
   receiving: { label: 'Receiving', icon: TruckDeliveryIcon as IconSpec },
@@ -74,7 +80,7 @@ export function workspaceAllowed(role: Role, workspace: Workspace) {
 export const navGroups: { name: string; keys: Workspace[] }[] = [
   { name: 'Stock & operations', keys: ['dashboard', 'availability', 'inventory', 'checkout', 'completion', 'counts', 'reconciliation', 'damage', 'requests', 'receipts'] },
   { name: 'Catalogue', keys: ['catalogue'] },
-  { name: 'Tools & reports', keys: ['labels', 'qr', 'reports'] },
+  { name: 'Tools & reports', keys: ['labels', 'reports'] },
   { name: 'Workspace', keys: ['users', 'settings', 'help'] },
 ];
 

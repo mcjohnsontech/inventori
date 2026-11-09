@@ -16,7 +16,8 @@ async function navigate(page: Page, label: string, expectedStatus=200) {
   if (await menu.isVisible()) await menu.click();
   const reads:Record<string,string>={'Inventory':'/api/stock','Receiving':'/api/receiving/options','Receipts & activity':'/api/receipts','Labels & printing':'/api/unit-label-config','Account & shop':'/api/account'};
   const response=reads[label]?page.waitForResponse(r=>new URL(r.url()).pathname===reads[label]&&r.request().method()==='GET'&&r.status()===expectedStatus):null;
-  await page.getByRole('navigation', { name: 'Workspace' }).getByRole('button', { name: label, exact: true }).click();
+  await page.getByRole('navigation', { name: 'Workspace' }).getByRole('button', { name: label==='QR lookup'?'Production checkout':label, exact: true }).click();
+  if(label==='QR lookup')await page.getByRole('button',{name:'QR & code lookup',exact:true}).click();
   if(response){const result=await response;expect(result.status()).toBe(expectedStatus);await result.finished();}
 }
 async function post(page: Page, path: string, body: unknown) {
