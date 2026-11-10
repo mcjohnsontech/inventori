@@ -1,0 +1,21 @@
+# Hosted staff invitation configuration — 10 November 2026
+
+Target: the existing isolated Heroku app dayari-inventory-staging-api and frontend https://dayari-inventory-staging.vercel.app/. The Vercel production alias does not change this environment into the operational shop system.
+
+## Completed
+
+Inspected the existing SMTP transport, encrypted queue and invitation lifecycle. Hosted SMTP credentials, sender, public URL and encryption key were initially absent; live mail was explicitly disabled. Configured APP_PUBLIC_URL to the stable HTTPS frontend, SMTP_HOST to smtp-relay.brevo.com and SMTP_PORT to 587. Generated one stable 32-byte encryption key, stored in Heroku configuration with an ignored private local backup. No credentials or tokens are stored in this document or Git. Existing stock, accounts and invitation history were not changed.
+
+Existing behavior: Admin invitation, staff-selected password, 24-hour single-use links, hashed tokens, encrypted delivery queue, revocation/resend, explicit role/origin restrictions, bounded retries, STARTTLS and TLS certificate validation. SMTP acceptance is distinguished from inbox delivery. Existing accounts cannot be recovered through invitations. No password is emailed.
+
+## Required private provider setup
+
+The owner must provide a Brevo-verified sender address and configure SMTP_USER and SMTP_PASSWORD privately in Heroku Config Vars. SMTP_PASSWORD must be the provider SMTP key, not a general API key. The earlier no-reply@dayari.ng proposal was provisional and must not be assumed verified. Do not paste secrets into chat.
+
+After sender verification and credential availability: set SMTP_FROM_ADDRESS, verify TLS connection/authentication without sending, review the hosted pending queue, then enable SMTP_SENDER_VERIFIED=1, INVITATION_TRANSPORT=smtp and INVITATION_LIVE_ENABLED=1. SMTP mode automatically runs the bounded worker. Do not rotate the encryption key during normal restarts or discard an existing key with pending deliveries. Send an explicitly requested controlled invitation only after checking its recipient and account eligibility; verify provider acceptance and recipient redemption without recording the token.
+
+## Executed checks
+
+Invitation/SMTP unit suites: 9/9 passed across 2 files, including isolated TLS SMTP tests. No real email was sent. Live delivery remains blocked on credentials and verified sender; no live inbox delivery or production invitation success is claimed. No application-code change, new dependency or migration is needed for these configuration steps.
+
+Isolated invitation integration suite: 16/16 passed. The first attempt could not start because local PostgreSQL was stopped; after starting the existing local service, the rerun passed. Hosted API health returned HTTP 200 after configuration restart. No new application code was changed, so typecheck/build were not repeated for this configuration-only step.
