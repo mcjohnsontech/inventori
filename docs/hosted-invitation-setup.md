@@ -31,3 +31,9 @@ Owner gave action-time confirmation for account-wide SMTP IP-blocking deactivati
 Initial enablement was rejected by the original staging release safeguard that disallowed all live mail. The release-only exception now requires explicit STAGING_EMAIL_APPROVED=1 and verified, fully configured SMTP. Bootstrap retains the original mail-disabled requirement. Targeted guard/invitation/SMTP unit suites: 11/11 passed. Actual final rollout and service-health results follow after execution.
 
 Compiled API build passed. No frontend change or new migration is included in this rollout.
+
+## Final activation evidence
+
+Application source commit ce1bdad deployed the guarded SMTP exception. Release v15 failed because it inherited SMTP enablement without the new explicit approval flag; the running application was retained. Applying STAGING_EMAIL_APPROVED=1 together with INVITATION_TRANSPORT=smtp, INVITATION_LIVE_ENABLED=1 and INVITATION_WORKER=1 produced release v16, verified succeeded/current through the platform API. Saved enablement flags were read back, the existing encryption key was preserved, and API health returned HTTP 200 after restart. Sender remains the owner's currently saved, Brevo-verified mcj26017@gmail.com. SMTP authentication/STARTTLS passed from Heroku after the approved IP-blocking change. No actual invitation was created or emailed during setup, so inbox delivery/redemption is not claimed. Staff must be invited through Users & access > Invite staff; supervised account creation does not email credentials.
+
+Only configuration, release-guard scripts, unit coverage, documentation and security-setting screenshots changed. No new migration, dependency, stock transition, operational account mutation or frontend deployment was introduced. Other uncommitted local-upgrade and closing work remains preserved.
