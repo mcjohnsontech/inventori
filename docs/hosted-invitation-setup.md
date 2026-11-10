@@ -23,3 +23,11 @@ Isolated invitation integration suite: 16/16 passed. The first attempt could not
 ## Credential verification attempt — 10 November 2026
 
 Owner confirmed mark.abiodun@primewealthcapital.com as the verified sender; sender configuration was saved. SMTP_USER and SMTP_PASSWORD are now present (values never logged). The hosted queue contained no invitations. Verification from the Heroku runtime failed; sanitized direct SMTP diagnostics returned EAUTH with response code 525. Brevo documents 525 as an unauthorized client IP. Live delivery remains disabled, and no email was sent. The initial detached verification process exited before its state could be polled and its success could not be established from log retrieval; the attached runtime verification and sanitized diagnostic are the authoritative executed results. Credentials are not declared invalid on this evidence. SMTP IP authorization must be resolved before enabling delivery.
+
+## Approved SMTP rollout
+
+Owner gave action-time confirmation for account-wide SMTP IP-blocking deactivation. Brevo UI now shows SMTP keys Deactivated. After this change, the attached Heroku runtime SMTP verification passed with exit code 0; no email was sent. Brevo UI independently confirms both mark.abiodun@primewealthcapital.com and mcj26017@gmail.com are verified. Heroku now contains the latter sender, which is preserved rather than overwriting the owner's saved configuration; this was disclosed before enablement.
+
+Initial enablement was rejected by the original staging release safeguard that disallowed all live mail. The release-only exception now requires explicit STAGING_EMAIL_APPROVED=1 and verified, fully configured SMTP. Bootstrap retains the original mail-disabled requirement. Targeted guard/invitation/SMTP unit suites: 11/11 passed. Actual final rollout and service-health results follow after execution.
+
+Compiled API build passed. No frontend change or new migration is included in this rollout.

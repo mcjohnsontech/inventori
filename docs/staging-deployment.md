@@ -49,3 +49,7 @@ Owner: `240504047@live.unilag.edu.ng`. The generated initial password is handed 
 Previously uncommitted local-upgrade documentation, generated Next typings and the closing-design draft remain preserved and excluded from deployment commits. Documentation-only follow-up does not require redeploying application source.
 
 Read-only hosted database verification: 28 migration records; exactly one active ADMIN with mandatory password change, one origin and one shop membership; zero receipts, stock lots, stock units and movements. Platform verification confirms one Basic web dyno. Bootstrap settings are absent and invitations remain disabled.
+
+## Approved hosted invitation rollout — 10 November 2026
+
+Owner authorized live invitations and explicitly confirmed account-wide SMTP IP-blocking deactivation in Brevo. The release guard now permits SMTP only with STAGING_EMAIL_APPROVED=1, INVITATION_TRANSPORT=smtp, INVITATION_LIVE_ENABLED=1, SMTP_SENDER_VERIFIED=1 and a complete valid invitation configuration. All authority, origin and hosted-database safeguards remain. Fresh-account bootstrap still rejects live mail unconditionally. No migration or stock/account backfill is added. The original no-mail configuration described above records the initial deployment; this explicit rollout supersedes that email-only restriction.
