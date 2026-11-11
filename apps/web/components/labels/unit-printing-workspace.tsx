@@ -5,6 +5,7 @@ import { api,useApiRead } from '../../lib/api';
 import { useUnitLabelDraft } from '../../lib/unit-label-draft';
 import { formatDateTime } from '../../lib/format';
 import { Badge,Button,Checkbox,Code,DataTable,DetailSkeleton,Disclosure,EmptyState,ErrorNotice,Field,Footnote,Page,PageHeader,Pager,Panel,SearchInput,Select,Tabs,type Column } from '../ui';
+import {TaskModal} from '../ui/task-modal';
 import { UnitLabelCard } from './unit-label-card';
 import { UnitLabelJobView } from './unit-label-job-view';
 
@@ -13,6 +14,7 @@ type History={total:number;pageSize:number;jobs:{id:string;kind:string;totalLabe
 function Body({actorId,config,initialReceiptId}:{actorId:string;config:Configuration;initialReceiptId:string}){
  const {draft,ready,busy,update,send}=useUnitLabelDraft(actorId,config.originId);
  const [query,setQuery]=useState(''),[picked,setPicked]=useState<string[]>([]),[view,setView]=useState<'inventory'|'cart'>('inventory'),[cartPage,setCartPage]=useState(1),[inspected,setInspected]=useState(0),[historyPage,setHistoryPage]=useState(1),[historyOpen,setHistoryOpen]=useState(false),[error,setError]=useState('');
+ const [settingsOpen,setSettingsOpen]=useState(false);
  const [previews,setPreviews]=useState<UnitLabelPreview[]>([]),[previewError,setPreviewError]=useState(''),[previewLoading,setPreviewLoading]=useState(false),[previewRevision,setPreviewRevision]=useState(0);
  const receiptContext=useRef('');useEffect(()=>{if(ready&&initialReceiptId&&!draft.pending&&receiptContext.current!==initialReceiptId){receiptContext.current=initialReceiptId;if(draft.receiptId!==initialReceiptId)update({receiptId:initialReceiptId,jobId:null,search:'',page:1});setHistoryOpen(true);}},[ready,initialReceiptId,draft.pending]);
  const mounted=useRef(true);useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
@@ -56,7 +58,7 @@ function Body({actorId,config,initialReceiptId}:{actorId:string;config:Configura
      </>:previewLoading?<DetailSkeleton rows={5}/>:previewError?<ErrorNotice message={previewError} onRetry={()=>setPreviewRevision(value=>value+1)}/>:<><div className="flex flex-wrap items-center justify-between gap-2 px-5 pb-4 sm:px-6"><p className="text-sm text-grey-2">{draft.unitIds.length} exact physical items · one sticker per item</p></div><DataTable label="Unit label print cart" columns={cartColumns} rows={previews.slice((cartPage-1)*12,cartPage*12)} rowKey={unit=>unit.unitId} emptyMessage="Select saved units from inventory to start a print cart." mobileStack bare/><Pager page={cartPage} pageCount={Math.ceil(previews.length/12)} total={previews.length} onChange={setCartPage}/></>}
     </Panel></div>
     <div className={draft.unitIds.length?'order-1 min-w-0 space-y-4 xl:order-2 xl:sticky xl:top-4':'order-2 min-w-0 space-y-4 xl:sticky xl:top-4'}><Panel title="Individual label preview" label="Individual label preview" action={<Badge>{draft.unitIds.length} labels</Badge>}><div className="space-y-4">{previewLoading?<DetailSkeleton rows={3}/>:previewError?<ErrorNotice message={previewError} onRetry={()=>setPreviewRevision(value=>value+1)}/>:previews.length?<><UnitLabelCard label={previews[inspected]??previews[0]!}/><Pager page={Math.min(inspected+1,previews.length)} pageCount={previews.length} onChange={value=>setInspected(value-1)}/></>:<EmptyState title="Your print cart is empty">Add exact saved units to preview their individual labels.</EmptyState>}
-      <Footnote>The preview is an individual product label. Printed size is controlled by the profile below.</Footnote><Field label="Unit label profile">{id=><Select id={id} label="Unit label profile" value={draft.profileId} disabled={disabled} onChange={profileId=>update({profileId})} options={config.profiles.map(profile=>({value:profile.id,label:`${profile.labelWidthMm} × ${profile.labelHeightMm} mm · A4 trial`}))}/>}</Field>
+      <Footnote>The preview is an individual product label. Printed size is controlled by the saved profile.</Footnote><Button variant="secondary" onClick={()=>setSettingsOpen(true)}>Print settings</Button><TaskModal title="Print settings" open={settingsOpen} busy={busy} onClose={()=>setSettingsOpen(false)}><Field label="Unit label profile">{id=><Select id={id} label="Unit label profile" value={draft.profileId} disabled={disabled} onChange={profileId=>update({profileId})} options={config.profiles.map(profile=>({value:profile.id,label:`${profile.labelWidthMm} × ${profile.labelHeightMm} mm · A4 trial`}))}/>}</Field></TaskModal>
       <p className="text-sm text-grey-2">Usable and damaged-intake labels start on separate sheets.</p><Button className="w-full" disabled={disabled||previewLoading||!!previewError||!previews.length||previews.length!==draft.unitIds.length} onClick={()=>void action(create)}>{busy?'Preparing labels…':`Review ${draft.unitIds.length} labels`}</Button>
      </div></Panel></div>
    </div>

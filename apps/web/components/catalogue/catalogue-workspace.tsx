@@ -15,6 +15,7 @@ import {
   type Column,
   CopyButton,
   DataTable,
+  DetailsDrawer,
   Disclosure,
   EmptyState,
   Footnote,
@@ -44,8 +45,10 @@ export function CatalogueWorkspace({
   onSupplierDirectory,
   onStock,
   initialProductId = '',
+  active = true,
   onSelect,
 }: {
+  active?: boolean;
   initialProductId?: string;
   onSelect: (id: string) => void;
   catalogue: Catalogue;
@@ -63,7 +66,6 @@ export function CatalogueWorkspace({
   useEffect(() => setSelected(initialProductId), [initialProductId]);
 
   function selectProduct(id: string) {
-    setSelected(id);
     onSelect(id);
   }
 
@@ -98,7 +100,7 @@ export function CatalogueWorkspace({
     [catalogue.suppliers, query],
   );
 
-  if (product) {
+  const productDetail = product ? (() => {
     const variantIds = new Set(product.variants.map((item) => item.id));
     const savedSkus = catalogue.skus.filter((item) => variantIds.has(item.variantId));
     const variants = product.variants.filter(
@@ -140,27 +142,7 @@ export function CatalogueWorkspace({
           </LinkButton>
         </Breadcrumb>
 
-        <PageHeader
-          eyebrow={product.productCode ?? 'Code not assigned'}
-          title={product.name}
-          description={
-            product.description ||
-            'Shared parent product. Variants keep their identity across supplier sources.'
-          }
-          actions={
-            <>
-              {role === 'ADMIN' ? (
-                <Button onClick={() => onProduct(product.id)}>
-                  <Icon icon={PlusSignIcon} size={16} strokeWidth={2} />
-                  Add variants or source
-                </Button>
-              ) : null}
-              <Button variant="secondary" onClick={() => onStock(product.id)}>
-                View stock lots
-              </Button>
-            </>
-          }
-        />
+        <div className="flex flex-wrap items-center gap-3"><Code>{product.productCode??'Code not assigned'}</Code>{role==='ADMIN'?<Button onClick={()=>onProduct(product.id)}>Add variants or source</Button>:null}<Button variant="secondary" onClick={()=>onStock(product.id)}>View stock lots</Button></div>
 
       <div className="mt-5"><IdentityLookup /></div>
 
@@ -263,7 +245,7 @@ export function CatalogueWorkspace({
         </div>
       </Page>
     );
-  }
+  })() : null;
 
   const rows = tab === 'products' ? products : tab === 'suppliers' ? suppliers : skus;
   const total = rows.length;
@@ -485,6 +467,7 @@ export function CatalogueWorkspace({
         Catalogue registration does not add stock. Receive an accepted delivery to create stock
         lots.
       </Footnote>
+      {product && productDetail ? <DetailsDrawer active={active} wide title={product.name} closeLabel="Close product details" onClose={()=>selectProduct('')}>{productDetail}</DetailsDrawer>:null}
     </Page>
   );
 }

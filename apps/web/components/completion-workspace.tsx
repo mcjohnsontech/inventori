@@ -1,4 +1,5 @@
 'use client';
+import {TaskModal} from './ui/task-modal';
 import { useEffect, useRef, useState } from 'react';
 import type { CompletionCandidate, CompletionView, UnitIdentityLookup } from '@dayari/contracts';
 import { api, useApiRead } from '../lib/api';
@@ -119,10 +120,12 @@ function Content({ actorId, config }: {
             setRevision(value => value + 1);
         }
     } }
+    const [taskOpen,setTaskOpen]=useState(false);
+    useEffect(()=>{if(saved.body.unitIds.length||saved.pending)setTaskOpen(true);},[saved.body.unitIds.length,saved.pending]);
     const canConfirm = units.length === saved.body.unitIds.length && units.length > 0 && !loading && !previewError;
     return <div className="space-y-5 max-sm:[&_td]:!block max-sm:[&_td]:before:!hidden max-sm:[&_td>div]:!text-left">{error ? <ErrorNotice message={error}/> : null}{presentation.state === 'error' ? <ErrorNotice message={`QR identified; presentation evidence was not confirmed: ${presentation.error}`} onRetry={presentation.retry}/> : null}
  {showingSaved ? accepted.loading ? <DetailSkeleton /> : accepted.error ? <ErrorNotice message={accepted.error} onRetry={accepted.refresh}/> : accepted.data ? <><Evidence value={accepted.data} onTrack={setTracking}/>{config.canConfirm ? <Button variant="secondary" onClick={() => change([])}>Start another completion</Button> : null}</> : null : null}
- {config.canConfirm && !showingSaved && ready ? <Panel title={review ? 'Review selected completion' : 'Select items to complete'}><div className="space-y-4">
+ {config.canConfirm && !showingSaved && ready ? <><Button onClick={()=>setTaskOpen(true)}>Complete production items</Button><TaskModal title="Complete selected production units" open={taskOpen} busy={busy||adding} onClose={()=>{setCamera(false);setTaskOpen(false);}}><Panel title={review ? 'Review selected completion' : 'Select items to complete'}><div className="space-y-4">
  {saved.pending && !busy ? <WarningNotice>The response is unresolved. Retry the saved selection with the same key.<Button onClick={() => void confirm()} disabled={busy}>Retry saved completion</Button></WarningNotice> : null}
  {!review ? <><form className="flex flex-wrap items-end gap-3" onSubmit={event => { event.preventDefault(); void add(); }}><Field label="Completion Unit Code or individual QR" className="min-w-0 flex-1">{id => <Input id={id} value={input} disabled={disabled} onChange={event => setInput(event.target.value)} maxLength={100}/>}</Field><Button type="submit" disabled={disabled || !input.trim()}>Add unit</Button></form><Button variant="secondary" disabled={disabled} onClick={() => setCamera(true)}>Scan with camera</Button>{camera ? <UnitCameraInput onRead={payload => { setCamera(false); void add(payload, 'CAMERA'); }} onClose={() => setCamera(false)}/> : null}</> : <p className="text-sm">Confirm only these exact items. Other items sharing an Order ID will remain unchanged. No second usable-stock deduction.</p>}
  {loading ? <DetailSkeleton rows={3}/> : previewError ? <ErrorNotice message={previewError} onRetry={() => setRevision(value => value + 1)}/> : null}
@@ -134,7 +137,7 @@ function Content({ actorId, config }: {
  {previewError && !review && !saved.pending ? saved.body.unitIds.slice((selectedPage-1)*12,selectedPage*12).map(id => <Button key={id} variant="secondary" onClick={() => change(saved.body.unitIds.filter(value => value !== id))}>Remove unavailable item {id}</Button>) : null}{previewError&&!review&&!saved.pending?<Pager page={selectedPage} pageCount={Math.ceil(saved.body.unitIds.length/12)} total={saved.body.unitIds.length} onChange={setSelectedPage}/>:null}
  <div className="flex flex-wrap gap-3">{review ? <><Button variant="secondary" disabled={disabled} onClick={() => setReview(false)}>Back to selection</Button><Button disabled={busy || (!saved.pending && !canConfirm)} onClick={() => void confirm()}>{busy ? 'Recording completion...' : 'Confirm selected completion'}</Button></> : <><Button disabled={disabled || !canConfirm} onClick={() => setReview(true)}>Review completion</Button><Button variant="secondary" disabled={disabled || !saved.body.unitIds.length} onClick={() => { if (window.confirm('Discard this completion draft?'))
             change([]); }}>Discard completion draft</Button></>}</div>
- </div></Panel> : null}
+ </div></Panel></TaskModal></> : null}
  {!review ? <><Panel title="In Production items"><div className="space-y-4"><SearchInput label="Find In Production items" placeholder="Product, variant, SKU, Unit Code or Order ID..." value={query} onChange={value => { setQuery(value); setWorkPage(1); }}/>{work.error ? <ErrorNotice message={work.error} onRetry={work.refresh}/> : null}<DataTable label="Eligible production items" mobileStack loading={work.loading} rows={work.data?.units ?? []} rowKey={row => row.unit.unitId} emptyMessage="No eligible In Production items match." columns={[
                 { key: 'item', label: 'Item', cell: row => <><button className="min-h-11 font-mono text-brand underline" onClick={() => setTracking(row.unit.unitId)}>{row.unit.unitCode}</button><span className="block">{row.unit.productName}  /  {row.unit.variantName}</span><Code className="text-xs">{row.unit.fullSku}</Code></> },
                 { key: 'holder', label: 'Checkout', cell: row => <>{row.holder?.name}<span className="block">{row.orderReference ?? 'No Order ID'}</span><span className="block text-xs">{row.unit.publicBatchCode}</span></> },

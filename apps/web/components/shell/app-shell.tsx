@@ -6,7 +6,7 @@ import { TooltipProvider } from '../ui/tooltip';
 import { Sidebar } from './sidebar';
 import { TopBar } from './top-bar';
 import { useSidebarCollapsed } from './use-sidebar';
-import type { Workspace } from './destinations';
+import { mainDestination, type Workspace } from './destinations';
 
 export function AppShell({
   workspace,
@@ -47,7 +47,7 @@ export function AppShell({
       <div className="min-h-dvh">
         <Sidebar
           available={available}
-          current={workspace === 'qr' ? 'checkout' : workspace}
+          current={mainDestination(workspace)}
           account={account}
           collapsed={collapsed}
           busy={busy}

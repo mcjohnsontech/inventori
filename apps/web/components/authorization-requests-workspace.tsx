@@ -1,4 +1,5 @@
 'use client';
+import {TaskModal} from './ui/task-modal';
 import { useEffect, useRef, useState } from 'react';
 import { authorizationRequestSchema, type AuthorizationDraft, type AuthorizationPreview, type AuthorizationRequestInput, type AuthorizationRequestView, type OperationalStock, type RecoveryRequestTarget, type UnitIdentityLookup } from '@dayari/contracts';
 import { api, useApiRead } from '../lib/api';
@@ -59,6 +60,7 @@ function LotPicker({ selected, onSelect, disabled }: { selected: string | null; 
   </div>;
 }
 function ManagerRequest({ actorId, config, onRecorded, onTrack, onReviewing }: { actorId: string; config: Config; onRecorded: () => void; onTrack: (id: string) => void; onReviewing: (reviewing: boolean) => void }) {
+  const [taskOpen,setTaskOpen]=useState(false);
   const { saved, ready, busy, update, send } = useAuthorizationRequestDraft(actorId, config.originId), presentation = useQrPresentation();
   const [input, setInput] = useState(''), [camera, setCamera] = useState(false), [adding, setAdding] = useState(false), [error, setError] = useState(''), [announcement, setAnnouncement] = useState('');
   const [preview, setPreview] = useState<AuthorizationPreview | null>(null), [previewBusy, setPreviewBusy] = useState(false), [previewError, setPreviewError] = useState(''), [revision, setRevision] = useState(0);
@@ -99,9 +101,10 @@ function ManagerRequest({ actorId, config, onRecorded, onTrack, onReviewing }: {
     setError(''); try { await send(active); if (mounted.current) { setReviewed(null); onRecorded(); setRevision(value => value + 1); } }
     catch (failure) { if (mounted.current) { setError((failure as Error).message); setRevision(value => value + 1); } }
   }
+  useEffect(()=>{if(ready&&(saved.pending||saved.body.unitIds.length))setTaskOpen(true);},[ready]);
   if (!ready) return <DetailSkeleton rows={4} />;
   if (saved.acceptedId && !saved.pending) return <div className="space-y-4">{accepted.loading ? <DetailSkeleton rows={4} /> : accepted.error ? <ErrorNotice message={accepted.error} onRetry={accepted.refresh} /> : accepted.data ? <RequestEvidence value={accepted.data} onTrack={onTrack} /> : null}<Button variant="secondary" onClick={() => change(blank(saved.body.kind))}>Start another request</Button></div>;
-  return <Panel title={reviewing ? 'Review pending request' : 'New pending request'}><div className="space-y-4">
+  return <><Button onClick={()=>setTaskOpen(true)}>New recovery / correction request</Button><TaskModal title="Pending stock authorization request" open={taskOpen} busy={busy||adding} onClose={()=>{setCamera(false);setTaskOpen(false);}}><Panel title={reviewing ? 'Review pending request' : 'New pending request'}><div className="space-y-4">
     {error ? <ErrorNotice message={error} /> : null}{presentation.state === 'error' ? <ErrorNotice message={`QR presentation evidence was not confirmed: ${presentation.error}`} onRetry={presentation.retry} /> : null}
     {saved.pending && !busy ? <WarningNotice>The response is unresolved. Retry the saved request; no stock execution is involved.<Button className="mt-2" disabled={busy} onClick={() => void confirm()}>Retry saved pending request</Button></WarningNotice> : null}
     {!reviewing ? <><div className="max-w-sm"><Field label="New request kind">{id => <Select id={id} label="New request kind" disabled={disabled} value={saved.body.kind} options={[{ value: 'RECOVERY', label: 'Recovery of damaged units' }, { value: 'CORRECTION', label: 'Quantity discrepancy / correction' }]} onChange={kind => { change({ ...saved.body, kind: kind as AuthorizationDraft['kind'] }); setPage(1); }} />}</Field></div>
@@ -119,7 +122,7 @@ function ManagerRequest({ actorId, config, onRecorded, onTrack, onReviewing }: {
     <p className="text-sm text-grey-2">This records immutable pending evidence only. There is no local approval or stock-changing action. Quantity discrepancies remain unresolved.</p>
     {!reviewing && preview && !previewBusy && !validation.success ? <p className="text-sm text-grey-2">{[...new Set(validation.error.issues.map(issue => issue.message))].join('. ')}</p> : null}
     <div className="flex flex-wrap justify-between gap-3"><Button variant="secondary" disabled={disabled} onClick={() => { if (reviewing) setReviewed(null); else if (window.confirm('Discard this pending-request draft? Saved stock and request evidence will remain unchanged.')) change(blank(saved.body.kind)); }}>{reviewing ? 'Back to request' : 'Discard request draft'}</Button><Button disabled={disabled || (!reviewing && (!validation.success || previewBusy || Boolean(previewError)))} onClick={() => { if (reviewing) void confirm(); else if (validation.success) { setReviewed(validation.data); setPage(1); } }}>{busy ? 'Recording request…' : reviewing ? 'Record pending request' : 'Review request'}</Button></div>
-  </div></Panel>;
+  </div></Panel></TaskModal></>;
 }
 export function AuthorizationRequestsWorkspace({ actorId }: { actorId: string }) {
   const config = useApiRead<Config>('authorization-request-config'), [revision, setRevision] = useState(0), [detail, setDetail] = useState(''), [tracking, setTracking] = useState(''), [reviewing, setReviewing] = useState(false);

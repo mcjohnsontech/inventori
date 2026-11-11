@@ -38,13 +38,14 @@ import {
   Tabs,
   card,
 } from './ui';
+import { PagedItems } from './ui/paged-items';
 import { IdentityLookup } from './identity-lookup';
 import { ExactUnitMatch } from './exact-unit-match';
 import { UnitTrackingDrawer } from './unit-tracking-drawer';
 
 const PER_PAGE = 18;
 
-type Group = 'lots' | 'sku';
+type Group = 'products' | 'lots' | 'sku';
 
 export function InventoryWorkspace({
   catalogue,
@@ -65,7 +66,7 @@ export function InventoryWorkspace({
   const [sourceId, setSourceId] = useState('');
   const [search, setSearch] = useState('');
   const [state, setState] = useState('all');
-  const [group, setGroup] = useState<Group>('lots');
+  const [group, setGroup] = useState<Group>('products');
   const [selected, setSelected] = useState(initialLotId);
   const [page, setPage] = useState(1);
   const [unitSelected, setUnitSelected] = useState('');
@@ -107,7 +108,8 @@ export function InventoryWorkspace({
   );
 
   const lot = stock.data?.lots.find((item) => item.lotId === selected);
-  const total = group === 'lots' ? lots.length : skus.length;
+  const products=[...new Map(lots.map(row=>[row.productId,{id:row.productId,name:row.productName,code:row.productCode}])).values()];
+  const total = group === 'products' ? products.length : group === 'lots' ? lots.length : skus.length;
   const pageCount = Math.max(1, Math.ceil(total / PER_PAGE));
   const current = Math.min(page, pageCount);
   const start = (current - 1) * PER_PAGE;
@@ -371,6 +373,7 @@ export function InventoryWorkspace({
               setPage(1);
             }}
             tabs={[
+              { value: 'products', label: 'Products' },
               { value: 'lots', label: 'Delivery lots' },
               { value: 'sku', label: 'SKU balances' },
             ]}
@@ -398,7 +401,7 @@ export function InventoryWorkspace({
             Try another filter. Registered catalogue variants appear here after an accepted
             delivery.
           </EmptyState>
-        ) : group === 'lots' ? (
+        ) : group === 'products' ? <div className="divide-y divide-black/5">{products.slice(start,start+PER_PAGE).map(product=><details key={product.id} className="p-4 sm:p-5"><summary className="cursor-pointer rounded-lg font-semibold focus-visible:outline-2 focus-visible:outline-brand">{product.name} {product.code?<Code className="ml-2 text-xs">{product.code}</Code>:null}<span className="ml-3 text-xs font-normal text-grey-2">View variants and lots</span></summary><div className="mt-4"><PagedItems items={lots.filter(lot=>lot.productId===product.id)} size={12}>{items=><DataTable label={`Variants and lots for ${product.name}`} columns={lotColumns} rows={[...items]} rowKey={lot=>lot.lotId} mobileStack emptyMessage="No matching lots."/>}</PagedItems></div></details>)}</div> : group === 'lots' ? (
           <DataTable
             bare
             label="Inventory delivery lots"

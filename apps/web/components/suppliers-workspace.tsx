@@ -1,5 +1,6 @@
 'use client';
 import { Building03Icon, Location01Icon, PlusSignIcon } from '@hugeicons/core-free-icons';
+import { DetailsDrawer } from './ui/details-drawer';
 import { useState } from 'react';
 import type { Catalogue, Role } from '@dayari/contracts';
 
@@ -34,6 +35,8 @@ export function SuppliersWorkspace({
   onProduct: (id?: string) => void;
 }) {
   const [search, setSearch] = useState('');
+  const [selected,setSelected]=useState('');
+  const chosen=catalogue.suppliers.find(row=>row.id===selected);
 
   const suppliers = catalogue.suppliers.filter((item) =>
     `${item.name} ${item.code} ${item.sources
@@ -98,7 +101,14 @@ export function SuppliersWorkspace({
                 <div className="flex flex-wrap items-center gap-3"><h2 className="font-semibold text-sm">{supplier.name}</h2><Code>{supplier.code}</Code></div>
                 {role === 'ADMIN' && (!supplier.sources.length || supplier.sources.some(source => !source.skuPrefix)) ? <Button variant="secondary" size="compact" onClick={() => onSupplier(supplier.id)}>Set up location</Button> : null}
               </div>
-              <PagedItems items={supplier.sources} size={5}>{sources => <div className="mt-2 space-y-2">{sources.map(source => {
+              <p className="mt-2 text-sm text-grey-2">{supplier.sources.map(source=>source.name).join(' · ') || 'Location not configured'}</p><Button variant="ghost" size="compact" onClick={()=>setSelected(supplier.id)}>View supplier</Button>
+              {!supplier.sources.length ? <p className="mt-2 text-sm text-grey-2">Location not configured.</p> : null}
+            </li>)}
+          </ul>}</PagedItems>
+        </div>
+      )}
+
+      {chosen?<DetailsDrawer wide title={chosen.name} eyebrow="Supplier details" closeLabel="Close supplier details" onClose={()=>setSelected('')}><Code>{chosen.code}</Code>              <PagedItems items={chosen.sources} size={5}>{sources => <div className="mt-2 space-y-2">{sources.map(source => {
                 const skus = catalogue.skus.filter(sku => sku.sourcing.source.id === source.id);
                 const products = catalogue.products.filter(product => catalogue.sourcings.some(row => row.sourceId === source.id && row.productId === product.id));
                 return <div key={source.id} className="text-sm">
@@ -106,12 +116,7 @@ export function SuppliersWorkspace({
                   {products.length ? <Disclosure summary="Products and saved SKUs" className="mt-2"><PagedItems items={products} size={6}>{entries => <ul className="mt-2 space-y-3">{entries.map(product => <li key={product.id}><span className="font-medium">{product.name}</span> <Code>{product.productCode ?? 'Code not assigned'}</Code><PagedItems items={skus.filter(sku => product.variants.some(variant => variant.id === sku.variantId))} size={6}>{rows => <div className="mt-1 flex flex-wrap gap-2">{rows.map(sku => <Code key={sku.id}>{sku.fullCode}</Code>)}</div>}</PagedItems></li>)}</ul>}</PagedItems></Disclosure> : null}
                 </div>;
               })}</div>}</PagedItems>
-              {!supplier.sources.length ? <p className="mt-2 text-sm text-grey-2">Location not configured.</p> : null}
-            </li>)}
-          </ul>}</PagedItems>
-        </div>
-      )}
-
+</DetailsDrawer>:null}
       <Footnote className="mt-5">
         Supplier codes and allocated SKU prefixes are stable identities. Supplier financial
         accounts, purchasing, renaming and deletion are not supported in this slice.

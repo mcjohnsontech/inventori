@@ -1,4 +1,5 @@
 'use client';
+import {TaskModal} from './ui/task-modal';
 import { useEffect, useRef, useState } from 'react';
 import { checkoutReasonLabels, reconcileReasonsSchema, type CheckoutView, type ReasonQueue, type ReasonQueueRow, type ReasonReconciliationDraft, type ReasonResolutionView } from '@dayari/contracts';
 import { api, useApiRead } from '../lib/api';
@@ -29,6 +30,7 @@ function AcceptedClassification({ value }: { value: ReasonResolutionView }) {
 }
 
 function Body({ actorId, config }: { actorId: string; config: Config }) {
+  const [taskOpen,setTaskOpen]=useState(false);
   const { draft, ready, busy, update, send } = useReconciliationDraft(actorId, config.originId);
   const [filters, setFilters] = useState({ status: 'UNRESOLVED', employeeId: '', orderReference: '', unitCode: '', from: '', to: '' });
   const [query, setQuery] = useState('status=UNRESOLVED'), [page, setPage] = useState(1), [review, setReview] = useState(false), [selectionPage, setSelectionPage] = useState(1);
@@ -39,7 +41,8 @@ function Body({ actorId, config }: { actorId: string; config: Config }) {
   const queue = useApiRead<ReasonQueue>(`checkout-reasons?${query}&page=${page}`);
   const accepted = useApiRead<ReasonResolutionView>(draft.acceptedId ? `reason-reconciliations/${draft.acceptedId}` : null);
   const selection = JSON.stringify(draft.body.exceptionIds);
-  useEffect(() => { if (draft.pending) setReview(true); }, [draft.pending]);
+  useEffect(()=>{if(ready&&draft.body.exceptionIds.length)setTaskOpen(true);},[ready]);
+  useEffect(() => { if (draft.pending) {setReview(true);setTaskOpen(true);} }, [draft.pending]);
   useEffect(() => {
     const controller = new AbortController(); setPreview([]); setPreviewError(''); setPreviewBusy(ready && draft.body.exceptionIds.length > 0);
     if (ready && draft.body.exceptionIds.length) api<{ rows: ReasonQueueRow[] }>('checkout-reasons/preview', { method: 'POST', body: JSON.stringify({ exceptionIds: draft.body.exceptionIds }), signal: controller.signal })
@@ -55,7 +58,7 @@ function Body({ actorId, config }: { actorId: string; config: Config }) {
     change({ ...draft.body, exceptionIds: selected ? draft.body.exceptionIds.filter(value => value !== id) : [...draft.body.exceptionIds, id] }); setSelectionPage(1);
   }
   async function confirm() {
-    setError(''); try { await send(); if (mounted.current) { setReview(false); queue.refresh(); setRevision(value => value + 1); } }
+    setError(''); try { await send(); if (mounted.current) { setReview(false); setTaskOpen(false); queue.refresh(); setRevision(value => value + 1); } }
     catch (failure) { if (mounted.current) { setError((failure as Error).message); setRevision(value => value + 1); } }
   }
   const rowColumns: Column<ReasonQueueRow>[] = [
@@ -83,7 +86,7 @@ function Body({ actorId, config }: { actorId: string; config: Config }) {
       {queue.loading ? <DetailSkeleton rows={5} /> : queue.error ? <ErrorNotice message={queue.error} onRetry={queue.refresh} /> : queue.data ? <><DataTable label="Checkout reason exceptions" rows={queue.data.rows} columns={rowColumns} rowKey={row => row.exceptionId} emptyMessage="No exceptions match these filters." mobileStack />
         <Pager page={page} pageCount={Math.ceil(queue.data.total / queue.data.pageSize)} total={queue.data.total} onChange={setPage} /></> : null}
     </div></Panel> : null}
-    {config.canResolve && ready ? <Panel label="Manager reason classification" title={review ? 'Review classification' : 'Classify selected exceptions'}><div className="space-y-4">
+    {config.canResolve && ready ? <><Button onClick={()=>setTaskOpen(true)}>Classify selected exceptions</Button><TaskModal title="Reconcile missing reasons" open={taskOpen} busy={busy} onClose={()=>setTaskOpen(false)}><Panel label="Manager reason classification" title={review ? 'Review classification' : 'Classify selected exceptions'}><div className="space-y-4">
       {error ? <ErrorNotice message={error} /> : null}
       {draft.pending ? <WarningNotice>The classification response is unresolved. Retry the same saved request; no new stock deduction is involved.<Button className="mt-2" disabled={busy} onClick={() => void confirm()}>Retry saved classification</Button></WarningNotice> : null}
       <p className="text-sm">{draft.body.exceptionIds.length} exact obligations selected. Selection is preserved across filters and pages.</p>
@@ -98,7 +101,7 @@ function Body({ actorId, config }: { actorId: string; config: Config }) {
       <p className="text-sm text-grey-2">Confirmation appends a Manager classification. It does not rewrite the employee's original reason, change the Order ID, move stock or complete Production work.</p>
       <div className="flex flex-wrap justify-between gap-3"><Button variant="secondary" disabled={disabled} onClick={() => { if (review) setReview(false); else if (window.confirm('Discard this reconciliation draft? Original checkout and stock records will remain unchanged.')) change({ exceptionIds: [], reason: null, remarks: '' }); }}>{review ? 'Back to classification' : 'Discard classification draft'}</Button>
         <Button disabled={disabled || !canConfirm} onClick={() => { if (review) void confirm(); else { setReview(true); setSelectionPage(1); } }}>{busy ? 'Recording classification…' : review ? `Confirm classification of ${preview.length} exceptions` : 'Review classification'}</Button></div>
-    </div></Panel> : null}
+    </div></Panel></TaskModal></> : null}
     {tracking ? <UnitTrackingDrawer key={tracking} unitId={tracking} onClose={() => setTracking('')} /> : null}
     {original ? <OriginalCheckout key={original} id={original} onClose={() => setOriginal('')} /> : null}
   </div>;

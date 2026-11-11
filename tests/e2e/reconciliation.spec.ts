@@ -1,3 +1,4 @@
+import { openWorkspace } from './ui.js';
 import { randomUUID } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
@@ -31,7 +32,7 @@ test('Manager reconciles selected original exceptions across pages without anoth
   await expect(page.getByRole('button', { name: 'Reason reconciliation', exact: true })).toHaveCount(0);
   expect((await page.request.get('/api/checkout-reasons')).status()).toBe(403);
   await page.getByRole('button', { name: 'Sign out', exact: true }).click(); await login('e2e-admin@dayari.test');
-  await page.getByRole('button', { name: 'Reason reconciliation', exact: true }).click();
+  await openWorkspace(page, 'Reason reconciliation');
   const filter = async () => {
     const result = page.waitForResponse(response => new URL(response.url()).pathname === '/api/checkout-reasons' && new URL(response.url()).searchParams.get('orderReference') === order);
     await page.getByLabel('Exact Order ID', { exact: true }).fill(order); expect((await result).ok()).toBe(true);
@@ -45,18 +46,18 @@ test('Manager reconciles selected original exceptions across pages without anoth
   await page.getByRole('button', { name: 'Close original checkout', exact: true }).click();
   await expect(page.getByLabel('Exact Order ID', { exact: true })).toHaveValue(order);
   await page.getByRole('button', { name: 'Sign out', exact: true }).click(); await login('e2e-manager@dayari.test');
-  await page.getByRole('button', { name: 'Reason reconciliation', exact: true }).click(); await filter();
+  await openWorkspace(page, 'Reason reconciliation'); await filter();
   await queue.getByRole('checkbox', { name: `Select exception for ${units[0].unitCode}`, exact: true }).check();
   await queue.getByRole('button', { name: 'Next page', exact: true }).click();
   await queue.getByRole('checkbox', { name: `Select exception for ${units[20].unitCode}`, exact: true }).check();
-  await choose(page, 'Manager classification', 'SAMPLE');
+  await page.getByRole('button',{name:'Classify selected exceptions',exact:true}).click();await choose(page, 'Manager classification', 'SAMPLE');
   const remarks = 'Manager confirmed the original sample purpose';
   await page.getByLabel('Manager remarks (optional)', { exact: true }).fill(remarks);
   await page.getByRole('button', { name: 'Review classification', exact: true }).click();
   await expect(queue).toHaveCount(0);
   await page.getByRole('button', { name: 'Back to classification', exact: true }).click();
-  await expect(queue.getByRole('button', { name: 'Page 2', exact: true })).toHaveAttribute('aria-current', 'page');
-  await expect(page.getByLabel('Manager remarks (optional)', { exact: true })).toHaveValue(remarks);
+  await page.getByRole('button',{name:'Close task',exact:true}).click();await expect(queue.getByRole('button', { name: 'Page 2', exact: true })).toHaveAttribute('aria-current', 'page');
+  await page.getByRole('button',{name:'Classify selected exceptions',exact:true}).click();await expect(page.getByLabel('Manager remarks (optional)', { exact: true })).toHaveValue(remarks);
   page.once('dialog', dialog => dialog.dismiss());
   await page.getByRole('button', { name: 'Discard classification draft', exact: true }).click();
   await expect(page.getByRole('table', { name: 'Selected reason obligations', exact: true }).getByText(units[0].unitCode, { exact: true })).toBeVisible();
@@ -64,11 +65,11 @@ test('Manager reconciles selected original exceptions across pages without anoth
   await expect(page.getByLabel('Manager remarks (optional)', { exact: true })).toHaveValue(remarks);
   await page.getByRole('button', { name: 'Review classification', exact: true }).click();
   const stockBefore = (await get(`stock?batchId=${receipt.batch.id}`)).lots;
-  await mkdir('docs/images/completion/milestone-6', { recursive: true });
+  await mkdir('test-results/consolidation/completion/milestone-6', { recursive: true });
   for (const width of [1440, 1024, 768, 390, 320]) {
     await page.setViewportSize({ width, height: 1000 }); await page.evaluate(() => window.scrollTo(0, 0));
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await page.screenshot({ path: `docs/images/completion/milestone-6/reconciliation-review-${width}.png`, fullPage: true });
+    await page.screenshot({ path: `test-results/consolidation/completion/milestone-6/reconciliation-review-${width}.png`, fullPage: true });
   }
   await page.setViewportSize({ width: 1440, height: 1000 });
   const keys: string[] = []; let lost = false;
@@ -89,7 +90,7 @@ test('Manager reconciles selected original exceptions across pages without anoth
   expect(live.initialMissingReasonCount).toBe(25); expect(live.outstandingReasonCount).toBe(23);
   expect(live.lines.every((line: any) => line.reason === null)).toBe(true);
   expect((await get('checkout-reasons?status=RESOLVED&orderReference=' + encodeURIComponent(order))).total).toBe(2);
-  await page.screenshot({ path: 'docs/images/completion/milestone-6/reconciliation-accepted-1440.png', fullPage: true });
+  await page.screenshot({ path: 'test-results/consolidation/completion/milestone-6/reconciliation-accepted-1440.png', fullPage: true });
   await page.getByRole('button', { name: 'Sign out', exact: true }).click(); await login('e2e-production@dayari.test');
   const own = await get('checkouts/' + checkout.id);
   expect(own.outstandingReasonCount).toBe(23); expect(JSON.stringify(own)).not.toContain(remarks);

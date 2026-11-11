@@ -24,7 +24,7 @@ const EMPTY_CATALOGUE: Catalogue = {
 
 const UUID = /^[0-9a-f-]{36}$/i;
 
-const PRODUCTION_WORKSPACES: Workspace[] = ['availability', 'checkout', 'damage', 'qr', 'settings', 'help'];
+const PRODUCTION_WORKSPACES: Workspace[] = ['inventory', 'availability', 'checkout', 'damage', 'qr', 'settings', 'help'];
 
 export default function DayariInventory() {
   const [workspace, setWorkspace] = useState<Workspace>('dashboard');
@@ -127,7 +127,7 @@ export default function DayariInventory() {
     api<Actor>('me')
       .then(async (actor) => {
         setUser(actor);
-        if (actor.role === 'PRODUCTION' && !location.hash) setWorkspace('availability');
+        if (actor.role === 'PRODUCTION' && !location.hash) setWorkspace('inventory');
         try {
           await load(actor);
         } catch (failure) {
@@ -190,7 +190,7 @@ export default function DayariInventory() {
         body: JSON.stringify(data),
       });
       setUser(result.user);
-      if (result.user.role === 'PRODUCTION') navigate('availability');
+      if (result.user.role === 'PRODUCTION') navigate('inventory');
       await load(result.user);
     } catch (failure) {
       setError((failure as Error).message);
@@ -353,6 +353,7 @@ export default function DayariInventory() {
       <WorkspaceRouter
         key={dataVersion}
         workspace={current}
+        overlayActive={flow!==null}
         catalogue={catalogue}
         catalogueReady={catalogueReady}
         user={user}

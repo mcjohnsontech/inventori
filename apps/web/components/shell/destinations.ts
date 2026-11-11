@@ -21,7 +21,8 @@ import {
 } from '@hugeicons/core-free-icons';
 import { can, type Capability, type Role } from '@dayari/contracts';
 
-import type { IconSpec } from '../ui/icon';
+import type { HugeiconsIcon } from '@hugeicons/react';
+type IconSpec = Parameters<typeof HugeiconsIcon>[0]['icon'];
 
 export const destinations = {
   dashboard: { label: 'Overview', icon: DashboardSquare01Icon as IconSpec },
@@ -30,18 +31,18 @@ export const destinations = {
   requests: { label: 'Recovery & corrections', icon: ArrowTurnBackwardIcon as IconSpec },
   damage: { label: 'Damage & BAD reports', icon: Alert02Icon as IconSpec },
   reconciliation: { label: 'Reason reconciliation', icon: ClipboardPenIcon as IconSpec },
-  checkout: { label: 'Production checkout', icon: PackageDelivered01Icon as IconSpec },
+  checkout: { label: 'Production', icon: PackageDelivered01Icon as IconSpec },
   availability: { label: 'Usable stock', icon: PackageSearchIcon as IconSpec },
   inventory: { label: 'Inventory', icon: BoxesIcon as IconSpec },
   receiving: { label: 'Receiving', icon: TruckDeliveryIcon as IconSpec },
-  receipts: { label: 'Receipts & activity', icon: Invoice01Icon as IconSpec },
+  receipts: { label: 'Receiving', icon: Invoice01Icon as IconSpec },
   catalogue: { label: 'Catalogue', icon: Book02Icon as IconSpec },
   suppliers: { label: 'Suppliers & sources', icon: Building03Icon as IconSpec },
   labels: { label: 'Labels & printing', icon: PrinterIcon as IconSpec },
   qr: { label: 'QR lookup', icon: QrCodeIcon as IconSpec },
   reports: { label: 'Reports & history', icon: Analytics01Icon as IconSpec },
   users: { label: 'Users & access', icon: SecurityCheckIcon as IconSpec },
-  settings: { label: 'Account & shop', icon: Settings02Icon as IconSpec },
+  settings: { label: 'Users & settings', icon: Settings02Icon as IconSpec },
   help: { label: 'Help & guide', icon: HelpCircleIcon as IconSpec },
 } as const;
 
@@ -71,17 +72,23 @@ const workspaceCapabilities: Record<Workspace, Capability> = {
 };
 
 export function workspaceAllowed(role: Role, workspace: Workspace) {
+  if (workspace === 'inventory' && role === 'PRODUCTION') return can(role, 'IDENTIFY');
   return can(role, workspaceCapabilities[workspace]);
 }
 
 /** Sidebar grouping. Order here is the order staff read it in.
- * Suppliers and Receiving are consolidated into Catalogue and the receipt
- * workflow; both workspaces stay routable so existing workflows and links work. */
+ * Existing operational views are grouped under their main workspace; legacy
+ * views stay routable so saved links and supported workflows keep working. */
 export const navGroups: { name: string; keys: Workspace[] }[] = [
-  { name: 'Stock & operations', keys: ['dashboard', 'availability', 'inventory', 'checkout', 'completion', 'counts', 'reconciliation', 'damage', 'requests', 'receipts'] },
-  { name: 'Catalogue', keys: ['catalogue'] },
-  { name: 'Tools & reports', keys: ['labels', 'reports'] },
-  { name: 'Workspace', keys: ['users', 'settings', 'help'] },
+  {name:'Operations',keys:['dashboard','inventory','receipts','checkout','labels']},
+  {name:'Management',keys:['catalogue','reports','settings']},
 ];
-
+export function mainDestination(key:Workspace):Workspace {
+ if(['availability','counts','requests','damage'].includes(key))return 'inventory';
+ if(['completion','reconciliation','qr'].includes(key))return 'checkout';
+ if(key==='receiving')return 'receipts';
+ if(key==='suppliers')return 'catalogue';
+ if(['users','help'].includes(key))return 'settings';
+ return key;
+}
 export const workspaceOrder = Object.keys(destinations) as Workspace[];

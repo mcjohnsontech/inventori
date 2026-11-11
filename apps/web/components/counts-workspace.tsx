@@ -1,4 +1,5 @@
 'use client';
+import {TaskModal} from './ui/task-modal';
 import { useEffect, useRef, useState } from 'react';
 import type { CountView, OperationalStock, UnitIdentityLookup } from '@dayari/contracts';
 import { api, useApiRead, ApiError } from '../lib/api';
@@ -26,6 +27,7 @@ function Content({ actorId, config }: {
     };
 }) {
     const [page, setPage] = useState(1), [selected, setSelected] = useState(''), [lotId, setLotId] = useState(''), [state, setState] = useState('U'), [purpose, setPurpose] = useState(''), [code, setCode] = useState(''), [quantity, setQuantity] = useState('0'), [extras, setExtras] = useState('0'), [explanation, setExplanation] = useState(''), [evidence, setEvidence] = useState(''), [error, setError] = useState(''), [busy, setBusy] = useState(false), [ready, setReady] = useState(false), [observationPage, setObservationPage] = useState(1), [attemptPage, setAttemptPage] = useState(1);
+    const [taskOpen,setTaskOpen]=useState(false);
     const key = `dayari-count-${config.originId}-${actorId}`, pending = useRef<Pending | null>(null), controller = useRef<AbortController | null>(null);
     const history = useApiRead<{
         rows: CountView[];
@@ -35,7 +37,7 @@ function Content({ actorId, config }: {
     useEffect(() => { try {
         const saved = JSON.parse(sessionStorage.getItem(key) ?? 'null');
         if (saved) {
-            setSelected(saved.selected ?? '');
+            setSelected(saved.selected ?? '');if(saved.selected||saved.pending||saved.purpose)setTaskOpen(true);
             setLotId(saved.lotId ?? '');
             setState(saved.state ?? 'U');
             setPurpose(saved.purpose ?? '');
@@ -91,7 +93,7 @@ function Content({ actorId, config }: {
     } }
     function write(path: string, body: object) { if (!pending.current)
         void send({ path, body, key: crypto.randomUUID() }); }
-    function chooseCount(id:string){if(blocked)return;if(id!==selected&&(purpose||explanation||evidence||extras!=='0'||quantity!=='0')&&!window.confirm('Discard these unsaved count form fields? Saved count evidence is preserved.'))return;setSelected(id);setObservationPage(1);setAttemptPage(1);setPurpose('');setExplanation('');setEvidence('');setExtras('0');setQuantity('0');}
+    function chooseCount(id:string){if(blocked)return;if(id===selected){setTaskOpen(true);return;}if(id!==selected&&(purpose||explanation||evidence||extras!=='0'||quantity!=='0')&&!window.confirm('Discard these unsaved count form fields? Saved count evidence is preserved.'))return;setTaskOpen(true);setSelected(id);setObservationPage(1);setAttemptPage(1);setPurpose('');setExplanation('');setEvidence('');setExtras('0');setQuantity('0');}
     async function observe() { if (!attempt || pending.current || busy)
         return; setBusy(true); setError(''); const abort = new AbortController(); controller.current = abort; try {
         const value = code.trim(), u = await api<UnitIdentityLookup>(value.startsWith('DYI:') ? 'qr/resolve' : 'inventory/units/by-code/' + encodeURIComponent(value.toUpperCase()), value.startsWith('DYI:') ? { method: 'POST', body: JSON.stringify({ payload: value }), signal: abort.signal } : { signal: abort.signal });
@@ -114,8 +116,11 @@ function Content({ actorId, config }: {
             setBusy(false);
     } }
     const attempts = detail.data?.attempts ?? [], attempt = attempts.at(-1), native = attempt?.snapshot.mode === 'NATIVE', blocked = busy || !!pending.current || !ready;
-    return <div className="space-y-6">{error ? <ErrorNotice message={error}/> : null}{pending.current ? <Button disabled={busy} onClick={() => void send(pending.current!)}>Retry saved count request</Button> : null}
+    return <div className="space-y-6">{!taskOpen && error ? <ErrorNotice message={error}/> : null}{!taskOpen && pending.current ? <Button disabled={busy} onClick={() => void send(pending.current!)}>Retry saved count request</Button> : null}
  <Button variant="secondary" disabled={busy} onClick={()=>{detail.refresh();history.refresh();}}>Refresh count evidence</Button><WarningNotice>Counts record physical evidence only. They never adjust stock. Unresolved count evidence or discrepancies block closing. A relevant stock movement requires recounting.</WarningNotice>
+ {config.canCount?<Button disabled={blocked} onClick={()=>setTaskOpen(true)}>Count stock</Button>:null}
+ <TaskModal title="Physical stock count" open={taskOpen} busy={busy} onClose={()=>setTaskOpen(false)}>
+ {error?<ErrorNotice message={error}/>:null}{pending.current?<Button disabled={busy} onClick={()=>void send(pending.current!)}>Retry saved count request</Button>:null}
  {config.canCount && !selected ? <Panel title="Select a count scope"><div className="grid min-w-0 gap-4 sm:grid-cols-2 [&>*]:min-w-0"><Field label="Delivery lot">{id=><Select id={id} label="Delivery lot" value={lotId} onChange={setLotId} options={(stock.data?.lots ?? []).map(l => ({ value: l.lotId, label: `${l.productName} / ${l.variantName} / ${l.fullCode} / ${l.lotCode ?? l.publicCode}` }))}/>}</Field><Field label="Count state">{id=><Select id={id} label="Count state" value={state} onChange={setState} options={[['U', 'Usable'], ['P', 'In Production'], ['D', 'Damaged'], ['C', 'Completed'], ['X', 'Removed']].map(([value, label]) => ({ value: value!, label: label! }))}/>}</Field><Field label="Count purpose">{id => <Input id={id} value={purpose} onChange={e => setPurpose(e.target.value)} maxLength={1000}/>}</Field><Button disabled={blocked || !lotId || purpose.trim().length < 10} onClick={() => write('count-sessions', { lotId, state, purpose })}>Start targeted count</Button></div></Panel> : null}
  {config.canCount&&selected?<Button variant="secondary" disabled={blocked} onClick={()=>chooseCount('')}>New targeted count</Button>:null}{detail.error ? <ErrorNotice message={detail.error} onRetry={detail.refresh}/> : null}{detail.loading ? <DetailSkeleton /> : detail.data ? <Panel title="Count evidence"><div className="space-y-4"><p className="text-sm">{detail.data.purpose} / State {detail.data.state}</p><div className="space-y-1"><p className="font-semibold">{detail.data.productName} / {detail.data.variantName}</p><p className="break-words text-sm"><Code>{detail.data.fullSku}</Code> / <Code>{detail.data.lotCode??detail.data.publicBatchCode}</Code></p></div>
  {config.canCount && (!attempt || attempt.result) ? <Button disabled={blocked} onClick={() => write('count-attempts', { sessionId: selected })}>{attempt ? 'Start explicit recount' : 'Begin count attempt'}</Button> : null}
@@ -128,6 +133,7 @@ function Content({ actorId, config }: {
  {attempts.slice((attemptPage - 1) * 10, attemptPage * 10).map(a => <section key={a.id} className="space-y-2 border-t border-black/10 pt-4"><p className="text-sm">{formatDateTime(a.recordedAt)} / {a.result?.status ?? 'IN PROGRESS'}</p>{a.result ? <><p className="text-sm">Observed {a.result.observedQuantity}. {a.result.explanation}</p><p className="text-sm text-grey-2">{a.result.evidence}</p>{a.result.resolution ? <p className="text-sm">Mistaken finding resolved by matching recount: {a.result.resolution.explanation}</p> : config.canCount && a.result.status === 'MISMATCH' && attempt?.result?.status === 'MATCHED' && a.id !== attempt.id ? <Button variant="secondary" disabled={blocked} onClick={() => { const note = window.prompt('Explain why the earlier finding was mistaken. Genuine discrepancies must remain pending correction.'); if (note && note.trim().length >= 10)
             write('count-resolutions', { resultId: a.result!.id, matchingResultId: attempt.result!.id, explanation: note }); }}>Resolve mistaken finding with matching recount</Button> : null}</> : null}</section>)}<Pager page={attemptPage} pageCount={Math.ceil(attempts.length / 10)} onChange={setAttemptPage}/>
  </div></Panel> : null}
+ </TaskModal>
  <Panel title="Count history"><DataTable label="Targeted count history" mobileStack rows={history.data?.rows ?? []} rowKey={r => r.id} loading={history.loading} emptyMessage="No targeted counts recorded" columns={[{ key: 'purpose', label: 'Count scope', mobileFullWidth: true, cell: r => <><p>{r.purpose}</p><p>{r.productName} / {r.variantName}</p><Code>{r.lotCode??r.publicBatchCode}</Code></> }, { key: 'state', label: 'State', cell: r => r.state }, { key: 'recorded', label: 'Started', cell: r => formatDateTime(r.recordedAt) }, { key: 'open', label: 'Details', cell: r => <Button variant="secondary" onClick={() => { chooseCount(r.id); }}>Open count</Button> }]}/>{history.error ? <ErrorNotice message={history.error} onRetry={history.refresh}/> : null}<Pager page={page} pageCount={Math.ceil((history.data?.total ?? 0) / 20)} onChange={setPage}/></Panel>
  </div>;
 }

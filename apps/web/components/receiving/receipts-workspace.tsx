@@ -13,6 +13,7 @@ import {
   Button,
   Code,
   DetailSkeleton,
+  DetailsDrawer,
   EmptyState,
   ErrorNotice,
   Field,
@@ -52,7 +53,6 @@ export function ReceiptsWorkspace({
   useEffect(() => setId(initialReceiptId), [initialReceiptId]);
 
   function select(next: string) {
-    setId(next);
     onSelect(next);
   }
 
@@ -75,7 +75,7 @@ export function ReceiptsWorkspace({
     <Page>
       <PageHeader
         eyebrow="Accepted operational evidence"
-        title="Receipts & activity"
+        title="Receiving"
         description="Immutable delivery records, ordered by acceptance. Delivery dates remain separate from the time stock was recorded."
         actions={
           <>
@@ -95,7 +95,7 @@ export function ReceiptsWorkspace({
       />
 
       {id ? (
-        <div className="mt-8">
+        <DetailsDrawer wide title="Accepted receipt" closeLabel="Close receipt details" onClose={()=>select('')}>
           <Breadcrumb>
             <LinkButton onClick={() => select('')}>
               <Icon icon={ArrowLeft01Icon} size={15} strokeWidth={2} />
@@ -112,8 +112,8 @@ export function ReceiptsWorkspace({
           ) : receipt.data ? (
             <ReceiptDetails key={receipt.data.id} receipt={receipt.data} onStock={onStock} onUnitLabels={onUnitLabels} />
           ) : null}
-        </div>
-      ) : (
+        </DetailsDrawer>
+      ) : null}
         <section className={cn(card, 'mt-8 overflow-hidden')}>
           <div className="flex flex-col gap-3 border-b border-black/[0.06] px-5 py-4 sm:flex-row sm:flex-wrap sm:items-end">
             <SearchInput
@@ -208,7 +208,6 @@ export function ReceiptsWorkspace({
 
           <Pager page={current} pageCount={pageCount} total={rows.length} onChange={setPage} />
         </section>
-      )}
 
       <Footnote className="mt-5">
         Receipt and lot movement summaries are operational evidence. Security logs and unrestricted

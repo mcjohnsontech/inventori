@@ -1,4 +1,5 @@
 'use client';
+import { useState, type ComponentProps } from 'react';
 import type { Catalogue, Role } from '@dayari/contracts';
 
 import {CountsWorkspace} from './counts-workspace';
@@ -14,14 +15,13 @@ import { InventoryWorkspace } from './inventory-workspace';
 import { PrintingWorkspace } from './labels/printing-workspace';
 import { ProductionWorkspace } from './production-workspace';
 import { ReceiptsWorkspace } from './receiving/receipts-workspace';
-import { ReceivingWorkspace } from './receiving/receiving-workspace';
 import { ReportsWorkspace } from './operational-reports-workspace';
 import { SettingsWorkspace } from './settings-workspace';
 import { SuppliersWorkspace } from './suppliers-workspace';
 import { UsersWorkspace } from './users-workspace';
 import { Button, DetailSkeleton, EmptyState, Page, card } from './ui';
 import { cn } from '../lib/cn';
-import { workspaceAllowed, type Workspace } from './shell/destinations';
+import { workspaceAllowed, mainDestination, type Workspace } from './shell/destinations';
 
 /** Workspaces that cannot render until the catalogue snapshot has loaded. */
 const NEEDS_CATALOGUE: Workspace[] = [
@@ -58,8 +58,9 @@ function Blocked({
   );
 }
 
-export function WorkspaceRouter({
+function WorkspaceContent({
   workspace,
+  overlayActive = false,
   catalogue,
   catalogueReady,
   user,
@@ -73,6 +74,7 @@ export function WorkspaceRouter({
   onCatalogueChanged,
   onReceive,
 }: {
+  overlayActive?: boolean;
   workspace: Workspace;
   catalogue: Catalogue;
   catalogueReady: boolean;
@@ -87,7 +89,7 @@ export function WorkspaceRouter({
   onCatalogueChanged: (catalogue: Catalogue) => void;
   onReceive: () => void;
 }) {
-  const home = () => navigate(user.role === 'PRODUCTION' ? 'availability' : 'dashboard');
+  const home = () => navigate(user.role === 'PRODUCTION' ? 'inventory' : 'dashboard');
 
   if (missing) {
     return (
@@ -109,7 +111,7 @@ export function WorkspaceRouter({
     );
   }
 
-  if (NEEDS_CATALOGUE.includes(workspace) && !catalogueReady) {
+  if (user.role !== 'PRODUCTION' && NEEDS_CATALOGUE.includes(workspace) && !catalogueReady) {
     return (
       <Page>
         {error ? (
@@ -185,6 +187,7 @@ export function WorkspaceRouter({
       );
 
     case 'inventory':
+      if(user.role==='PRODUCTION')return <ProductionWorkspace onCheckout={()=>navigate('checkout')} onScan={()=>navigate('qr')} onCode={code=>navigate('qr',code)}/>;
       return (
         <InventoryWorkspace
           catalogue={catalogue}
@@ -197,17 +200,6 @@ export function WorkspaceRouter({
       );
 
     case 'receiving':
-      return (
-        <ReceivingWorkspace
-          role={user.role}
-          onSupplier={onReceive}
-          onUnitLabels={(id)=>navigate('labels','',id)}
-          onCatalogueChanged={onCatalogueChanged}
-          onHistory={() => navigate('receipts')}
-          onInventory={(id) => navigate('inventory', id)}
-        />
-      );
-
     case 'receipts':
       return (
         <ReceiptsWorkspace
@@ -222,6 +214,7 @@ export function WorkspaceRouter({
     case 'catalogue':
       return (
         <CatalogueWorkspace
+          active={!overlayActive}
           catalogue={catalogue}
           role={user.role}
           initialProductId={detail.catalogue}
@@ -246,4 +239,23 @@ export function WorkspaceRouter({
         />
       );
   }
+}
+
+export function WorkspaceRouter(props:ComponentProps<typeof WorkspaceContent>){
+ const {workspace,user,navigate}=props;
+ const main=mainDestination(workspace);
+ const groups:Partial<Record<Workspace,{key:Workspace;label:string}[]>>={
+ inventory:[{key:'inventory',label:'Stock'},{key:'counts',label:'Count history'},{key:'requests',label:'Requests'},{key:'damage',label:'Damaged / BAD'}],
+ checkout:[{key:'checkout',label:'Checkout & lookup'},{key:'completion',label:'In Production'},{key:'reconciliation',label:'Reason follow-up'}],
+ catalogue:[{key:'catalogue',label:'Products'},{key:'suppliers',label:'Suppliers'}],
+ settings:[{key:'settings',label:'My account'},{key:'users',label:'Staff & invitations'},{key:'help',label:'Help'}],
+ };
+ const tabs=(groups[main]??[]).filter(item=>workspaceAllowed(user.role,item.key));
+ // Stock browsing stays mounted while inspecting inventory subviews, preserving filters/pages.
+ const [stockVisited,setStockVisited]=useState(false);
+ if(workspace==='inventory'&&!stockVisited)setStockVisited(true);
+ const preserveStock=main==='inventory'&&stockVisited;
+ return <>{tabs.length>1?<nav aria-label={`${main} views`} className="flex flex-wrap gap-2 px-4 pt-5 sm:px-6 lg:px-10">{tabs.map(item=><Button key={item.key} variant={(workspace===item.key||(workspace==='availability'&&item.key==='inventory')||(workspace==='qr'&&item.key==='checkout'))?'primary':'secondary'} aria-pressed={workspace===item.key} onClick={()=>navigate(item.key)}>{item.label}</Button>)}</nav>:null}
+ {preserveStock?<div hidden={workspace!=='inventory'}><WorkspaceContent {...props} workspace="inventory"/></div>:null}
+ {(!preserveStock||workspace!=='inventory')?<WorkspaceContent {...props}/>:null}</>;
 }

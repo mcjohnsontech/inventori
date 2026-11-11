@@ -1,9 +1,10 @@
+import { openWorkspace } from './ui.js';
 import { test, expect } from '@playwright/test';
 test('Admin can provision shop staff, inspect sessions and preserve directory filters',async({page})=>{
  await page.goto('/');
  await page.getByLabel('Email address').fill('e2e-admin@dayari.test');await page.getByLabel('Password',{exact:true}).fill(process.env.E2E_PASSWORD!);
  await page.getByRole('button',{name:'Sign in',exact:true}).click();
- await page.getByRole('navigation',{name:'Workspace'}).getByRole('button',{name:'Users & access'}).click();
+ await openWorkspace(page, 'Users & access');
  await expect(page.getByRole('heading',{name:'Users & access'})).toBeVisible();
  await page.getByRole('button',{name:'Create staff account'}).click();
  const email=`browser-${Date.now()}@staff.test`,initialPassword=crypto.randomUUID(),newPassword=crypto.randomUUID();
@@ -26,5 +27,5 @@ test('Admin can provision shop staff, inspect sessions and preserve directory fi
  await page.getByRole('button',{name:'Update password and sign out'}).click();
  await expect(page.getByRole('heading',{name:'Sign in to your shop'})).toBeVisible();
  await page.getByLabel('Email address').fill(email);await page.getByLabel('Password',{exact:true}).fill(newPassword);await page.getByRole('button',{name:'Sign in',exact:true}).click();
- await expect(page.getByRole('heading',{name:'Production workspace',exact:true})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Inventory',exact:true})).toBeVisible();
 });

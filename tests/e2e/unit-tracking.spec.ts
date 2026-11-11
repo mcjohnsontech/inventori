@@ -1,3 +1,4 @@
+import { openWorkspace } from './ui.js';
 import { randomUUID } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
@@ -36,13 +37,13 @@ test('unit tracking preserves browsing context, records retry-safe QR presentati
   const drawer = page.getByRole('dialog', { name: `Unit ${unit.unitCode}`, exact: true });
   await expect(drawer.getByText('Device print dialog requested', { exact: true })).toBeVisible();
   await expect(drawer.getByText('Physical printing and attachment are not confirmed.', { exact: true })).toBeVisible();
-  await mkdir('docs/images/completion/milestone-4', { recursive: true });
+  await mkdir('test-results/consolidation/completion/milestone-4', { recursive: true });
   for (const width of [320,390,768,1024,1440]) {
     await page.setViewportSize({ width, height: 900 });
     await drawer.evaluate(element => { element.scrollTop = 0; });
     expect(await drawer.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await page.screenshot({ path: `docs/images/completion/milestone-4/unit-drawer-${width}.png` });
+    await page.screenshot({ path: `test-results/consolidation/completion/milestone-4/unit-drawer-${width}.png` });
   }
   await page.keyboard.press('Escape'); await expect(drawer).toHaveCount(0);
   await expect(search).toHaveValue(unit.unitCode.toLowerCase()); await expect(open).toBeFocused();
@@ -53,7 +54,7 @@ test('unit tracking preserves browsing context, records retry-safe QR presentati
   await expect(drawer).toBeVisible(); await drawer.getByRole('button', { name: 'Close unit details', exact: true }).click();
   await expect(page.getByRole('table', { name: 'Received physical units', exact: true })).toBeVisible();
 
-  await page.getByRole('button', { name: 'QR lookup', exact: true }).click();
+  await openWorkspace(page, 'QR lookup');
   let first = true, key = '';
   await page.route('**/api/unit-observations', async route => {
     if (first) { first = false; key = route.request().headers()['idempotency-key']!; const response = await route.fetch(); expect(response.status()).toBe(201); return route.fulfill({ status:503, json:{message:'Synthetic response lost after QR history commit'} }); }
@@ -71,7 +72,7 @@ test('unit tracking preserves browsing context, records retry-safe QR presentati
   expect(accepted.timeline.events.filter((event:any) => event.kind === 'QR_PRESENTED')).toHaveLength(1);
 
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
-  await login('e2e-production@dayari.test'); await page.getByRole('button', { name: 'QR lookup', exact: true }).click();
+  await login('e2e-production@dayari.test'); await openWorkspace(page, 'QR lookup');
   await page.getByLabel('Scan or enter QR payload', { exact: true }).fill(encodeUnitQr(receipt.batch.originId, unit.id));
   await page.getByRole('button', { name: 'Resolve QR', exact: true }).click(); await expect(presentation).toContainText('QR presentation recorded');
   await page.getByRole('button', { name: 'View unit history', exact: true }).click();

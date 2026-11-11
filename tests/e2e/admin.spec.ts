@@ -1,3 +1,4 @@
+import { openWorkspace } from './ui.js';
 import { expect, test } from '@playwright/test';
 
 test('workspace navigation is usable across shop screen sizes', async ({ page }) => {
@@ -15,7 +16,7 @@ test('workspace navigation is usable across shop screen sizes', async ({ page })
   await expect(page.getByText('Variants with usable stock', { exact: true })).toBeVisible();
   await page.screenshot({ path: 'test-results/admin-dashboard-1440.png' });
   await page.getByRole('button', { name: 'Catalogue', exact: true }).click();
-  await page.getByRole('button', { name: 'Suppliers', exact: true }).click();
+  await page.getByRole('group',{name:'Catalogue view'}).getByRole('button',{name:'Suppliers',exact:true}).click();
   await page.getByRole('button', { name: 'Supplier directory', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Suppliers & sources', exact: true })).toBeVisible();
   await page.getByLabel('Search suppliers', { exact: true }).fill('no-such-supplier-xyz');
@@ -25,17 +26,16 @@ test('workspace navigation is usable across shop screen sizes', async ({ page })
   await page.getByLabel('Search inventory', { exact: true }).fill('no-such-stock-xyz');
   await expect(page.getByRole('heading', { name: 'No stock matches this view' })).toBeVisible();
   await page.getByRole('button', { name: 'Catalogue', exact: true }).click();
-  await page.getByRole('button', { name: 'Account & shop', exact: true }).click();
+  await openWorkspace(page, 'Account & shop');
   await expect(page.getByRole('heading', { name: 'Account & shop', exact: true })).toBeVisible();
   await expect(page.getByText('Africa/Lagos', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Create user' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Catalogue', exact: true }).click();
   for (const width of [1440, 1024, 768, 390, 320]) {
     await page.setViewportSize({ width, height: 900 });
-    if (width < 1024) await page.getByRole('button', { name: 'Open navigation' }).click();
-    await page.getByRole('navigation', { name: 'Workspace' }).getByRole('button', { name: 'Production checkout', exact: true }).click();await page.getByRole('button',{name:'QR & code lookup',exact:true}).click();
+    await openWorkspace(page, 'Production checkout');await page.getByRole('button',{name:'QR & code lookup',exact:true}).click();
     await expect(page.getByRole('heading', { name: 'QR lookup', exact: true })).toBeVisible();
-    await expect(page).toHaveURL(/#qr$/);
+    await expect(page).toHaveURL(/#checkout$/);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: `test-results/admin-navigation-${width}.png` });
     if (width < 1024) await page.getByRole('button', { name: 'Open navigation' }).click();

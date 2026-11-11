@@ -1,3 +1,4 @@
+import { openWorkspace } from './ui.js';
 import { randomUUID } from 'node:crypto';
 import { expect, test, type Page } from '@playwright/test';
 import { choose } from './ui.js';
@@ -12,12 +13,9 @@ async function login(page: Page) {
   await expect(page.getByRole('heading', { name: 'Welcome, Test' })).toBeVisible();
 }
 async function navigate(page: Page, label: string, expectedStatus=200) {
-  const menu = page.getByRole('button', { name: 'Open navigation', exact: true });
-  if (await menu.isVisible()) await menu.click();
   const reads:Record<string,string>={'Inventory':'/api/stock','Receiving':'/api/receiving/options','Receipts & activity':'/api/receipts','Labels & printing':'/api/unit-label-config','Account & shop':'/api/account'};
   const response=reads[label]?page.waitForResponse(r=>new URL(r.url()).pathname===reads[label]&&r.request().method()==='GET'&&r.status()===expectedStatus):null;
-  await page.getByRole('navigation', { name: 'Workspace' }).getByRole('button', { name: label==='QR lookup'?'Production checkout':label, exact: true }).click();
-  if(label==='QR lookup')await page.getByRole('button',{name:'QR & code lookup',exact:true}).click();
+  await openWorkspace(page,label);
   if(response){const result=await response;expect(result.status()).toBe(expectedStatus);await result.finished();}
 }
 async function post(page: Page, path: string, body: unknown) {
@@ -39,10 +37,10 @@ test('Admin product extension, deep links and complete responsive workspaces use
   await page.getByRole('button').filter({ has: page.getByRole('heading', { name: product.product.name, exact: true }) }).click();
   await expect(page).toHaveURL(new RegExp(`#catalogue/${product.product.id}$`));
   await page.reload();
-  await expect(page.getByRole('heading', { name: product.product.name, exact: true })).toBeVisible();
+  await expect(page.getByRole('dialog',{name:product.product.name,exact:true}).getByRole('heading', { name: product.product.name, exact: true })).toBeVisible();
   await page.setViewportSize({ width: 320, height: 900 });
   await page.getByRole('button', { name: 'Add variants or source', exact: true }).click();
-  const dialog = page.getByRole('dialog');
+  const dialog = page.getByRole('dialog',{name:'Add product',exact:true});
   await choose(dialog, 'Supplier', supplier.supplier.id);
   await choose(dialog, 'Supplier location', supplier.source.id);
   await dialog.getByRole('button', { name: 'Continue', exact: true }).click();
@@ -84,7 +82,7 @@ test('Admin product extension, deep links and complete responsive workspaces use
   await expect(page.getByRole('combobox', { name: 'Product', exact: true })).toHaveAttribute('data-value', product.product.id);
   // The back arrow is an aria-hidden icon now, so it is not part of the name.
   await page.getByRole('button', { name: `Back to ${product.product.name}`, exact: true }).click();
-  await expect(page.getByRole('heading', { name: product.product.name, exact: true })).toBeVisible();
+  await expect(page.getByRole('dialog',{name:product.product.name,exact:true}).getByRole('heading', { name: product.product.name, exact: true })).toBeVisible();
 
   for (const width of [1440, 1024, 768, 390, 320]) {
     await page.setViewportSize({ width, height: 900 });
@@ -94,6 +92,7 @@ test('Admin product extension, deep links and complete responsive workspaces use
       if (key === 'overview') await expect(page.getByText('Lots containing damaged stock', { exact: true })).toBeVisible();
       if (key === 'catalogue') await page.getByLabel('Search catalogue', { exact: true }).fill(product.product.productCode);
       if (key === 'inventory') {
+        await page.getByRole('button',{name:'Delivery lots',exact:true}).click();
         await expect(page.getByRole('combobox', { name: 'Product', exact: true })).toHaveCount(width < 640 ? 0 : 1);
         await page.getByLabel('Search inventory', { exact: true }).fill(receipt.lines[0].lotCode);
         await expect(page.getByRole('row').filter({ hasText: receipt.lines[0].lotCode })).toBeVisible();

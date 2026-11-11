@@ -1,5 +1,6 @@
 'use client';
 import { ArrowDown01Icon, Tick02Icon } from '@hugeicons/core-free-icons';
+import {useCallback,useState} from 'react';
 import * as RadixSelect from '@radix-ui/react-select';
 
 import { cn } from '../../lib/cn';
@@ -30,9 +31,12 @@ export function Select({
   className?: string;
   size?: 'default' | 'compact';
 }) {
+  const [portalContainer,setPortalContainer]=useState<HTMLElement>();
+  const setTrigger=useCallback((node:HTMLButtonElement|null)=>{if(node)setPortalContainer(node.closest('dialog')??undefined);},[]);
   return (
     <RadixSelect.Root value={value} onValueChange={onChange} disabled={disabled} required={required}>
       <RadixSelect.Trigger
+        ref={setTrigger}
         id={id}
         aria-label={label}
         // A native select exposes its value; this keeps it assertable.
@@ -53,7 +57,7 @@ export function Select({
         </RadixSelect.Icon>
       </RadixSelect.Trigger>
 
-      <RadixSelect.Portal>
+      <RadixSelect.Portal container={portalContainer}>
         <RadixSelect.Content
           position="popper"
           sideOffset={6}

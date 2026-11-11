@@ -122,7 +122,7 @@ test('progressive setup retains drafts and reuses products across supplier prefi
   expect(extended.skus).toHaveLength(2);
   const after = await (await page.request.get('/api/catalogue')).json();
   for (const sku of saved.skus) expect(after.skus.find((row: { id: string }) => row.id === sku.id).fullCode).toBe(sku.fullCode);
-  await page.getByRole('button', { name: 'Suppliers', exact: true }).click();
+  await page.getByRole('group',{name:'Catalogue view'}).getByRole('button',{name:'Suppliers',exact:true}).click();
   await page.getByLabel('Search catalogue', { exact: true }).fill(second.supplier.name);
   await page.getByRole('button', { name: `Set up location for ${second.supplier.name}`, exact: true }).click();
   await expect(dialog.getByRole('heading', { name: 'Set up supplier location', exact: true })).toBeVisible();

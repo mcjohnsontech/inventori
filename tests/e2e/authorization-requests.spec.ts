@@ -1,3 +1,4 @@
+import { openWorkspace } from './ui.js';
 import { randomUUID } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
@@ -23,7 +24,7 @@ test('Manager records pending recovery/correction evidence with retry, while Adm
   const stockBefore = (await get(`stock?batchId=${receipt.batch.id}`)).lots, lot = stockBefore[0];
   const unit = (await get(`receipts/${receipt.id}/units`)).units.find((row: any) => row.state === 'D');
   await page.getByRole('button', { name: 'Sign out', exact: true }).click(); await login('e2e-manager@dayari.test');
-  await page.getByRole('button', { name: 'Recovery & corrections', exact: true }).click();
+  await openWorkspace(page, 'Recovery & corrections');await page.getByRole('button',{name:'New recovery / correction request',exact:true}).click();
   await page.getByLabel('Recovery Unit Code or individual QR', { exact: true }).fill(unit.unitCode); await page.getByRole('button', { name: 'Add unit', exact: true }).click();
   await expect(page.getByRole('button', { name: `Remove ${unit.unitCode}`, exact: true })).toBeVisible();
   await page.getByLabel('Request explanation', { exact: true }).fill('Inspect repaired cover for possible recovery');
@@ -51,10 +52,10 @@ test('Manager records pending recovery/correction evidence with retry, while Adm
   await page.getByLabel('Supporting evidence', { exact: true }).fill('Observed two usable items against the recorded three; investigation remains open');
   await page.getByRole('button', { name: 'Review request', exact: true }).click();
   await expect(page.getByText('Reviewed ledger 3 · projection 3 · reported observation 2', { exact: true })).toBeVisible();
-  await mkdir('docs/images/completion/milestone-7', { recursive: true });
+  await mkdir('test-results/consolidation/completion/milestone-7', { recursive: true });
   for (const width of [1440, 1024, 768, 390, 320]) {
     await page.setViewportSize({ width, height: 1000 }); await page.evaluate(() => window.scrollTo(0, 0)); expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await page.screenshot({ path: `docs/images/completion/milestone-7/pending-request-review-${width}.png`, fullPage: true });
+    await page.screenshot({ path: `test-results/consolidation/completion/milestone-7/pending-request-review-${width}.png`, fullPage: true });
   }
   await page.setViewportSize({ width: 1440, height: 1000 });
   const accepted = page.waitForResponse(r => new URL(r.url()).pathname === '/api/authorization-requests' && r.request().method() === 'POST');
@@ -62,9 +63,9 @@ test('Manager records pending recovery/correction evidence with retry, while Adm
   await expect(page.getByRole('heading', { name: 'Request recorded — pending authorization', exact: true })).toBeFocused();
   expect(result).toMatchObject({ requestedDelta: '-1', observedQuantity: '2', stockChanged: false, status: 'PENDING_CLOUD_AUTHORIZATION' });
   expect((await get(`stock?batchId=${receipt.batch.id}`)).lots).toEqual(stockBefore); expect((await get(`receipts/${receipt.id}/units`)).total).toBe(5);
-  await page.evaluate(() => window.scrollTo(0, 0)); await page.screenshot({ path: 'docs/images/completion/milestone-7/pending-request-accepted-1440.png', fullPage: true });
+  await page.evaluate(() => window.scrollTo(0, 0)); await page.screenshot({ path: 'test-results/consolidation/completion/milestone-7/pending-request-accepted-1440.png', fullPage: true });
   await page.getByRole('button', { name: 'Sign out', exact: true }).click(); await login('e2e-admin@dayari.test');
-  await page.getByRole('button', { name: 'Recovery & corrections', exact: true }).click();
+  await openWorkspace(page, 'Recovery & corrections');
   await expect(page.getByLabel('New request kind', { exact: true })).toHaveCount(0); await expect(page.getByRole('button', { name: /approve|execute|authorize/i })).toHaveCount(0);
   await choose(page, 'Request type', 'CORRECTION'); await page.getByRole('button', { name: 'View request', exact: true }).first().click();
   await expect(page.getByRole('dialog', { name: 'Pending request evidence', exact: true })).toBeVisible();

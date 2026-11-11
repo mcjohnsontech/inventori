@@ -5,6 +5,7 @@ import type { InvitationSummary } from '@dayari/contracts';
 import { api, useApiRead } from '../lib/api';
 import { Button } from './ui/button';
 import { Badge } from './ui/workspace';
+import { TaskModal } from './ui/task-modal';
 import { Disclosure } from './ui/disclosure';
 export function InvitationsPanel() {
   type Directory = { mode: 'isolated' | 'smtp'; invitations: InvitationSummary[] };
@@ -87,9 +88,7 @@ export function InvitationsPanel() {
         <Button
           disabled={busy || !directory || Boolean(list.error)}
           onClick={() => {
-            if (open && dirty && !confirm('Discard the unsaved invitation?')) return;
             setOpen(!open);
-            setDirty(false);
             setError('');
           }}
         >
@@ -108,7 +107,7 @@ export function InvitationsPanel() {
           latest.delivery === 'FAILED' ? 'Email delivery failed. Check mail settings, then resend the invitation.' :
           latest.delivery === 'CANCELLED' ? 'Delivery cancelled' : 'Email queued — waiting for delivery'}
       </p>}
-      {open && (
+      <TaskModal open={open} title="Invite staff" busy={busy} onClose={()=>setOpen(false)}>
         <form
           onSubmit={send}
           onChange={() => setDirty(true)}
@@ -144,8 +143,9 @@ export function InvitationsPanel() {
             <Button disabled={busy}>{busy ? 'Saving…' : 'Save invitation'}</Button>
           </div>
         </form>
-      )}
-      {error && (
+        {error && <p role="alert" className="mt-3 text-sm text-red-700">{error}</p>}
+      </TaskModal>
+      {!open && error && (
         <p role="alert" className="mt-3 text-sm text-red-700">
           {error}
         </p>

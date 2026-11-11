@@ -1,3 +1,4 @@
+import { openWorkspace } from './ui.js';
 import { randomUUID } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
@@ -28,7 +29,7 @@ test('Production reviews exact units, preserves drafts and retries a lost checko
   const units = all.filter((unit: any) => unit.state === 'U');
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   await login('e2e-production@dayari.test');
-  await page.getByRole('button', { name: 'Production checkout', exact: true }).click();
+  await openWorkspace(page, 'Production checkout');
   await expect(page.getByRole('heading', { name: 'Production checkout', exact: true })).toBeVisible();
   const previousHistory = await (await page.request.get('/api/checkouts?orderReference=Reusable%20Order%20A')).json();
   await page.evaluate(() => { navigator.mediaDevices.getUserMedia = async () => { throw new DOMException('Synthetic camera denial', 'NotAllowedError'); }; });
@@ -57,12 +58,12 @@ test('Production reviews exact units, preserves drafts and retries a lost checko
   expect((await restoredPreview).status()).toBe(200);
   await expect(page.getByRole('button', { name: `Remove ${units[0].unitCode}`, exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Review checkout', exact: true }).click();
-  await mkdir('docs/images/completion/milestone-5', { recursive: true });
+  await mkdir('test-results/consolidation/completion/milestone-5', { recursive: true });
   for (const width of [1440, 1024, 768, 390, 320]) {
     await page.setViewportSize({ width, height: 1000 });
     await page.evaluate(() => window.scrollTo(0, 0));
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await page.screenshot({ path: `docs/images/completion/milestone-5/checkout-review-${width}.png`, fullPage: true });
+    await page.screenshot({ path: `test-results/consolidation/completion/milestone-5/checkout-review-${width}.png`, fullPage: true });
   }
   await page.setViewportSize({ width: 1440, height: 1000 });
   let lost = false, acceptedId = '';
@@ -85,5 +86,5 @@ test('Production reviews exact units, preserves drafts and retries a lost checko
   const detail = await (await page.request.get('/api/checkouts/' + acceptedId)).json();
   expect(detail.balances).toEqual([{ lotId: units[0].lotId, usable: '1' }]);
   expect(JSON.stringify(detail)).not.toMatch(/PRIVATE-CHECKOUT-INVOICE|supplierName|damageReason/);
-  await page.screenshot({ path: 'docs/images/completion/milestone-5/checkout-accepted-1440.png', fullPage: true });
+  await page.screenshot({ path: 'test-results/consolidation/completion/milestone-5/checkout-accepted-1440.png', fullPage: true });
 });

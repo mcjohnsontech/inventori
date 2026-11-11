@@ -27,10 +27,10 @@ test('overview never presents missing stock data as zero and recovers after a re
   await page.getByRole('button', { name: 'Refresh stock', exact: true }).click();
   await expect(summary).toHaveAttribute('aria-busy', 'false');
   await expect(summary.locator('strong').first()).toHaveText(/^\d+$/);
-  await mkdir('docs/images/completion/milestone-1', { recursive: true });
+  await mkdir('test-results/consolidation/completion/milestone-1', { recursive: true });
   for (const width of [1440, 390, 320]) {
     await page.setViewportSize({ width, height: 900 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await page.screenshot({ path: `docs/images/completion/milestone-1/overview-${width}.png` });
+    await page.screenshot({ path: `test-results/consolidation/completion/milestone-1/overview-${width}.png` });
   }
 });

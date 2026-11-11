@@ -2,7 +2,7 @@
 import { useEffect } from 'react';
 
 import { roleLabel } from '../../lib/format';
-import { destinations, type Workspace } from './destinations';
+import { destinations, mainDestination, type Workspace } from './destinations';
 
 export function TopBar({
   workspace,
@@ -11,7 +11,7 @@ export function TopBar({
   workspace: Workspace;
   account: { name: string; role: string };
 }) {
-  const title = destinations[workspace].label;
+  const title = destinations[mainDestination(workspace)].label;
 
   useEffect(() => {
     document.title = `${title} · Dayari Inventory`;

@@ -15,6 +15,7 @@ export function DetailsDrawer({
   children,
   closeLabel = 'Close lot details',
   active = true,
+  wide = false,
 }: {
   title: string;
   eyebrow?: string;
@@ -23,6 +24,7 @@ export function DetailsDrawer({
   closeLabel?: string;
   /** Keep record state mounted while a drilldown temporarily owns the modal. */
   active?: boolean;
+  wide?: boolean;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const id = useId();
@@ -51,7 +53,7 @@ export function DetailsDrawer({
         event.preventDefault();
         onClose();
       }}
-      className="fixed inset-y-0 right-0 left-auto m-0 h-dvh max-h-dvh w-[min(520px,100vw)] max-w-full overflow-y-auto border-0 border-l border-black/[0.07] bg-white p-0 text-ink shadow-[-12px_0_60px_rgba(21,62,49,0.13)] backdrop:bg-black/40"
+      className={(wide ? "w-[min(980px,100vw)] " : "w-[min(520px,100vw)] ") + "fixed inset-y-0 right-0 left-auto m-0 h-dvh max-h-dvh max-w-full overflow-y-auto border-0 border-l border-black/[0.07] bg-white p-0 text-ink shadow-[-12px_0_60px_rgba(21,62,49,0.13)] backdrop:bg-black/40"}
     >
       <header className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-black/[0.06] bg-white px-5 py-5 sm:px-6">
         <div className="min-w-0">

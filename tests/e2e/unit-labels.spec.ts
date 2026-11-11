@@ -1,3 +1,4 @@
+import { openWorkspace } from './ui.js';
 import { randomUUID } from 'node:crypto';
 import { mkdir,writeFile } from 'node:fs/promises';
 import { expect,test } from '@playwright/test';
@@ -38,8 +39,8 @@ test('exact-unit cart preserves drafts and retries, previews genuine labels and 
  const initialReady=page.waitForResponse(response=>response.request().method()==='POST'&&/unit-label-jobs\/[^/]+\/artifact$/.test(response.url()));await settings.getByRole('button',{name:'Prepare print document',exact:true}).click();expect((await initialReady).status()).toBe(201);await expect(settings.getByRole('button',{name:'Print 65 individual labels',exact:true})).toBeEnabled();
  const job=await(await page.request.get('/api/unit-label-jobs/'+jobId)).json() as UnitLabelJob;
  expect(job.lines).toHaveLength(65);expect(new Set(job.lines.map(line=>line.payload)).size).toBe(65);expect(job.artifact?.pages).toBe(5);expect(job.handoffCount).toBe(0);
- await mkdir('docs/images/completion/milestone-3',{recursive:true});
- for(const width of [320,390,768,1024,1440]){await page.setViewportSize({width,height:900});await page.getByRole('heading',{name:'Labels & printing',exact:true}).scrollIntoViewIfNeeded();await page.screenshot({path:`docs/images/completion/milestone-3/unit-labels-${width}.png`});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);}
+ await mkdir('test-results/consolidation/completion/milestone-3',{recursive:true});
+ for(const width of [320,390,768,1024,1440]){await page.setViewportSize({width,height:900});await page.getByRole('heading',{name:'Labels & printing',exact:true}).scrollIntoViewIfNeeded();await page.screenshot({path:`test-results/consolidation/completion/milestone-3/unit-labels-${width}.png`});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);}
  await page.setViewportSize({width:1440,height:1000});
  const popupEvent=page.waitForEvent('popup');await settings.getByRole('button',{name:'Print 65 individual labels',exact:true}).click();const popup=await popupEvent;
  await popup.waitForURL(/\.html$/);await expect.poll(()=>popup.evaluate(()=>(window as any).__dayariPrintCalls),{timeout:15000}).toBe(1);
@@ -53,7 +54,7 @@ test('exact-unit cart preserves drafts and retries, previews genuine labels and 
  expect(new Set(decoded)).toEqual(new Set(job.lines.map(line=>line.payload)));await mkdir('artifacts/completion/unit-labels',{recursive:true});await writeFile('artifacts/completion/unit-labels/html-scan-evidence.json',JSON.stringify({dpi:300,decoded:decoded.length,unique:new Set(decoded).size,jobId},null,2));await raster.close();
  const chosen=job.lines[0]!;await page.getByRole('checkbox',{name:`Reprint ${chosen.content.unitCode}`,exact:true}).check();await page.getByLabel('Reason for replacement',{exact:true}).fill('Replace a spoiled sticker after checking physical output');await page.getByRole('button',{name:'Review 1 replacement label',exact:true}).click();const replacementReady=page.waitForResponse(response=>response.request().method()==='POST'&&/unit-label-jobs\/[^/]+\/artifact$/.test(response.url()));await page.getByRole('button',{name:'Prepare print document',exact:true}).click();expect((await replacementReady).status()).toBe(201);
  await expect(page.getByRole('button',{name:'Print 1 individual label',exact:true})).toBeEnabled();expect(await stock()).toEqual(stockBefore);
- await page.getByRole('button',{name:'Sign out',exact:true}).click();await login('e2e-production@dayari.test');await page.getByRole('button',{name:'QR lookup',exact:true}).click();
+ await page.getByRole('button',{name:'Sign out',exact:true}).click();await login('e2e-production@dayari.test');await openWorkspace(page, 'QR lookup');
  await page.getByLabel('Individual Unit Code',{exact:true}).fill(chosen.content.unitCode.toLowerCase());await page.getByRole('button',{name:'Find unit',exact:true}).click();await expect(page.getByRole('region',{name:'Resolved individual unit',exact:true})).toContainText(chosen.content.unitCode);
  const damaged=job.lines.find(line=>line.purpose==='DAMAGED_INTAKE')!;await page.getByLabel('Scan or enter QR payload',{exact:true}).fill(encodeUnitQr(job.originId,damaged.unitId));await page.getByRole('button',{name:'Resolve QR',exact:true}).click();const resolved=page.getByRole('region',{name:'Resolved individual unit',exact:true});await expect(resolved).toContainText('Unavailable for checkout');await expect(resolved.getByText('Damaged',{exact:true})).toHaveCount(0);expect((await page.request.get('/api/unit-label-jobs/'+job.id)).status()).toBe(403);
 });

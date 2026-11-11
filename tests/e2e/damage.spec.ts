@@ -1,3 +1,4 @@
+import { openWorkspace } from './ui.js';
 import { randomUUID } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
@@ -24,7 +25,7 @@ test('Production reports its own exact issued item and Manager reviews damaged s
   const units = (await get(`receipts/${receipt.id}/units`)).units.filter((unit: any) => unit.state === 'U');
   await page.getByRole('button', { name: 'Sign out', exact: true }).click(); await login('e2e-production@dayari.test');
   const checkout = await post('checkouts', { reason: { code: 'PRODUCTION_USE' }, orderReference: 'BAD browser order', lines: units.slice(0, 2).map((unit: any) => ({ unitId: unit.id })) });
-  await page.getByRole('button', { name: 'Damage & BAD reports', exact: true }).click();
+  await openWorkspace(page, 'Damage & BAD reports');
   await expect(page.getByRole('heading', { name: 'Damage & BAD reports', exact: true })).toBeVisible();
   await page.getByRole('button', {name:'Report damaged / BAD items',exact:true}).click();
   await expect(page.getByRole('button', { name: 'Manager dispositions', exact: true })).toHaveCount(0);
@@ -37,11 +38,11 @@ test('Production reports its own exact issued item and Manager reviews damaged s
   page.once('dialog', dialog => dialog.dismiss()); await page.getByRole('button', { name: 'Discard draft', exact: true }).click();
   const restored = page.waitForResponse(r => new URL(r.url()).pathname === '/api/damage-reports/preview' && r.request().method() === 'POST'); await page.reload(); expect((await restored).status()).toBe(200);
   await page.getByRole('button', { name: 'Review selected items', exact: true }).click();
-  await mkdir('docs/images/completion/milestone-7', { recursive: true });
+  await mkdir('test-results/consolidation/completion/milestone-7', { recursive: true });
   for (const width of [1440, 1024, 768, 390, 320]) {
     await page.setViewportSize({ width, height: 1000 }); await page.evaluate(() => window.scrollTo(0, 0));
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await page.screenshot({ path: `docs/images/completion/milestone-7/bad-review-${width}.png`, fullPage: true });
+    await page.screenshot({ path: `test-results/consolidation/completion/milestone-7/bad-review-${width}.png`, fullPage: true });
   }
   await page.setViewportSize({ width: 1440, height: 1000 }); let lost = false; const keys: string[] = [];
   await page.route('**/api/damage-reports', async route => {
@@ -55,7 +56,7 @@ test('Production reports its own exact issued item and Manager reviews damaged s
   expect(report.lines[0].checkoutId).toBe(checkout.id); expect(report.lines[0].unit.unitId).toBe(units[0].id); expect(JSON.stringify(report)).not.toContain('PRIVATE-BAD-INVOICE');
   await page.getByRole('button', { name: 'Sign out', exact: true }).click(); await login('e2e-manager@dayari.test');
   const stock = await get(`stock?batchId=${receipt.batch.id}`); expect(stock.lots[0]).toMatchObject({ usable: '1', damaged: '2' });
-  await page.getByRole('button', { name: 'Damage & BAD reports', exact: true }).click(); await page.getByRole('button', { name: 'Manager dispositions', exact: true }).click(); await add(units[0].unitCode);
+  await openWorkspace(page, 'Damage & BAD reports'); await page.getByRole('button', { name: 'Manager dispositions', exact: true }).click(); await add(units[0].unitCode);
   await choose(page, 'Disposition', 'REWORKED'); await page.getByLabel('Review evidence', { exact: true }).fill('Cover reworked but no recovery authorization exists');
   await page.getByRole('button', { name: 'Review selected items', exact: true }).click();
   const reviewed = page.waitForResponse(r => new URL(r.url()).pathname === '/api/damage-reviews' && r.request().method() === 'POST');
@@ -64,7 +65,7 @@ test('Production reports its own exact issued item and Manager reviews damaged s
   expect((await get(`stock?batchId=${receipt.batch.id}`)).lots).toEqual(stock.lots);
   const timeline = await get(`units/${units[0].id}/tracking`); expect(timeline.timeline.events.some((event: any) => event.kind === 'BAD_REPORTED')).toBe(true);
   expect(timeline.timeline.events.some((event: any) => event.kind === 'DAMAGE_REVIEWED' && event.damageOutcome === 'REWORKED')).toBe(true);
-  await page.screenshot({ path: 'docs/images/completion/milestone-7/damage-review-accepted-1440.png', fullPage: true });
+  await page.screenshot({ path: 'test-results/consolidation/completion/milestone-7/damage-review-accepted-1440.png', fullPage: true });
   await page.getByRole('button', { name: 'Sign out', exact: true }).click(); await login('e2e-production@dayari.test');
   const ownTimeline = await get(`units/${units[0].id}/tracking`); expect(ownTimeline.timeline.events.some((event: any) => event.kind === 'BAD_REPORTED')).toBe(true);
   expect(JSON.stringify(ownTimeline)).not.toContain('Cover reworked'); expect(ownTimeline.timeline.events.some((event: any) => event.kind === 'DAMAGE_REVIEWED')).toBe(false);
