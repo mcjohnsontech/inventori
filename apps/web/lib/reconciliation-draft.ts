@@ -12,8 +12,8 @@ function restore(raw: string | null): Draft {
   const pending = saved.pending ? { key: idempotencyKeySchema.parse(saved.pending.key), body: reconcileReasonsSchema.parse(saved.pending.body) } : null;
   return { body: pending?.body ?? body, pending, acceptedId: saved.acceptedId ? idempotencyKeySchema.parse(saved.acceptedId) : null };
 }
-export function useReconciliationDraft(actorId: string, originId: string) {
-  const storage = `dayari_reason_reconciliation_${actorId}_${originId}`;
+export function useReconciliationDraft(actorId: string, originId: string, scope = 'queue') {
+  const storage = `dayari_reason_reconciliation_${actorId}_${originId}${scope === 'queue' ? '' : '_' + scope}`;
   const [draft, setDraft] = useState<Draft>(empty), [ready, setReady] = useState(false), [busy, setBusy] = useState(false);
   const current = useRef(draft), mounted = useRef(true), latch = useRef(false), request = useRef<AbortController | null>(null);
   function save(value: Draft) { sessionStorage.setItem(storage, JSON.stringify(value)); current.current = value; if (mounted.current) setDraft(value); }

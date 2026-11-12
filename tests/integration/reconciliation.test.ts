@@ -45,11 +45,11 @@ beforeAll(async () => {
 });
 afterAll(async () => { await app?.close(); await db.$disconnect(); });
 
-it('enforces Manager-only classification and operational review without leaking administration to Production', async () => {
+it('enforces Admin/Manager classification and operational review without leaking administration to Production', async () => {
   const body = { exceptionIds: [checkout.lines[0].exceptionId], reason: { code: 'SAMPLE' } };
   await get('checkout-reasons', admin).expect(200);
-  await get('reason-reconciliation-config', admin).expect(200).expect(response => expect(response.body.canResolve).toBe(false));
-  await post('reason-reconciliations', body, randomUUID(), admin).expect(403);
+  await get('reason-reconciliation-config', admin).expect(200).expect(response => expect(response.body.canResolve).toBe(true));
+  await post('reason-reconciliations', { ...body, exceptionIds: [] }, randomUUID(), admin).expect(400);
   for (const path of ['checkout-reasons', 'reason-reconciliation-config', 'reason-reconciliations/' + randomUUID()]) await get(path, production).expect(403);
   await post('reason-reconciliations', body, randomUUID(), production).expect(403);
   await request(app.getHttpServer()).post('/v1/reason-reconciliations').send(body).expect(401);
@@ -192,4 +192,18 @@ it('rejects actual foreign-shop exception and reconciliation identities', async 
     expect(scoped.total).toBe(1);
     expect(scoped.rows[0].unit.unitId).toBe(checkout.lines[0].unit.unitId);
   } finally { await foreign.close(); }
+});
+
+it('allows Admin to reconcile exact obligations without changing original stock or granting other Manager commands', async () => {
+ const lot=await db.stockLot.findFirstOrThrow({where:{originId}});
+ const received=(await post('receipts',{sourceId:lot.sourceId,deliveredOn:'2020-01-01',lines:[{skuId:lot.skuId,usableQuantity:1,damagedQuantity:0,damageReason:''}]}).expect(201)).body;
+ const unit=await db.stockUnit.findFirstOrThrow({where:{receiptLineId:received.lines[0].id}});
+ const c=(await post('checkouts',{reason:null,orderReference:'Admin-reconcile',lines:[{unitId:unit.id}]},randomUUID(),production).expect(201)).body;
+ const obligation=c.lines[0];
+ const before=await stockFingerprint();
+ const key=randomUUID(),body={exceptionIds:[obligation.exceptionId],reason:{code:'SAMPLE'}};
+ const accepted=(await post('reason-reconciliations',body,key,admin).expect(201)).body;
+ expect((await post('reason-reconciliations',body,key,admin).expect(201)).body).toEqual(accepted);
+ expect(await stockFingerprint()).toEqual(before);
+ expect((await db.reasonReconciliation.findUniqueOrThrow({where:{id:accepted.id}})).actorRole).toBe('ADMIN');
 });

@@ -31,6 +31,8 @@ export const destinations = {
   requests: { label: 'Recovery & corrections', icon: ArrowTurnBackwardIcon as IconSpec },
   damage: { label: 'Damage & BAD reports', icon: Alert02Icon as IconSpec },
   reconciliation: { label: 'Reason reconciliation', icon: ClipboardPenIcon as IconSpec },
+  orders: {label:'Orders',icon:Invoice01Icon as IconSpec},
+  checkoutHistory: {label:'Checkout history',icon:Invoice01Icon as IconSpec},
   checkout: { label: 'Production', icon: PackageDelivered01Icon as IconSpec },
   availability: { label: 'Usable stock', icon: PackageSearchIcon as IconSpec },
   inventory: { label: 'Inventory', icon: BoxesIcon as IconSpec },
@@ -56,6 +58,7 @@ const workspaceCapabilities: Record<Workspace, Capability> = {
   requests: 'OPERATIONAL_STOCK',
   damage: 'REPORT_BAD',
   reconciliation: 'RECONCILIATION_READ',
+  orders:'CHECKOUT',checkoutHistory:'CHECKOUT',
   checkout: 'CHECKOUT',
   availability: 'IDENTIFY',
   inventory: 'OPERATIONAL_STOCK',
@@ -85,7 +88,7 @@ export const navGroups: { name: string; keys: Workspace[] }[] = [
 ];
 export function mainDestination(key:Workspace):Workspace {
  if(['availability','counts','requests','damage'].includes(key))return 'inventory';
- if(['completion','reconciliation','qr'].includes(key))return 'checkout';
+ if(['completion','reconciliation','qr','orders','checkoutHistory'].includes(key))return 'checkout';
  if(key==='receiving')return 'receipts';
  if(key==='suppliers')return 'catalogue';
  if(['users','help'].includes(key))return 'settings';

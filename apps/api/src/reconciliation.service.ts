@@ -16,6 +16,11 @@ type QueueRow = {
 export class ReconciliationService {
   constructor(readonly db: PrismaClient, readonly originId: string, readonly mode: string) {}
 
+  private async adminReady() {
+    const [row] = await this.db.$queryRaw<{ready:boolean}[]>`SELECT EXISTS(SELECT 1 FROM pg_constraint WHERE conrelid='"ReasonReconciliation"'::regclass AND conname='ReasonReconciliation_actorRole_check' AND pg_get_constraintdef(oid) LIKE '%ADMIN%') AS ready`;
+    return Boolean(row?.ready);
+  }
+
   private async allow(user: User) {
     requireCapability(user, 'RECONCILIATION_READ');
     const [row] = await this.db.$queryRaw<{ ready: boolean }[]>`SELECT to_regclass('"ReasonReconciliation"') IS NOT NULL
@@ -27,7 +32,8 @@ export class ReconciliationService {
     await this.allow(user);
     const employees = await this.db.$queryRaw<{ id: string; name: string }[]>`SELECT DISTINCT u.id,u.name FROM "CheckoutException" e
       JOIN "Checkout" c ON c.id=e."checkoutId" JOIN "User" u ON u.id=c."actorId" WHERE e."originId"=${this.originId}::uuid ORDER BY u.name,u.id`;
-    return { originId: this.originId, limit: 500, canResolve: user.role === 'MANAGER' && this.mode === 'SHOP', employees };
+    const adminReady = user.role !== 'ADMIN' || await this.adminReady();
+    return { originId: this.originId, limit: 500, canResolve: ['ADMIN', 'MANAGER'].includes(user.role) && adminReady && this.mode === 'SHOP', adminUpgradeRequired: !adminReady, employees };
   }
 
   async list(user: User, input: unknown): Promise<ReasonQueue> { return this.read(user, input); }
@@ -89,6 +95,7 @@ export class ReconciliationService {
 
   async reconcile(user: User, keyInput: unknown, input: unknown): Promise<ReasonResolutionView> {
     await this.allow(user); requireCapability(user, 'RECONCILE_REASON');
+    if (user.role === 'ADMIN' && !await this.adminReady()) throw new ServiceUnavailableException('Admin reason reconciliation requires the separately approved shop database upgrade.');
     if (this.mode !== 'SHOP') throw new ForbiddenException('Classification writes belong to the shop.');
     const parsed = reconcileReasonsSchema.safeParse(input), key = idempotencyKeySchema.safeParse(keyInput);
     if (!parsed.success) throw new BadRequestException(parsed.error.issues.map(issue => issue.message).join('. '));

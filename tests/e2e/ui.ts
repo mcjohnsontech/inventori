@@ -30,7 +30,7 @@ export async function choose(
 export async function openWorkspace(page:Page,label:string){
  const paths:Record<string,string[]>={
  'Production checkout':['Production','Checkout & lookup'], 'QR lookup':['Production','Checkout & lookup','QR & code lookup'],
- 'Production completion':['Production','In Production'], 'Reason reconciliation':['Production','Reason follow-up'],
+ 'Production completion':['Production','Completion'], 'Reason reconciliation':['Production','Reason follow-up'],
  'Physical counts':['Inventory','Count history'], 'Recovery & corrections':['Inventory','Requests'],
  'Damage & BAD reports':['Inventory','Damaged / BAD'], 'Receipts & activity':['Receiving'],
  'Account & shop':['Users & settings','My account'], 'Users & access':['Users & settings','Staff & invitations'],

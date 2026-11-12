@@ -2,9 +2,9 @@ import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
 import { can, reasonQueueQuerySchema, reasonReconciliationDraftSchema, reconcileReasonsSchema } from '@dayari/contracts';
 
-it('limits classification to Managers and keeps review operational', () => {
+it('limits classification to Admin and Managers and keeps review operational', () => {
   for (const role of ['ADMIN', 'MANAGER', 'PRODUCTION'] as const) {
-    expect(can(role, 'RECONCILE_REASON')).toBe(role === 'MANAGER');
+    expect(can(role, 'RECONCILE_REASON')).toBe(role !== 'PRODUCTION');
     expect(can(role, 'RECONCILIATION_READ')).toBe(role !== 'PRODUCTION');
   }
 });

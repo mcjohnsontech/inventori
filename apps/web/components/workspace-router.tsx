@@ -2,6 +2,7 @@
 import { useState, type ComponentProps } from 'react';
 import type { Catalogue, Role } from '@dayari/contracts';
 
+import {OrdersWorkspace} from './orders-workspace';
 import {CountsWorkspace} from './counts-workspace';
 import { CompletionWorkspace } from './completion-workspace';
 import { AuthorizationRequestsWorkspace } from './authorization-requests-workspace';
@@ -126,6 +127,8 @@ function WorkspaceContent({
   }
 
   switch (workspace) {
+    case 'orders': return <OrdersWorkspace/>;
+    case 'checkoutHistory': return <OrdersWorkspace history/>;
     case 'counts':
       return <CountsWorkspace actorId={user.id}/>;
     case 'completion':
@@ -246,7 +249,7 @@ export function WorkspaceRouter(props:ComponentProps<typeof WorkspaceContent>){
  const main=mainDestination(workspace);
  const groups:Partial<Record<Workspace,{key:Workspace;label:string}[]>>={
  inventory:[{key:'inventory',label:'Stock'},{key:'counts',label:'Count history'},{key:'requests',label:'Requests'},{key:'damage',label:'Damaged / BAD'}],
- checkout:[{key:'checkout',label:'Checkout & lookup'},{key:'completion',label:'In Production'},{key:'reconciliation',label:'Reason follow-up'}],
+ checkout:[{key:'checkout',label:'Checkout & lookup'},{key:'orders',label:'Orders'},{key:'completion',label:'Completion'},{key:'checkoutHistory',label:'History'},{key:'reconciliation',label:'Reason follow-up'}],
  catalogue:[{key:'catalogue',label:'Products'},{key:'suppliers',label:'Suppliers'}],
  settings:[{key:'settings',label:'My account'},{key:'users',label:'Staff & invitations'},{key:'help',label:'Help'}],
  };

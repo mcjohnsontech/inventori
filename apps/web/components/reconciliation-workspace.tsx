@@ -1,4 +1,5 @@
 'use client';
+import {OrderDrawer} from './orders-workspace';
 import {TaskModal} from './ui/task-modal';
 import { useEffect, useRef, useState } from 'react';
 import { checkoutReasonLabels, reconcileReasonsSchema, type CheckoutView, type ReasonQueue, type ReasonQueueRow, type ReasonReconciliationDraft, type ReasonResolutionView } from '@dayari/contracts';
@@ -10,7 +11,7 @@ import { UnitTrackingDrawer } from './unit-tracking-drawer';
 import { CheckoutAcceptance } from './checkout-workspace';
 import { Badge, Button, Checkbox, Code, DataTable, DetailsDrawer, DetailSkeleton, EmptyState, ErrorNotice, Field, Input, Page, PageHeader, Pager, Panel, Select, Textarea, WarningNotice, type Column } from './ui';
 
-type Config = { originId: string; limit: number; canResolve: boolean; employees: { id: string; name: string }[] };
+type Config = { originId: string; limit: number; canResolve: boolean; adminUpgradeRequired?: boolean; employees: { id: string; name: string }[] };
 function OriginalCheckout({ id, onClose }: { id: string; onClose: () => void }) {
   const read = useApiRead<CheckoutView>('checkouts/' + id);
   return <DetailsDrawer title="Original checkout" closeLabel="Close original checkout" onClose={onClose}>
@@ -35,14 +36,15 @@ function Body({ actorId, config }: { actorId: string; config: Config }) {
   const [filters, setFilters] = useState({ status: 'UNRESOLVED', employeeId: '', orderReference: '', unitCode: '', from: '', to: '' });
   const [query, setQuery] = useState('status=UNRESOLVED'), [page, setPage] = useState(1), [review, setReview] = useState(false), [selectionPage, setSelectionPage] = useState(1);
   const [error, setError] = useState(''), [tracking, setTracking] = useState(''), [original, setOriginal] = useState('');
+  const [detail, setDetail] = useState<ReasonQueueRow | null>(null);
+  const [order,setOrder]=useState('');
   const [preview, setPreview] = useState<ReasonQueueRow[]>([]), [previewError, setPreviewError] = useState(''), [previewBusy, setPreviewBusy] = useState(false), [revision, setRevision] = useState(0);
   const mounted = useRef(true); useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   useEffect(() => { const timer = setTimeout(() => { const params = new URLSearchParams(); for (const [key, value] of Object.entries(filters)) if (value.trim() && (key !== 'unitCode' || value.trim().length === 6)) params.set(key, value.trim()); setQuery(params.toString()); setPage(1); }, 250); return () => clearTimeout(timer); }, [filters]);
   const queue = useApiRead<ReasonQueue>(`checkout-reasons?${query}&page=${page}`);
   const accepted = useApiRead<ReasonResolutionView>(draft.acceptedId ? `reason-reconciliations/${draft.acceptedId}` : null);
   const selection = JSON.stringify(draft.body.exceptionIds);
-  useEffect(()=>{if(ready&&draft.body.exceptionIds.length)setTaskOpen(true);},[ready]);
-  useEffect(() => { if (draft.pending) {setReview(true);setTaskOpen(true);} }, [draft.pending]);
+  useEffect(() => { if (draft.pending) setReview(true); }, [draft.pending]);
   useEffect(() => {
     const controller = new AbortController(); setPreview([]); setPreviewError(''); setPreviewBusy(ready && draft.body.exceptionIds.length > 0);
     if (ready && draft.body.exceptionIds.length) api<{ rows: ReasonQueueRow[] }>('checkout-reasons/preview', { method: 'POST', body: JSON.stringify({ exceptionIds: draft.body.exceptionIds }), signal: controller.signal })
@@ -64,16 +66,17 @@ function Body({ actorId, config }: { actorId: string; config: Config }) {
   const rowColumns: Column<ReasonQueueRow>[] = [
     ...(config.canResolve ? [{ key: 'select', label: 'Select', cell: (row: ReasonQueueRow) => <Checkbox aria-label={`Select exception for ${row.unit.unitCode}`} disabled={disabled || row.status !== 'UNRESOLVED'} checked={draft.body.exceptionIds.includes(row.exceptionId)} onChange={() => toggle(row.exceptionId)} /> }] : []),
     { key: 'unit', label: 'Unit / product', cell: row => <><button className="min-h-11 font-mono font-semibold text-brand underline" onClick={() => setTracking(row.unit.unitId)}>{row.unit.unitCode}</button><span className="block text-sm">{row.unit.productName} · {row.unit.variantName}</span><Code className="block text-xs">{row.unit.fullSku}</Code></> },
-    { key: 'employee', label: 'Original checkout', cell: row => <>{row.employee.name}<span className="block text-xs text-grey-2">{formatDateTime(row.acceptedAt)}</span><span className="block break-words text-xs">{row.orderReference ?? 'No Order ID'}</span></> },
-    { key: 'status', label: 'Classification', cell: row => <><Badge tone={row.status === 'RESOLVED' ? 'usable' : 'neutral'}>{row.status === 'RESOLVED' ? 'Reconciled' : 'Reason not provided'}</Badge>{row.resolution ? <div className="mt-2 space-y-1 text-xs"><p>{checkoutReasonLabels[row.resolution.reason.code]}</p><p>{row.resolution.manager.name} · {formatDateTime(row.resolution.recordedAt)}</p>{row.resolution.reason.note ? <p className="break-words">{row.resolution.reason.note}</p> : null}{row.resolution.remarks ? <p className="break-words">Remarks: {row.resolution.remarks}</p> : null}</div> : null}</> },
+    { key: 'employee', label: 'Original checkout', cell: row => <>{row.employee.name}<span className="block text-xs text-grey-2">{formatDateTime(row.acceptedAt)}</span>{row.orderReference?<button className="block min-h-11 break-words text-xs text-brand underline" onClick={()=>setOrder(row.orderReference!)}>{row.orderReference}</button>:<span className="block text-xs">No Order ID</span>}</> },
+    { key: 'status', label: 'Classification', cell: row => <><button className="min-h-11 underline decoration-dotted underline-offset-4" onClick={() => setDetail(row)}><Badge tone={row.status === 'RESOLVED' ? 'usable' : 'neutral'}>{row.status === 'RESOLVED' ? 'Reconciled' : 'Reason not provided'}</Badge></button>{row.resolution ? <div className="mt-2 space-y-1 text-xs"><p>{checkoutReasonLabels[row.resolution.reason.code]}</p><p>{row.resolution.manager.name} · {formatDateTime(row.resolution.recordedAt)}</p>{row.resolution.reason.note ? <p className="break-words">{row.resolution.reason.note}</p> : null}{row.resolution.remarks ? <p className="break-words">Remarks: {row.resolution.remarks}</p> : null}</div> : null}</> },
     { key: 'open', label: 'Evidence', cell: row => <Button variant="secondary" onClick={() => setOriginal(row.checkoutId)}>Original checkout</Button> },
   ];
   const validation = reconcileReasonsSchema.safeParse(draft.body);
   const canConfirm = validation.success && !previewBusy && !previewError && preview.length === draft.body.exceptionIds.length && preview.every(row => row.status === 'UNRESOLVED');
   return <div className="space-y-5">
-    {!config.canResolve ? <p className="text-sm text-grey-2">Read-only operational review. Only Inventory Managers record missing-reason classifications.</p> : null}
+    {config.adminUpgradeRequired?<WarningNotice>Admin reason reconciliation requires the separately approved shop database upgrade. Existing operational review remains available.</WarningNotice>:null}
+    {!config.canResolve ? <p className="text-sm text-grey-2">Read-only operational review. Admin and Inventory Managers record missing-reason classifications in the shop.</p> : null}
     {accepted.loading ? <DetailSkeleton rows={3} /> : accepted.error ? <ErrorNotice message={accepted.error} onRetry={accepted.refresh} /> : accepted.data ? <AcceptedClassification key={accepted.data.id} value={accepted.data} /> : null}
-    {!review ? <Panel title="Missing-reason queue and history" label="Reason exception queue"><div className="space-y-4">
+    {!(review && taskOpen) ? <Panel title="Missing-reason queue and history" label="Reason exception queue"><div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <Field label="Exception status">{id => <Select id={id} label="Exception status" value={filters.status} options={[{ value: 'UNRESOLVED', label: 'Unresolved' }, { value: 'RESOLVED', label: 'Reconciled' }, { value: 'ALL', label: 'All exceptions' }]} onChange={status => setFilters(value => ({ ...value, status }))} />}</Field>
         <Field label="Original employee">{id => <Select id={id} label="Original employee" value={filters.employeeId || 'ALL'} options={[{ value: 'ALL', label: 'All original employees' }, ...config.employees.map(employee => ({ value: employee.id, label: employee.name }))]} onChange={employeeId => setFilters(value => ({ ...value, employeeId: employeeId === 'ALL' ? '' : employeeId }))} />}</Field>
@@ -86,22 +89,30 @@ function Body({ actorId, config }: { actorId: string; config: Config }) {
       {queue.loading ? <DetailSkeleton rows={5} /> : queue.error ? <ErrorNotice message={queue.error} onRetry={queue.refresh} /> : queue.data ? <><DataTable label="Checkout reason exceptions" rows={queue.data.rows} columns={rowColumns} rowKey={row => row.exceptionId} emptyMessage="No exceptions match these filters." mobileStack />
         <Pager page={page} pageCount={Math.ceil(queue.data.total / queue.data.pageSize)} total={queue.data.total} onChange={setPage} /></> : null}
     </div></Panel> : null}
-    {config.canResolve && ready ? <><Button onClick={()=>setTaskOpen(true)}>Classify selected exceptions</Button><TaskModal title="Reconcile missing reasons" open={taskOpen} busy={busy} onClose={()=>setTaskOpen(false)}><Panel label="Manager reason classification" title={review ? 'Review classification' : 'Classify selected exceptions'}><div className="space-y-4">
+    {config.canResolve && ready ? <><Button onClick={()=>setTaskOpen(true)}>Resolve Reason</Button><TaskModal title="Reconcile missing reasons" open={taskOpen} busy={busy} onClose={()=>setTaskOpen(false)}><Panel label="Manager reason classification" title={review ? 'Confirm Reconciliation' : 'Edit Reason'}><div className="space-y-4">
       {error ? <ErrorNotice message={error} /> : null}
       {draft.pending ? <WarningNotice>The classification response is unresolved. Retry the same saved request; no new stock deduction is involved.<Button className="mt-2" disabled={busy} onClick={() => void confirm()}>Retry saved classification</Button></WarningNotice> : null}
       <p className="text-sm">{draft.body.exceptionIds.length} exact obligations selected. Selection is preserved across filters and pages.</p>
-      {!review ? <div className="grid gap-4 md:grid-cols-2"><ReasonField label="Manager classification" emptyLabel="Choose a classification" disabled={disabled} value={draft.body.reason} onChange={reason => change({ ...draft.body, reason: reason ?? null })} />
-        <Field label="Manager remarks (optional)">{id => <Textarea id={id} disabled={disabled} value={draft.body.remarks} maxLength={2000} onChange={event => change({ ...draft.body, remarks: event.target.value })} />}</Field></div> : <div className="space-y-2"><p className="font-semibold">{draft.body.reason ? checkoutReasonLabels[draft.body.reason.code] : 'Classification required'}</p>{draft.body.reason?.note ? <p className="break-words text-sm">{draft.body.reason.note}</p> : null}{draft.body.remarks ? <p className="break-words text-sm">Remarks: {draft.body.remarks}</p> : null}</div>}
+      {!review ? <div className="grid gap-4 md:grid-cols-2"><ReasonField label="Reconciliation reason" emptyLabel="Choose a classification" disabled={disabled} value={draft.body.reason} onChange={reason => change({ ...draft.body, reason: reason ?? null })} />
+        <Field label="Reconciliation remarks (optional)">{id => <Textarea id={id} disabled={disabled} value={draft.body.remarks} maxLength={2000} onChange={event => change({ ...draft.body, remarks: event.target.value })} />}</Field></div> : <div className="space-y-2"><p className="font-semibold">{draft.body.reason ? checkoutReasonLabels[draft.body.reason.code] : 'Classification required'}</p>{draft.body.reason?.note ? <p className="break-words text-sm">{draft.body.reason.note}</p> : null}{draft.body.remarks ? <p className="break-words text-sm">Remarks: {draft.body.remarks}</p> : null}</div>}
       {previewBusy ? <DetailSkeleton rows={3} /> : previewError ? <ErrorNotice message={previewError} onRetry={() => setRevision(value => value + 1)} /> : preview.length ? <><DataTable label="Selected reason obligations" rows={preview.slice((selectionPage - 1) * 12, selectionPage * 12)} rowKey={row => row.exceptionId} mobileStack emptyMessage="No selected obligations." columns={[
         { key: 'unit', label: 'Exact unit', cell: row => <><Code>{row.unit.unitCode}</Code><span className="block text-sm">{row.unit.productName} · {row.unit.variantName}</span></> },
-        { key: 'original', label: 'Original evidence', cell: row => <>{row.employee.name}<span className="block break-words text-xs">{row.orderReference ?? 'No Order ID'}</span><span className="block text-xs">{row.status === 'RESOLVED' ? 'Already reconciled — remove before confirming' : 'Original reason not provided'}</span></> },
+        { key: 'original', label: 'Original evidence', cell: row => <>{row.employee.name}{row.orderReference?<button className="block min-h-11 break-words text-xs text-brand underline" onClick={()=>setOrder(row.orderReference!)}>{row.orderReference}</button>:<span className="block text-xs">No Order ID</span>}<span className="block text-xs">{row.status === 'RESOLVED' ? 'Already reconciled — remove before confirming' : 'Original reason not provided'}</span></> },
         ...(!review ? [{ key: 'remove', label: 'Selection', cell: (row: ReasonQueueRow) => <Button variant="ghost" disabled={disabled} onClick={() => toggle(row.exceptionId)}>Remove {row.unit.unitCode}</Button> }] : []),
       ]} /><Pager page={selectionPage} pageCount={Math.ceil(preview.length / 12)} total={preview.length} onChange={setSelectionPage} /></> : <EmptyState title="No obligations selected">Select unresolved exceptions from the queue.</EmptyState>}
       {draft.body.exceptionIds.length && !validation.success ? <p className="text-sm text-grey-2">{draft.body.reason === null ? 'Choose a classification before review.' : validation.error.issues.map(issue => issue.message).join('. ')}</p> : null}
-      <p className="text-sm text-grey-2">Confirmation appends a Manager classification. It does not rewrite the employee's original reason, change the Order ID, move stock or complete Production work.</p>
-      <div className="flex flex-wrap justify-between gap-3"><Button variant="secondary" disabled={disabled} onClick={() => { if (review) setReview(false); else if (window.confirm('Discard this reconciliation draft? Original checkout and stock records will remain unchanged.')) change({ exceptionIds: [], reason: null, remarks: '' }); }}>{review ? 'Back to classification' : 'Discard classification draft'}</Button>
-        <Button disabled={disabled || !canConfirm} onClick={() => { if (review) void confirm(); else { setReview(true); setSelectionPage(1); } }}>{busy ? 'Recording classification…' : review ? `Confirm classification of ${preview.length} exceptions` : 'Review classification'}</Button></div>
+      <p className="text-sm text-grey-2">Confirmation permanently appends a reconciliation. Original reason: Reason not provided. It does not rewrite the employee's original reason, change the Order ID, move stock or complete Production work.</p>
+      <div className="flex flex-wrap justify-between gap-3"><Button variant="secondary" disabled={disabled} onClick={() => { if (review) setReview(false); else if (window.confirm('Discard this reconciliation draft? Original checkout and stock records will remain unchanged.')) change({ exceptionIds: [], reason: null, remarks: '' }); }}>{review ? 'Cancel' : 'Discard classification draft'}</Button>
+        <Button disabled={disabled || !canConfirm} onClick={() => { if (review) void confirm(); else { setReview(true); setSelectionPage(1); } }}>{busy ? 'Recording classification…' : review ? 'Confirm Reconciliation' : 'Save'}</Button></div>
     </div></Panel></TaskModal></> : null}
+    {detail ? <DetailsDrawer title="Reason details" onClose={() => setDetail(null)}>
+      <div className="space-y-4"><Code>{detail.unit.unitCode}</Code><p>{detail.unit.productName} · {detail.unit.variantName}</p><Code>{detail.unit.fullSku}</Code>
+      <p>Order ID: {detail.orderReference ?? 'No Order ID'}</p><p>Checkout: <Code>{detail.checkoutId}</Code></p><p>{detail.employee.name} · {formatDateTime(detail.acceptedAt)}</p>
+      <p>Original reason: Reason not provided</p><p>Current resolution: {detail.resolution ? checkoutReasonLabels[detail.resolution.reason.code] : 'Unresolved'}</p>
+      {detail.resolution ? <><p>{detail.resolution.reason.note}</p><p>{detail.resolution.manager.name} · {formatDateTime(detail.resolution.recordedAt)}</p><p>{detail.resolution.remarks}</p></> : config.canResolve ? <Button disabled={disabled} onClick={() => { change({...draft.body, exceptionIds:[detail.exceptionId]}); setReview(false); setDetail(null); setTaskOpen(true); }}>Edit Reason</Button> : null}
+      <p className="text-sm text-grey-2">Original checkout evidence is immutable. Reconciliation never changes stock.</p></div>
+    </DetailsDrawer> : null}
+    {order?<OrderDrawer orderReference={order} onClose={()=>setOrder('')}/>:null}
     {tracking ? <UnitTrackingDrawer key={tracking} unitId={tracking} onClose={() => setTracking('')} /> : null}
     {original ? <OriginalCheckout key={original} id={original} onClose={() => setOriginal('')} /> : null}
   </div>;
