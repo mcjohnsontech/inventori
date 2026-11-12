@@ -301,3 +301,12 @@ Implemented presentation consolidation uses eight main workspaces and role-filte
 | B05 required count evidence | Existing CountSession/Attempt/Result/Resolution consumed by closing snapshot | No fabricated physical verification; unexplained mismatch and stale required counts block |
 | O5 deferred approvals | Correction requests block certification; certified held damage/recovery requests may carry | No local approval substitute, execution or cloud transport |
 Actual verification and remaining acceptance limitations are recorded in dayari-v1-final-implementation-report.md.
+
+
+## Checkout/reconciliation UX and completion amendment — 12 November 2026
+| Requirement | Implementation | Boundary |
+|---|---|---|
+| All checkout sessions by default; exact Order ID filtering | OrdersWorkspace history reads existing scoped GET checkouts; paginated details drawer | Production own history, no mutations |
+| Compact reason queue/history controls | ReconciliationWorkspace advanced filters, reset, selected count, detail drawer | Existing immutable reason evidence and idempotency preserved |
+| Admin/Manager exact-unit completion | COMPLETE_PRODUCTION allowlist, session discovery, exact checkout filter, review drawer, migration 032 | Production denied; P → C only, no second U deduction; operational upgrade gated |
+| Supplier catalogue access without redundant top tabs | Internal catalogue controls and Supplier directory retained | No catalogue permission changes |

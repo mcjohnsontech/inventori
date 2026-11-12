@@ -48,6 +48,7 @@ class ApiController {
   @Get('reports/summary') async periodReport(@Headers('authorization') auth:string|undefined,@Query() query:unknown){return this.reports.summary(await this.service.actor(this.token(auth)),query);}
   @Get('reports/orders') async orderReport(@Headers('authorization') auth:string|undefined,@Query() query:unknown){return this.reports.orders(await this.service.actor(this.token(auth)),query);}
   @Get('completion-config') async completionConfiguration(@Headers('authorization') auth:string|undefined){return this.completions.configuration(await this.service.actor(this.token(auth)));}
+  @Get('completion-sessions') async completionSessions(@Headers('authorization') auth:string|undefined,@Query() query:unknown){return this.completions.sessions(await this.service.actor(this.token(auth)),query);}
   @Get('completion-options') async completionOptions(@Headers('authorization') auth:string|undefined,@Query() query:unknown){return this.completions.options(await this.service.actor(this.token(auth)),query);}
   @Post('completions/preview') @HttpCode(200) async completionPreview(@Headers('authorization') auth:string|undefined,@Body() body:unknown){return this.completions.preview(await this.service.actor(this.token(auth)),body);}
   @Get('completions') async completionHistory(@Headers('authorization') auth:string|undefined,@Query() query:unknown){return this.completions.list(await this.service.actor(this.token(auth)),query);}

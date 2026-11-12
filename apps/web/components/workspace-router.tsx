@@ -252,7 +252,6 @@ export function WorkspaceRouter(props:ComponentProps<typeof WorkspaceContent>){
  const groups:Partial<Record<Workspace,{key:Workspace;label:string}[]>>={
  inventory:[{key:'inventory',label:'Stock'},{key:'counts',label:'Count history'},{key:'requests',label:'Requests'},{key:'damage',label:'Damaged / BAD'},{key:'closing',label:'Close day'}],
  checkout:[{key:'checkout',label:'Checkout & lookup'},{key:'orders',label:'Orders'},{key:'completion',label:'Completion'},{key:'checkoutHistory',label:'History'},{key:'reconciliation',label:'Reason follow-up'}],
- catalogue:[{key:'catalogue',label:'Products'},{key:'suppliers',label:'Suppliers'}],
  settings:[{key:'settings',label:'My account'},{key:'users',label:'Staff & invitations'},{key:'help',label:'Help'}],
  };
  const tabs=(groups[main]??[]).filter(item=>workspaceAllowed(user.role,item.key));

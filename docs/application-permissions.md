@@ -23,7 +23,7 @@ CONFIRMED existing policies plus Phase B authorization, 2026-11-03. Backend enfo
 | Damage disposition | Review | Held/Reworked or terminal removal | Denied |
 | Recovery/correction requests | Review pending evidence | Submit/review pending evidence | Denied |
 | Local approval or recovery/correction execution | Unavailable | Unavailable | Unavailable |
-| Selected-unit Production completion | Review | Confirm | Denied |
+| Selected-unit Production completion | Confirm | Confirm | Denied |
 | Targeted physical counts (8B verified checkpoint) | Review | Record/recount/resolve mistaken evidence | Denied |
 | Daily closing (isolated implementation, rollout gated) | Review only | Confirm with all blockers cleared | Denied |
 | Cloud stock writes/approval transport | Deferred | Deferred | Deferred |
@@ -33,3 +33,5 @@ Active mapped membership, current origin and valid session are required. Compuls
 Production allowlists exclude invoices, damaged quantities/reasons/history, audit/command evidence, print administration, supplier contacts/financial fields. Product/variant/SKU/lot/batch identities, nonsensitive source labels and usable availability are permitted. Counts/filters/direct IDs obey the same origin/role scope. Unknown/foreign identities receive indistinguishable unavailable responses. Authenticated output is no-store; hashes/tokens/passwords never enter public DTOs.
 
 9 November update: table reflects current complete-application milestones and confirmed B05/O4/O5/O6/O8 policies. Tested development capabilities do not imply operational schema rollout. Physical counts are metadata only; resolving mistaken count evidence is not permission to correct stock. No compulsory print-success report is required.
+
+12 November 2026 owner amendment: Admin and Inventory Manager may select, review and confirm exact eligible In Production units. Production remains denied. Migration 032 enables matching database guards; operational rollout requires separate upgrade approval. O4 Manager-only daily closing is unchanged.

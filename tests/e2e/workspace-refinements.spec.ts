@@ -1,0 +1,27 @@
+import {randomUUID} from 'node:crypto';
+import {mkdir} from 'node:fs/promises';
+import {test,expect} from '@playwright/test';
+import {openWorkspace} from './ui.js';
+test('History opens all sessions, filters exact Order ID and keeps catalogue and reason controls compact',async({page})=>{
+ test.setTimeout(180000);
+ await page.goto('/');await page.getByLabel('Email address').fill('e2e-admin@dayari.test');await page.getByLabel('Password',{exact:true}).fill(process.env.E2E_PASSWORD!);await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page.getByRole('button',{name:'Sign out',exact:true})).toBeVisible();
+ const get=async(path:string)=>{const r=await page.request.get('/api/'+path);expect(r.ok()).toBe(true);return r.json();};
+ const post=async(path:string,data:object)=>{const r=await page.request.post('/api/'+path,{headers:{Origin:'http://127.0.0.1:3101','Idempotency-Key':randomUUID()},data});expect(r.ok(),await r.text()).toBe(true);return r.json();};
+ const catalogue=await get('catalogue'),suffix=randomUUID().slice(0,8);
+ const source=(await post('catalogue/supplier-setups',{supplier:{name:'History '+suffix},location:{registryId:catalogue.locations.find((l:any)=>l.code==='LG').id}})).source;
+ const product=await post('catalogue/product-setups',{sourceId:source.id,product:{name:'History notebook '+suffix},variants:[]});
+ const receipt=await post('receipts',{sourceId:source.id,deliveredOn:'2020-01-01',lines:[{skuId:product.skus[0].id,usableQuantity:2,damagedQuantity:0,damageReason:''}]});
+ const units=(await get('receipts/'+receipt.id+'/units')).units,order='History-'+suffix;
+ const linked=await post('checkouts',{reason:{code:'SAMPLE'},orderReference:order,lines:[{unitId:units[0].id}]});
+ const unlinked=await post('checkouts',{reason:{code:'INTERNAL_USE'},orderReference:null,lines:[{unitId:units[1].id}]});
+ await openWorkspace(page,'Production');await page.getByRole('button',{name:'History',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Session '+linked.id.slice(0,8),exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Session '+unlinked.id.slice(0,8),exact:true})).toBeVisible();
+ await page.getByLabel('Filter by exact Order ID').fill(order);await page.getByRole('button',{name:'Apply filter',exact:true}).click();await expect(page.getByRole('button',{name:'Session '+unlinked.id.slice(0,8),exact:true})).toHaveCount(0);
+ await page.getByRole('button',{name:'Session '+linked.id.slice(0,8),exact:true}).click();await expect(page.getByRole('dialog',{name:'Checkout details'})).toContainText(order);await page.getByRole('dialog',{name:'Checkout details'}).getByRole('button',{name:/Close/}).first().click();
+ await page.getByRole('button',{name:'Show all',exact:true}).click();await expect(page.getByRole('button',{name:'Session '+unlinked.id.slice(0,8),exact:true})).toBeVisible();
+ await mkdir('test-results/workspace-refinements',{recursive:true});await page.setViewportSize({width:1440,height:1000});await page.screenshot({path:'test-results/workspace-refinements/history-1440.png',fullPage:true});
+ await openWorkspace(page,'Catalogue');await expect(page.getByRole('navigation',{name:'catalogue views'})).toHaveCount(0);await expect(page.getByRole('button',{name:'Add product',exact:true})).toBeVisible();
+ await openWorkspace(page,'Suppliers & sources');await expect(page.getByRole('heading',{name:'Suppliers & sources',exact:true})).toBeVisible();
+ await openWorkspace(page,'Reason reconciliation');await expect(page.getByLabel('Original employee',{exact:true})).toBeHidden();await page.getByText('Employee and date filters',{exact:true}).click();await expect(page.getByLabel('Original employee',{exact:true})).toBeVisible();await page.getByLabel('Exact Order ID',{exact:true}).fill(order);await page.getByRole('button',{name:'Reset filters',exact:true}).click();await expect(page.getByLabel('Exact Order ID',{exact:true})).toHaveValue('');
+ await page.setViewportSize({width:390,height:844});await page.screenshot({path:'test-results/workspace-refinements/reasons-390.png',fullPage:false});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
+});

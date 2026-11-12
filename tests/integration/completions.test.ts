@@ -33,8 +33,14 @@ beforeAll(async () => {
     checkout = (await post('checkouts', { reason: { code: 'PRODUCTION_USE' }, orderReference: 'REUSABLE-ORDER', lines: units.slice(0, 7).map(unit => ({ unitId: unit.id })) }, randomUUID(), production).expect(201)).body;
 });
 afterAll(async () => { await app?.close(); await db.$disconnect(); });
-it('only Manager confirms; Admin reviews and Production cannot administer', async () => { for (const token of [admin, production])
-    await post('completions', body(units[0]!.id), randomUUID(), token).expect(403); await get('completion-config', production).expect(403); await get('completion-options', production).expect(403); await post('completions/preview', body(units[0]!.id), randomUUID(), production).expect(403); expect((await get('completion-config', admin).expect(200)).body.canConfirm).toBe(false); await get('completions').expect(200); await request(app.getHttpServer()).get('/v1/completions').expect(401); });
+it('Admin and Manager confirm; Production cannot administer', async () => {
+ await post('completions',body(units[0]!.id),randomUUID(),production).expect(403);
+ for(const path of ['completion-config','completion-options','completion-sessions','completions'])await get(path,production).expect(403);
+ await post('completions/preview',body(units[0]!.id),randomUUID(),production).expect(403);
+ for(const token of [admin,manager])expect((await get('completion-config',token).expect(200)).body.canConfirm).toBe(true);
+ await request(app.getHttpServer()).get('/v1/completions').expect(401);
+ await request(app.getHttpServer()).get('/v1/completion-sessions').expect(401);
+});
 it('completes explicit subset, retains original checkout and does not deduct usable twice', async () => { const before = await balances(); const result = await post('completions', body(units[0]!.id)).expect(201); accepted = result.body; expect(accepted.lines).toHaveLength(1); expect(accepted.lines[0].checkoutId).toBe(checkout.id); expect(accepted.lines[0].orderReference).toBe('REUSABLE-ORDER'); expect((await balances()).find(x => x.state === 'U')).toEqual(before.find(x => x.state === 'U')); expect((await db.unitState.findUniqueOrThrow({ where: { unitId: units[0]!.id } })).state).toBe('C'); expect((await db.unitState.findUniqueOrThrow({ where: { unitId: units[1]!.id } })).state).toBe('P'); expect((await get('completions/' + accepted.id, admin).expect(200)).body).toEqual(accepted); });
 it('canonical concurrent retries and lost response return original result; changed payload conflicts', async () => { const key = randomUUID(), input = body(units[1]!.id, units[2]!.id); const [a, b] = await Promise.all([post('completions', input, key), post('completions', body(units[2]!.id, units[1]!.id), key)]); expect(a.status).toBe(201); expect(b.body).toEqual(a.body); expect((await post('completions', input, key).expect(201)).body).toEqual(a.body); await post('completions', body(units[3]!.id), key).expect(409); });
 it('rejects completed, damaged, usable, foreign, duplicate or mixed selections atomically', async () => { const damaged = await db.stockUnit.findFirstOrThrow({ where: { lotId, initialState: 'D' } }); const count = await db.productionCompletion.count({ where: { originId } }); for (const ids of [[units[0]!.id], [damaged.id], [units[9]!.id], [units[3]!.id, units[0]!.id]])
@@ -62,6 +68,8 @@ it('late outbox failure rolls back all domain, ledger, projection, sequence and 
 it('history immutable; no late child, projection bypass or orphan transaction; origin isolation', async () => { await expect(db.productionCompletion.update({ where: { id: accepted.id }, data: { unitCount: 2 } })).rejects.toThrow(); await expect(db.productionCompletionLine.delete({ where: { id: accepted.lines[0].id } })).rejects.toThrow(); await expect(db.unitState.update({ where: { unitId: units[4]!.id }, data: { state: 'C', custody: 'COMPLETED', holderId: null } })).rejects.toThrow(); await expect(db.stockTransaction.create({ data: { id: randomUUID(), originId, actorId: accepted.manager.id, actorRole: 'MANAGER', commandId: randomUUID(), type: 'COMPLETE', recordedAt: new Date(), originSequence: 999999n } })).rejects.toThrow(); const foreignOrigin = randomUUID(); await db.originNode.create({ data: { id: foreignOrigin, mode: 'SHOP' } }); const foreign = await createApp(db, foreignOrigin, 'SHOP'); try {
     const token = await shopToken(db, foreign, foreignOrigin);
     await request(foreign.getHttpServer()).get('/v1/completions/' + accepted.id).set('Authorization', 'Bearer ' + token).expect(404);
+    expect((await request(foreign.getHttpServer()).get('/v1/completion-sessions').set('Authorization','Bearer '+token).expect(200)).body.total).toBe(0);
+    expect((await request(foreign.getHttpServer()).get('/v1/completion-options?checkoutId='+checkout.id).set('Authorization','Bearer '+token).expect(200)).body.total).toBe(0);
 }
 finally {
     await foreign.close();
@@ -98,4 +106,28 @@ it('database rejects a COMPLETE transaction with a valid command but no completi
   await tx.stockTransaction.create({data:{id:randomUUID(),originId,actorId:accepted.manager.id,actorRole:'MANAGER',commandId:id,type:'COMPLETE',recordedAt:new Date(),originSequence:999999n}});
  })).rejects.toThrow('Completion transaction requires new domain root');
  expect(await db.commandResult.findUnique({where:{id}})).toBeNull();
+});
+
+it('Admin completes only explicitly selected units and replay does not deduct usable again',async()=>{
+ const id=units[6]!.id,key=randomUUID(),before=await balances();
+ const accepted=(await post('completions',body(id),key,admin).expect(201)).body;
+ expect((await post('completions',body(id),key,admin).expect(201)).body).toEqual(accepted);
+ expect((await balances()).find(x=>x.state==='U')).toEqual(before.find(x=>x.state==='U'));
+ expect((await db.productionCompletion.findUniqueOrThrow({where:{id:accepted.id}})).actorRole).toBe('ADMIN');
+ expect((await db.unitState.findUniqueOrThrow({where:{unitId:units[5]!.id}})).state).toBe('P');
+ const audit=await db.auditEvent.findFirstOrThrow({where:{subjectId:accepted.id,action:'production.completed'}});expect(audit.actorRole).toBe('ADMIN');
+});
+it('session discovery includes unlinked work and exact session filtering cannot cross origin',async()=>{
+ const sessions=(await get('completion-sessions').expect(200)).body;
+ expect(sessions.rows.some((row:any)=>row.id===checkout.id)).toBe(true);
+ const selected=(await get('completion-options?checkoutId='+checkout.id).expect(200)).body;
+ expect(selected.units.length).toBeGreaterThan(0);expect(selected.units.every((row:any)=>row.checkoutId===checkout.id)).toBe(true);
+ expect((await get('completion-options?checkoutId='+randomUUID()).expect(200)).body.total).toBe(0);
+ await get('completion-options?checkoutId=invalid').expect(400);
+ await get('completion-sessions?originId='+originId).expect(400);
+});
+
+it('database denies Production completion actor roles directly',async()=>{
+ const root=await db.productionCompletion.findUniqueOrThrow({where:{id:accepted.id}});
+ await expect(db.productionCompletion.create({data:{...root,id:randomUUID(),commandId:randomUUID(),actorRole:'PRODUCTION',manifest:JSON.parse(JSON.stringify(root.manifest))}})).rejects.toThrow('ProductionCompletion_actorRole_check');
 });

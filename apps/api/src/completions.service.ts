@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { Prisma, type PrismaClient, type User } from '@prisma/client';
-import { completionSchema, completionQuerySchema, idempotencyKeySchema, type CompletionView, type CompletionCandidate } from '@dayari/contracts';
+import { completionSchema, completionQuerySchema, completionOptionsQuerySchema, idempotencyKeySchema, type CompletionView, type CompletionCandidate } from '@dayari/contracts';
 import { DamageService, type DamageSelection } from './damage.service.js';
 import { requireCapability } from './permissions.js';
 import { canonical, digest } from './security.js';
@@ -13,7 +13,21 @@ export class CompletionsService {
         ready: boolean;
     }[]> `SELECT to_regclass('"ProductionCompletion"') IS NOT NULL AS ready`; if (!row?.ready)
         throw new ServiceUnavailableException('Completion requires the separately approved shop database upgrade.'); }
-    async configuration(user: User) { await this.allow(user); return { originId: this.originId, limit: 500, canConfirm: user.role === 'MANAGER' && this.mode === 'SHOP' }; }
+    private async adminReady() {
+        const [row]=await this.db.$queryRaw<{ready:boolean}[]>`SELECT EXISTS(SELECT 1 FROM pg_constraint WHERE conrelid='"ProductionCompletion"'::regclass AND conname='ProductionCompletion_actorRole_check' AND pg_get_constraintdef(oid) LIKE '%ADMIN%') AS ready`;
+        return Boolean(row?.ready);
+    }
+    async configuration(user: User) { await this.allow(user); const adminUpgradeRequired=user.role==='ADMIN'&&!await this.adminReady(); return { originId:this.originId,limit:500,canConfirm:['ADMIN','MANAGER'].includes(user.role)&&!adminUpgradeRequired&&this.mode==='SHOP',adminUpgradeRequired }; }
+    async sessions(user:User,input:unknown) {
+        await this.allow(user); const parsed=completionQuerySchema.safeParse(input);if(!parsed.success)throw new BadRequestException('Invalid session filters.');
+        const {page,query:text}=parsed.data;
+        return this.db.$transaction(async tx=>{
+            const from=Prisma.sql`FROM "Checkout" c JOIN "User" employee ON employee.id=c."actorId" JOIN "CheckoutLine" x ON x."checkoutId"=c.id JOIN "StockUnit" u ON u.id=x."unitId" JOIN "UnitState" s ON s."unitId"=u.id JOIN "SupplierVariantSku" sku ON sku.id=x."skuId" JOIN "Product" p ON p.id=sku."productId" JOIN "Variant" v ON v.id=sku."variantId" WHERE c."originId"=${this.originId}::uuid AND s."originId"=${this.originId}::uuid AND s.state='P' AND s."lastEventId"=x."eventId" AND (${text}='' OR position(lower(${text}) in lower(concat_ws(' ',c.id::text,employee.name,x."orderReference",u."unitCode",p.name,v.name,sku."fullCode")))>0)`;
+            const [count]=await tx.$queryRaw<{n:bigint}[]>(Prisma.sql`SELECT count(DISTINCT c.id) n ${from}`);
+            const rows=await tx.$queryRaw<{id:string;acceptedAt:Date;employeeName:string;remaining:bigint;orderReferences:string[]}[]>(Prisma.sql`SELECT c.id,c."acceptedAt",employee.name AS "employeeName",count(*) AS remaining,COALESCE(array_agg(DISTINCT x."orderReference") FILTER(WHERE x."orderReference" IS NOT NULL),ARRAY[]::text[]) AS "orderReferences" ${from} GROUP BY c.id,employee.name ORDER BY c."acceptedAt" DESC,c.id DESC LIMIT 20 OFFSET ${(page-1)*20}`);
+            return {page,pageSize:20,total:Number(count!.n),rows:rows.map(row=>({...row,acceptedAt:row.acceptedAt.toISOString(),remaining:Number(row.remaining)}))};
+        },{isolationLevel:Prisma.TransactionIsolationLevel.RepeatableRead});
+    }
     private candidate(row: DamageSelection): CompletionCandidate { return { unit: this.damage.identity(row), state: row.state as CompletionCandidate['state'], checkoutId: row.checkoutId, checkoutLineId: row.checkoutLineId, orderReference: row.orderReference, holder: row.holderId ? { id: row.holderId, name: row.holderName! } : null, receiptId: row.receiptId, damageLineId: row.damageLineId, eligible: row.state === 'P' && !!row.checkoutLineId }; }
     private async resolve(tx: Prisma.TransactionClient, user: User, ids: string[]) { const rows = await this.damage.selection(tx, user, ids); if (rows.length !== ids.length)
         throw new NotFoundException('One or more units are not available in this shop.'); if (rows.some(row => row.state !== 'P' || !row.checkoutLineId || !row.holderId))
@@ -22,12 +36,12 @@ export class CompletionsService {
         throw new BadRequestException('Select distinct exact issued units, at most 500.'); return this.db.$transaction(async (tx) => ({ units: (await this.resolve(tx, user, parsed.data.unitIds)).map(row => this.candidate(row)) })); }
     async options(user: User, input: unknown) {
         await this.allow(user);
-        const query = completionQuerySchema.safeParse(input);
+        const query = completionOptionsQuerySchema.safeParse(input);
         if (!query.success)
             throw new BadRequestException('Invalid work filters.');
-        const { page, query: text } = query.data;
+        const { page, query: text,checkoutId } = query.data;
         return this.db.$transaction(async (tx) => {
-            const filter = Prisma.sql `u."originId"=${this.originId}::uuid AND s.state='P' AND (${text}='' OR position(lower(${text}) in lower(concat_ws(' ',u."unitCode",p.name,v.name,sku."fullCode",x."orderReference")))>0)`;
+            const filter = Prisma.sql `u."originId"=${this.originId}::uuid AND s.state='P' AND ${checkoutId?Prisma.sql`x."checkoutId"=${checkoutId}::uuid`:Prisma.sql`TRUE`} AND (${text}='' OR position(lower(${text}) in lower(concat_ws(' ',u."unitCode",p.name,v.name,sku."fullCode",x."orderReference")))>0)`;
             const from = Prisma.sql `FROM "StockUnit" u JOIN "UnitState" s ON s."unitId"=u.id JOIN "StockLot" l ON l.id=u."lotId" JOIN "SupplierVariantSku" sku ON sku.id=l."skuId" JOIN "Product" p ON p.id=sku."productId" JOIN "Variant" v ON v.id=sku."variantId" JOIN "CheckoutLine" x ON x."eventId"=s."lastEventId" WHERE ${filter}`;
             const [count] = await tx.$queryRaw<{
                 n: bigint;
@@ -59,6 +73,7 @@ export class CompletionsService {
     async create(user: User, keyInput: unknown, input: unknown): Promise<CompletionView> {
         await this.allow(user);
         requireCapability(user, 'COMPLETE_PRODUCTION');
+        if(user.role==='ADMIN'&&!await this.adminReady())throw new ServiceUnavailableException('Admin completion requires the separately approved shop database upgrade.');
         if (this.mode !== 'SHOP')
             throw new ForbiddenException('Confirm at the shop.');
         const parsed = completionSchema.safeParse(input), key = idempotencyKeySchema.safeParse(keyInput);

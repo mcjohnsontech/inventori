@@ -53,7 +53,8 @@ export async function openWorkspace(page:Page,label:string){
  await nav.waitFor({state:'visible'});
  await nav.getByRole('button',{name:steps[0],exact:true}).click();
  for(const step of steps.slice(1)){
-  const scope=step==='Suppliers'?page.getByRole('navigation',{name:'catalogue views'}):page;
+  const scope=page;
+  if(step==='Suppliers'){await page.getByRole('group',{name:'Catalogue view'}).getByRole('button',{name:'Suppliers',exact:true}).click();await page.getByRole('button',{name:'Supplier directory',exact:true}).click();continue;}
   if(step==='Checkout & lookup'){
    await page.getByRole('group',{name:'Checkout and lookup mode'}).waitFor({state:'visible'});
    const tab=scope.getByRole('button',{name:step,exact:true});

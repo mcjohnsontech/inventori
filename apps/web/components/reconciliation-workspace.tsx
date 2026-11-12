@@ -25,7 +25,7 @@ function AcceptedClassification({ value }: { value: ReasonResolutionView }) {
     <p className="font-semibold">{value.lines.length} original exceptions reconciled · {checkoutReasonLabels[value.reason.code]}</p>
     {value.reason.note ? <p className="break-words text-sm">{value.reason.note}</p> : null}
     <p className="text-sm text-grey-2">{value.manager.name} · {formatDateTime(value.recordedAt)}</p>
-    {value.remarks ? <p className="break-words text-sm">Manager remarks: {value.remarks}</p> : null}
+    {value.remarks ? <p className="break-words text-sm">Reconciliation remarks: {value.remarks}</p> : null}
     <p className="text-sm">Stock has not changed. Original employee reasons, timestamps and checkout records are preserved.</p>
   </div></Panel></div>;
 }
@@ -67,7 +67,7 @@ function Body({ actorId, config }: { actorId: string; config: Config }) {
     ...(config.canResolve ? [{ key: 'select', label: 'Select', cell: (row: ReasonQueueRow) => <Checkbox aria-label={`Select exception for ${row.unit.unitCode}`} disabled={disabled || row.status !== 'UNRESOLVED'} checked={draft.body.exceptionIds.includes(row.exceptionId)} onChange={() => toggle(row.exceptionId)} /> }] : []),
     { key: 'unit', label: 'Unit / product', cell: row => <><button className="min-h-11 font-mono font-semibold text-brand underline" onClick={() => setTracking(row.unit.unitId)}>{row.unit.unitCode}</button><span className="block text-sm">{row.unit.productName} · {row.unit.variantName}</span><Code className="block text-xs">{row.unit.fullSku}</Code></> },
     { key: 'employee', label: 'Original checkout', cell: row => <>{row.employee.name}<span className="block text-xs text-grey-2">{formatDateTime(row.acceptedAt)}</span>{row.orderReference?<button className="block min-h-11 break-words text-xs text-brand underline" onClick={()=>setOrder(row.orderReference!)}>{row.orderReference}</button>:<span className="block text-xs">No Order ID</span>}</> },
-    { key: 'status', label: 'Classification', cell: row => <><button className="min-h-11 underline decoration-dotted underline-offset-4" onClick={() => setDetail(row)}><Badge tone={row.status === 'RESOLVED' ? 'usable' : 'neutral'}>{row.status === 'RESOLVED' ? 'Reconciled' : 'Reason not provided'}</Badge></button>{row.resolution ? <div className="mt-2 space-y-1 text-xs"><p>{checkoutReasonLabels[row.resolution.reason.code]}</p><p>{row.resolution.manager.name} · {formatDateTime(row.resolution.recordedAt)}</p>{row.resolution.reason.note ? <p className="break-words">{row.resolution.reason.note}</p> : null}{row.resolution.remarks ? <p className="break-words">Remarks: {row.resolution.remarks}</p> : null}</div> : null}</> },
+    { key: 'status', label: 'Classification', cell: row => <><button className="min-h-11 underline decoration-dotted underline-offset-4" onClick={() => setDetail(row)}><Badge tone={row.status === 'RESOLVED' ? 'usable' : 'neutral'}>{row.status === 'RESOLVED' ? 'Reconciled' : 'Reason not provided'}</Badge></button>{row.resolution ? <div className="mt-2 space-y-1 text-xs"><p>{checkoutReasonLabels[row.resolution.reason.code]}</p><p>{row.resolution.manager.name} · {formatDateTime(row.resolution.recordedAt)}</p><button className="min-h-11 text-brand underline" onClick={()=>setDetail(row)}>View classification details</button></div> : null}</> },
     { key: 'open', label: 'Evidence', cell: row => <Button variant="secondary" onClick={() => setOriginal(row.checkoutId)}>Original checkout</Button> },
   ];
   const validation = reconcileReasonsSchema.safeParse(draft.body);
@@ -79,17 +79,24 @@ function Body({ actorId, config }: { actorId: string; config: Config }) {
     {!(review && taskOpen) ? <Panel title="Missing-reason queue and history" label="Reason exception queue"><div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <Field label="Exception status">{id => <Select id={id} label="Exception status" value={filters.status} options={[{ value: 'UNRESOLVED', label: 'Unresolved' }, { value: 'RESOLVED', label: 'Reconciled' }, { value: 'ALL', label: 'All exceptions' }]} onChange={status => setFilters(value => ({ ...value, status }))} />}</Field>
-        <Field label="Original employee">{id => <Select id={id} label="Original employee" value={filters.employeeId || 'ALL'} options={[{ value: 'ALL', label: 'All original employees' }, ...config.employees.map(employee => ({ value: employee.id, label: employee.name }))]} onChange={employeeId => setFilters(value => ({ ...value, employeeId: employeeId === 'ALL' ? '' : employeeId }))} />}</Field>
+
         <Field label="Exact Order ID">{id => <Input id={id} value={filters.orderReference} maxLength={120} onChange={event => setFilters(value => ({ ...value, orderReference: event.target.value }))} />}</Field>
         <Field label="Exact Unit Code" hint="Enter all six characters to apply this filter.">{id => <Input id={id} value={filters.unitCode} maxLength={6} onChange={event => setFilters(value => ({ ...value, unitCode: event.target.value.toUpperCase() }))} />}</Field>
+      </div>
+      <details className="rounded-xl border border-black/10 p-3">
+        <summary className="cursor-pointer text-sm font-semibold">Employee and date filters{filters.employeeId||filters.from||filters.to?' · active':''}</summary>
+        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+        <Field label="Original employee">{id => <Select id={id} label="Original employee" value={filters.employeeId || 'ALL'} options={[{ value: 'ALL', label: 'All original employees' }, ...config.employees.map(employee => ({ value: employee.id, label: employee.name }))]} onChange={employeeId => setFilters(value => ({ ...value, employeeId: employeeId === 'ALL' ? '' : employeeId }))} />}</Field>
         <Field label="Checkout date from · Lagos">{id => <Input id={id} type="date" value={filters.from} onChange={event => setFilters(value => ({ ...value, from: event.target.value }))} />}</Field>
         <Field label="Checkout date to · Lagos">{id => <Input id={id} type="date" value={filters.to} onChange={event => setFilters(value => ({ ...value, to: event.target.value }))} />}</Field>
-      </div>
+        </div>
+      </details>
+      <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm">{draft.body.exceptionIds.length} selected across pages</p><Button variant="ghost" onClick={()=>setFilters({status:'UNRESOLVED',employeeId:'',orderReference:'',unitCode:'',from:'',to:''})}>Reset filters</Button></div>
       <div className="flex flex-wrap justify-between gap-3"><p className="text-sm text-grey-2">Original missing-reason evidence is permanent. Reconciliation classifies it without another deduction.</p><Button variant="secondary" onClick={queue.refresh}>Refresh exceptions</Button></div>
       {queue.loading ? <DetailSkeleton rows={5} /> : queue.error ? <ErrorNotice message={queue.error} onRetry={queue.refresh} /> : queue.data ? <><DataTable label="Checkout reason exceptions" rows={queue.data.rows} columns={rowColumns} rowKey={row => row.exceptionId} emptyMessage="No exceptions match these filters." mobileStack />
         <Pager page={page} pageCount={Math.ceil(queue.data.total / queue.data.pageSize)} total={queue.data.total} onChange={setPage} /></> : null}
     </div></Panel> : null}
-    {config.canResolve && ready ? <><Button onClick={()=>setTaskOpen(true)}>Resolve Reason</Button><TaskModal title="Reconcile missing reasons" open={taskOpen} busy={busy} onClose={()=>setTaskOpen(false)}><Panel label="Manager reason classification" title={review ? 'Confirm Reconciliation' : 'Edit Reason'}><div className="space-y-4">
+    {config.canResolve && ready ? <><Button disabled={!draft.body.exceptionIds.length&&!draft.pending} onClick={()=>setTaskOpen(true)}>Resolve Reason</Button><TaskModal title="Reconcile missing reasons" open={taskOpen} busy={busy} onClose={()=>setTaskOpen(false)}><Panel label="Manager reason classification" title={review ? 'Confirm Reconciliation' : 'Edit Reason'}><div className="space-y-4">
       {error ? <ErrorNotice message={error} /> : null}
       {draft.pending ? <WarningNotice>The classification response is unresolved. Retry the same saved request; no new stock deduction is involved.<Button className="mt-2" disabled={busy} onClick={() => void confirm()}>Retry saved classification</Button></WarningNotice> : null}
       <p className="text-sm">{draft.body.exceptionIds.length} exact obligations selected. Selection is preserved across filters and pages.</p>
