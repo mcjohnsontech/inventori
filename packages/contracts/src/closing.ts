@@ -1,0 +1,10 @@
+import {z} from 'zod';
+const businessDate=z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(value=>value>='0001-01-01'&&Number.isFinite(Date.parse(value+'T00:00:00Z'))&&new Date(value+'T00:00:00Z').toISOString().slice(0,10)===value,'Enter a real business date');
+export const closeDaySchema=z.object({businessDate}).strict();
+export const closingHistorySchema=z.object({page:z.coerce.number().int().min(1).max(1000000).default(1)}).strict();
+export type ClosingBlocker={kind:string;id:string;message:string;workspace:'reconciliation'|'counts'|'requests'|'inventory'|'reports'};
+export type ClosingBalance={lotId:string;skuId:string;batchId:string;fullSku:string;productName:string;variantName:string;lotCode:string|null;publicBatchCode:string;state:string;opening:string;incoming:string;outgoing:string;closing:string};
+export type ClosingSnapshot={businessDate:string;timezone:'Africa/Lagos';basis:'ACCEPTED_AT';cutoffAt:string;cutoffSequence:string;blockers:ClosingBlocker[];balances:ClosingBalance[];carryForward:ClosingBalance[];transactions:{transactionId:string;type:string;recordedAt:string;originSequence:string;commandId:string}[];evidence:{reconciliations:{id:string;recordedAt:string;manifestHash:string}[];countResults:{id:string;status:string;attemptId:string}[];countResolutions:{id:string;resultId:string;matchingResultId:string}[];pendingRecoveries:{id:string;status:string}[]}};
+export type DailyCloseView={id:string;originId:string;businessDate:string;recordedAt:string;originSequence:string;cutoffSequence:string;snapshotHash:string;manager:{id:string;name:string};snapshot:ClosingSnapshot};
+export type ClosingPreview={snapshot:ClosingSnapshot;existingId:string|null};
+export type ClosingIssueView={kind:string;id:string;recordId:string;title:string;workspace:ClosingBlocker['workspace'];facts:{label:string;value:string}[];unitCode?:string};

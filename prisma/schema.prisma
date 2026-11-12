@@ -202,6 +202,7 @@ model AuditEvent {
   snapshot    Json
   createdAt   DateTime @default(now()) @db.Timestamptz(6)
   @@index([subjectId, createdAt])
+  @@index([originId,commandId])
 }
 model OutboxEvent {
   id             String @id @default(uuid()) @db.Uuid
@@ -258,6 +259,7 @@ model StockTransaction {
   actorRole Role
   recordedAt DateTime @db.Timestamptz(6)
   @@unique([originId, originSequence])
+  @@index([originId,recordedAt,originSequence])
 }
 model Receipt {
   id String @id @default(uuid()) @db.Uuid
@@ -275,6 +277,7 @@ model StockLot {
   originId String @db.Uuid
   @@unique([skuId, batchId])
   @@index([batchId])
+  @@index([originId,id])
 }
 model ReceiptLine {
   id String @id @default(uuid()) @db.Uuid
@@ -821,6 +824,7 @@ model CountAttempt {
  sessionId String @db.Uuid
  snapshot Json
  @@index([originId,recordedAt,id])
+  @@index([sessionId,recordedAt,id])
 }
 model CountObservation {
  id String @id @db.Uuid
@@ -857,4 +861,20 @@ model CountResolution {
  matchingResultId String @db.Uuid
  explanation String
  @@index([originId,recordedAt,id])
+}
+
+model DailyClose {
+ id String @id @db.Uuid
+ originId String @db.Uuid
+ businessDate DateTime @db.Date
+ actorId String @db.Uuid
+ commandId String @unique @db.Uuid
+ recordedAt DateTime @db.Timestamptz(6)
+ originSequence BigInt
+ cutoffSequence BigInt
+ snapshot Json
+ snapshotHash String
+ @@unique([originId,businessDate])
+ @@unique([originId,originSequence])
+ @@index([originId,recordedAt])
 }

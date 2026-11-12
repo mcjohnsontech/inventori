@@ -139,3 +139,6 @@ Operational ledger/state/flow reports and exact reused-Order-ID investigation ve
 
 ## Complete V1 directive — milestone 8B
 Targeted physical-count implementation and isolated migration 028 passed checkpoint verification (82 unit / 169 integration / six browser regressions, final typecheck/build). Development paused at owner request. B05 concurrency/recount rule is now approved. Count evidence is immutable and stock-neutral; Manager records and Admin reviews. Strict closing is separate milestone 9. See targeted-count-implementation-report.md for executed checks; no operational migration or real count enrollment.
+
+## Final sprint checkpoint — 12 November 2026
+The authorized sprint implements Admin/Manager reason reconciliation clarification, Production Orders grouping and O4 immutable daily closing (additive migrations 029–031, isolated testing only). This supersedes historical statements below that closing is unimplemented or reconciliation is Manager-only. It does not supersede Manager-only completion/count/disposition authority. Final verification/publication evidence and any unresolved limitations are in dayari-v1-final-implementation-report.md. Cloud approval execution, synchronization, local-server infrastructure, operational migration/enrollment and deployment remain outside this sprint.

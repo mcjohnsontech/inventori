@@ -124,3 +124,5 @@ export * from './reports.js';
 export * from './counts.js';
 
 export * from './orders.js';
+
+export * from './closing.js';

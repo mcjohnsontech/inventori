@@ -291,3 +291,13 @@ Owner-confirmed roles/scope and 9 November stale/recount policy map to CountSess
 ## Consolidated application workflows — 12 November 2026
 
 Implemented presentation consolidation uses eight main workspaces and role-filtered internal views. Legacy hashes remain supported; Production Inventory calls only restricted usable-availability/identity reads, never the operational-stock API. Parent-product expansion, receipt/product/staff/supplier drawers and bounded task modals reuse existing domain commands and contracts. No new permission, identity rule, ledger transition, migration or dependency. See [consolidated-dashboard-implementation-report.md](consolidated-dashboard-implementation-report.md) for current verification, and [current-application-audit.md](current-application-audit.md) for implemented versus deferred PRD/brick scope. Historical phase gates in this document are not current completion claims.
+
+## Final sprint — 12 November 2026 (supersedes older status entries)
+| Approved requirement | Implementation | Boundary |
+|---|---|---|
+| Explicit reason details/edit/save/confirmation; Admin + Manager reconciliation | reason-followup-drawer, reconciliation-workspace, shared permissions, additive migration 029 | Production denied; original reasons and stock unchanged |
+| Reusable Order ID grouping across sessions | orders.service, Orders/History subviews and unit/Order drawers | Production own history only; no unique Order entity or group-wide completion |
+| O4 Manager certification/Admin review | closing.service, DailyClose, migrations 030/031, Closing workspace and Reports link | Strict blockers, immutable hashed snapshot, atomic idempotency and origin locking; no operational installation |
+| B05 required count evidence | Existing CountSession/Attempt/Result/Resolution consumed by closing snapshot | No fabricated physical verification; unexplained mismatch and stale required counts block |
+| O5 deferred approvals | Correction requests block certification; certified held damage/recovery requests may carry | No local approval substitute, execution or cloud transport |
+Actual verification and remaining acceptance limitations are recorded in dayari-v1-final-implementation-report.md.

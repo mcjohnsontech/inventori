@@ -18,14 +18,14 @@ CONFIRMED existing policies plus Phase B authorization, 2026-11-03. Backend enfo
 | Usable availability discovery | Yes | Yes | Minimal scoped DTO |
 | Unrestricted audit/security metadata/valuation endpoint | Unavailable | Unavailable | Unavailable |
 | Exact-unit checkout | Yes | Yes | Yes, own records |
-| Missing-reason reconciliation | Review | Confirm classifications | Denied |
+| Missing-reason reconciliation | Confirm classifications (12 November approval) | Confirm classifications | Denied |
 | BAD reporting | Eligible operational units | Eligible operational units | Own checkout units only |
 | Damage disposition | Review | Held/Reworked or terminal removal | Denied |
 | Recovery/correction requests | Review pending evidence | Submit/review pending evidence | Denied |
 | Local approval or recovery/correction execution | Unavailable | Unavailable | Unavailable |
 | Selected-unit Production completion | Review | Confirm | Denied |
 | Targeted physical counts (8B verified checkpoint) | Review | Record/recount/resolve mistaken evidence | Denied |
-| Daily closing (approved, implementation next) | Review only | Confirm with all blockers cleared | Denied |
+| Daily closing (isolated implementation, rollout gated) | Review only | Confirm with all blockers cleared | Denied |
 | Cloud stock writes/approval transport | Deferred | Deferred | Deferred |
 
 Active mapped membership, current origin and valid session are required. Compulsory-change sessions may access only own identity/password-change/logout until completed. No public registration/reset delivery. Sensitive mutations revoke sessions and recheck roles under origin-first locks; historical actor UUIDs and role snapshots remain. Block self-demotion/deactivation and last active Admin removal. No extra roles/configurable permission editor.

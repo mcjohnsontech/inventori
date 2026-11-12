@@ -74,7 +74,7 @@ function Analysis({ catalogue, config }: {
 }
 export function ReportsWorkspace(props:{catalogue:Catalogue;onProduct:(id:string)=>void;onReceipt:(id:string)=>void;onLabels:(id:string)=>void}){
  const [mode,setMode]=useState<'analysis'|'records'>('analysis'),[recordsVisited,setRecordsVisited]=useState(false),config=useApiRead<Config>('reports/config');
- return <Page className="space-y-6"><PageHeader title="Reports & history" description=""/><div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap"><Button aria-pressed={mode==='analysis'} variant={mode==='analysis'?'primary':'secondary'} onClick={()=>setMode('analysis')}>Inventory analysis</Button><Button aria-pressed={mode==='records'} variant={mode==='records'?'primary':'secondary'} onClick={()=>{setRecordsVisited(true);setMode('records');}}>Source records</Button></div>
+ return <Page className="space-y-6"><PageHeader title="Reports & history" description=""/><a href="#closing" className="inline-flex min-h-11 items-center font-semibold text-brand underline">Finalized daily closings</a><div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap"><Button aria-pressed={mode==='analysis'} variant={mode==='analysis'?'primary':'secondary'} onClick={()=>setMode('analysis')}>Inventory analysis</Button><Button aria-pressed={mode==='records'} variant={mode==='records'?'primary':'secondary'} onClick={()=>{setRecordsVisited(true);setMode('records');}}>Source records</Button></div>
  <div hidden={mode!=='analysis'}>{config.loading?<DetailSkeleton/>:config.error?<ErrorNotice message={config.error} onRetry={config.refresh}/>:config.data?<Analysis catalogue={props.catalogue} config={config.data}/>:null}</div>
  {recordsVisited?<div hidden={mode!=='records'}><SourceRecords {...props}/></div>:null}</Page>;
 }

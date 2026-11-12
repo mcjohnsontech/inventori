@@ -26,6 +26,7 @@ type IconSpec = Parameters<typeof HugeiconsIcon>[0]['icon'];
 
 export const destinations = {
   dashboard: { label: 'Overview', icon: DashboardSquare01Icon as IconSpec },
+  closing: {label:'Daily closing',icon:ClipboardCheckIcon as IconSpec},
   counts: {label: 'Physical counts', icon: CheckListIcon as IconSpec},
   completion: { label: 'Production completion', icon: ClipboardCheckIcon as IconSpec },
   requests: { label: 'Recovery & corrections', icon: ArrowTurnBackwardIcon as IconSpec },
@@ -53,6 +54,7 @@ export type Workspace = keyof typeof destinations;
 /** What a workspace requires. The sidebar and the router both read this. */
 const workspaceCapabilities: Record<Workspace, Capability> = {
   dashboard: 'OPERATIONAL_STOCK',
+  closing:'OPERATIONAL_STOCK',
   counts: 'OPERATIONAL_STOCK',
   completion: 'OPERATIONAL_STOCK',
   requests: 'OPERATIONAL_STOCK',
@@ -87,7 +89,7 @@ export const navGroups: { name: string; keys: Workspace[] }[] = [
   {name:'Management',keys:['catalogue','reports','settings']},
 ];
 export function mainDestination(key:Workspace):Workspace {
- if(['availability','counts','requests','damage'].includes(key))return 'inventory';
+ if(['availability','counts','requests','damage','closing'].includes(key))return 'inventory';
  if(['completion','reconciliation','qr','orders','checkoutHistory'].includes(key))return 'checkout';
  if(key==='receiving')return 'receipts';
  if(key==='suppliers')return 'catalogue';
