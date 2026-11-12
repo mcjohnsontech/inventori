@@ -201,3 +201,8 @@ ReportsService provides origin-scoped operational reads under RepeatableRead, wi
 
 
 Targeted count evidence uses five immutable sidecars (migration 028, isolated verification). Origin-locked acceptance retains scope/attempt/explicit unit observations/derived result/recount resolution without stock writes. Relevant movement fingerprints stale open attempts. B05 roles and 9 November recount policy govern closing obligations; strict closing remains its separate slice.
+
+
+## Consolidated application workflows — 12 November 2026
+
+Implemented presentation consolidation uses eight main workspaces and role-filtered internal views. Legacy hashes remain supported; Production Inventory calls only restricted usable-availability/identity reads, never the operational-stock API. Parent-product expansion, receipt/product/staff/supplier drawers and bounded task modals reuse existing domain commands and contracts. No new permission, identity rule, ledger transition, migration or dependency. See [consolidated-dashboard-implementation-report.md](consolidated-dashboard-implementation-report.md) for current verification, and [current-application-audit.md](current-application-audit.md) for implemented versus deferred PRD/brick scope. Historical phase gates in this document are not current completion claims.

@@ -286,3 +286,8 @@ Pending recovery/correction execution remains deferred under O5; requests are im
 
 ## B05 targeted physical counts — milestone 8B
 Owner-confirmed roles/scope and 9 November stale/recount policy map to CountSession/Attempt/Observation/Result/Resolution, `counts.service.ts`, count contracts, count workspace and count unit/integration/browser tests. Native identity mismatch blocks at equal quantity; legacy evidence creates no units; stock movements stale attempts; explained matching recount retains findings. No stock write. Migration 028 isolated only; actual results in targeted-count-implementation-report.md. O4 closing enforcement follows separately.
+
+
+## Consolidated application workflows — 12 November 2026
+
+Implemented presentation consolidation uses eight main workspaces and role-filtered internal views. Legacy hashes remain supported; Production Inventory calls only restricted usable-availability/identity reads, never the operational-stock API. Parent-product expansion, receipt/product/staff/supplier drawers and bounded task modals reuse existing domain commands and contracts. No new permission, identity rule, ledger transition, migration or dependency. See [consolidated-dashboard-implementation-report.md](consolidated-dashboard-implementation-report.md) for current verification, and [current-application-audit.md](current-application-audit.md) for implemented versus deferred PRD/brick scope. Historical phase gates in this document are not current completion claims.
