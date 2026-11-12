@@ -118,3 +118,15 @@ Full-row content checksums before and after migration 032 were identical (MD5 co
 | Receipt | 1971 | `3af56e04f9c50d60a9028dd0faab35df` |
 | StockMovement | 39578 | `3c1f379e3d2f5db4903f9159caa765d0` |
 | ProductionCompletion | 87 | `17c9967bd3a355fdd9ecda9a8d356409` |
+
+
+## Owner-authorized completion workflow deployment — 12 November 2026
+Owner instruction: “go ahead deploy.” This authorizes migration 032 and publication of the tested Admin/Manager completion and UI refinements to the existing hosted application; it does not authorize local shop upgrades, cloud synchronization or historical enrollment.
+
+Source: `b93cbd35a1b489eebcf373e2aba2a7392e6788e4`, deployed from a clean Git archive excluding unrelated working-tree edits. Heroku backup **b002** completed before upgrade. Public API access was temporarily placed in maintenance mode during the database release and restored afterward. Backend release **v18** succeeded; additive migration **202611120032_admin_production_completion** applied successfully. Pre/post full-row fingerprints matched for all **3 supplier SKUs, 1 receipt, 7 stock movements and 0 existing completions**. No historical records were rewritten.
+
+Vercel deployment **dpl_CJhW2vs7paY8rXeTUaWEim6fWRLn** reached **READY**, target production. Deployment URL: https://dayari-inventory-staging-9k0u5hc2r-mc-johnsons-projects.vercel.app . Stable alias: https://dayari-inventory-staging.vercel.app/ . Backend: https://dayari-inventory-staging-api-797073a989e1.herokuapp.com/ .
+
+Hosted smoke checks passed: frontend and API health HTTP200; API authority SHOP with cloud synchronization not configured; direct completion-config/completion-sessions/checkouts HTTP401 without authentication; proxy me/completion-config/completion-sessions/checkouts HTTP401; foreign-Origin sign-in HTTP403. All 12 referenced frontend scripts returned successfully and contained the new checkout-history, completion-session and compact-filter workflow markers. A fresh-browser check rendered the Email address field and Sign in action successfully with zero browser runtime errors; no credentials were entered. No hosted receipt, checkout, completion, stock, invitation or account was created by smoke tests. Authenticated stock-changing workflows remain covered by the isolated pre-release tests, not repeated on hosted stock.
+
+The earlier report's no-deployment/isolated-migration statements describe its original review checkpoint; this later owner instruction supersedes them solely for migration 032 and this hosted release. Manager-only daily closing, deferred cloud approvals, local-server infrastructure and other existing gates remain unchanged.
