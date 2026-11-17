@@ -1,4 +1,5 @@
 'use client';
+import { ProductPricing } from '../financial';
 import { PagedItems } from '../ui/paged-items';
 import { useRef, useState } from 'react';
 import {
@@ -11,6 +12,7 @@ import {
 
 import {
   Badge,
+  DetailsDrawer,
   Button,
   Checkbox,
   Code,
@@ -63,6 +65,7 @@ export function ReceiveWizard({
   onCatalogueChanged?: (catalogue: Catalogue) => void;
 }) {
   const [options, setOptions] = useState(initialOptions);
+  const [pricingSku, setPricingSku] = useState<ReceivingOptions['skus'][number] | null>(null);
   const [registration, setRegistration] = useState<Catalogue | null>(null);
   const [vendorRegistration, setVendorRegistration] = useState<Catalogue | null>(null);
   const [registering, setRegistering] = useState(false);
@@ -209,6 +212,7 @@ export function ReceiveWizard({
       .includes(productSearch.toLowerCase()),
   );
 
+  if (pricingSku) return <DetailsDrawer wide title={`Selling price: ${pricingSku.productName} / ${pricingSku.variantName}`} eyebrow="Receiving" closeLabel="Return to receiving" onClose={() => setPricingSku(null)}><p className="mb-4 text-sm text-grey-2">Selling prices apply to this variant across suppliers. Confirmed price changes are saved separately from this delivery, even if the receipt is later cancelled. Your receiving draft is kept.</p><ProductPricing product={{id:pricingSku.productId,variants:[{id:pricingSku.variantId,name:pricingSku.variantName}]}} role={options.canSetSellingPrice ? 'ADMIN' : 'MANAGER'}/><Button type="button" variant="secondary" className="mt-4" onClick={() => setPricingSku(null)}>Back to receiving</Button></DetailsDrawer>;
   if (vendorRegistration) return <SupplierWizard catalogue={vendorRegistration} receiving allowNewLocation={options.canRegisterLocation ?? false} onClose={() => setVendorRegistration(null)} onSaved={async () => {}} onReceivingSaved={vendorSaved} />;
   if (registration) return <ProductWizard catalogue={registration} receivingSourceId={sourceId} onClose={() => setRegistration(null)} onSaved={async () => {}} onReceivingSaved={registered} onConfigureSupplier={() => {}} />;
 
@@ -432,6 +436,7 @@ export function ReceiveWizard({
                 </div>
 
                 <Field label={`${sku.fullCode} unit purchase cost (NGN)`}>{id => <Input id={id} inputMode="decimal" placeholder="Unknown" value={line.purchaseCost?.amount ?? ''} onChange={event => change(index, {purchaseCost:event.target.value === '' ? null : {amount:event.target.value,currency:'NGN',zeroReason:line.purchaseCost?.zeroReason ?? ''}})} />}</Field>
+                <Button type="button" variant="secondary" aria-label={`${options.canSetSellingPrice ? 'Set' : 'View'} selling price for ${sku.fullCode}`} onClick={() => setPricingSku(sku)}>{options.canSetSellingPrice ? 'Set selling price' : 'View selling price'}</Button>
                 <Footnote>Actual cost per delivered unit, including damaged arrivals. Leave blank when unknown. Historical receipt costs cannot be edited.</Footnote>
                 {line.purchaseCost && /^0(\.0{1,2})?$/.test(line.purchaseCost.amount) ? <Field label={`${sku.fullCode} zero-cost acquisition reason`}>{id => <Textarea id={id} required minLength={10} value={line.purchaseCost?.zeroReason ?? ''} onChange={event => change(index,{purchaseCost:{...line.purchaseCost!,zeroReason:event.target.value}})} />}</Field> : null}
                 {sku.sourceId !== sourceId ? <p role="alert" className="text-danger">This retained line belongs to a different vendor. Remove it or restore its vendor before confirming.</p> : null}

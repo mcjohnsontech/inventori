@@ -29,7 +29,7 @@ export class ReceivingService {
       const supplier = suppliers.get(source.supplierId) ?? { id: source.supplierId, name: source.supplier.name, code: source.supplier.code, sources: [] };
       supplier.sources.push({ id: source.id, name: source.name, code: source.code }); suppliers.set(source.supplierId, supplier);
     }
-    return { canRegisterLocation: user.role === 'ADMIN', serializationActive: await hasUnitSchema(this.db), unitLimit: serializedReceiptLimit, suppliers: [...suppliers.values()], skus: skus.map(sku => ({ id: sku.id, fullCode: sku.fullCode, sourceId: sku.sourcing.sourceId, productId: sku.productId, productName: sku.variant.product.name, variantId: sku.variantId, variantName: sku.variant.name })) };
+    return { canSetSellingPrice: user.role === 'ADMIN', canRegisterLocation: user.role === 'ADMIN', serializationActive: await hasUnitSchema(this.db), unitLimit: serializedReceiptLimit, suppliers: [...suppliers.values()], skus: skus.map(sku => ({ id: sku.id, fullCode: sku.fullCode, sourceId: sku.sourcing.sourceId, productId: sku.productId, productName: sku.variant.product.name, variantId: sku.variantId, variantName: sku.variant.name })) };
   }
   async list(user: User) {
     this.allow(user);
