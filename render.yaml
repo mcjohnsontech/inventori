@@ -20,10 +20,21 @@ services:
       - key: SHOP_NODE_ID
         sync: false
       - key: DATABASE_URL
-        sync: false
+        fromDatabase:
+          name: dayari-inventory-staging-db
+          property: connectionString
+      - key: APP_PUBLIC_URL
+        value: https://dayari-inventory-staging.vercel.app
       - key: INVITATION_TRANSPORT
         value: disabled
       - key: INVITATION_LIVE_ENABLED
         value: '0'
       - key: INVITATION_WORKER
         value: '0'
+
+# Temporary staging only. Free Render PostgreSQL expires after 30 days.
+# Never apply this Blueprint to production or import operational stock into it.
+databases:
+  - name: dayari-inventory-staging-db
+    plan: free
+    postgresMajorVersion: '17'
