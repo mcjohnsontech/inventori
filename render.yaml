@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: dayari-inventory-staging-api
+    runtime: node
+    plan: free
+    branch: staging
+    autoDeployTrigger: checksPass
+    buildCommand: npm ci --include=dev && npm run build:api
+    startCommand: node apps/api/dist/main.js
+    healthCheckPath: /v1/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: DAYARI_DEPLOYMENT
+        value: staging
+      - key: AUTHORITY_MODE
+        value: SHOP
+      - key: SHOP_NODE_ID
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: INVITATION_TRANSPORT
+        value: disabled
+      - key: INVITATION_LIVE_ENABLED
+        value: '0'
+      - key: INVITATION_WORKER
+        value: '0'

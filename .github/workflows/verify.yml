@@ -3,7 +3,7 @@ name: Verify Dayari
 on:
   pull_request:
   push:
-    branches: [main, 'feat/**']
+    branches: [main, staging, 'feat/**']
 
 permissions:
   contents: read
