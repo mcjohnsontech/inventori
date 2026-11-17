@@ -1,3 +1,4 @@
+import { costSchema } from './financial.js';
 import { z } from 'zod';
 export * from './units.js';
 export * from './unit-labels.js';
@@ -91,15 +92,16 @@ export const receiptSchema = z.object({
   lines: z.array(z.object({
     skuId: id, usableQuantity: intakeQuantity, damagedQuantity: intakeQuantity,
     damageReason: z.string().trim().max(2000).default(''),
+    purchaseCost: costSchema.nullable().optional(),
   }).strict().refine(row => row.usableQuantity + row.damagedQuantity > 0, 'Enter a positive usable or damaged quantity')
     .refine(row => !row.damagedQuantity || (row.damageReason.length >= 10 && /\p{L}/u.test(row.damageReason)), 'Explain damaged arrivals in at least 10 characters')).min(1).max(100),
 }).strict().refine(body => new Set(body.lines.map(row => row.skuId)).size === body.lines.length, 'Each SKU can appear only once');
 export type ReceiptInput = z.infer<typeof receiptSchema>;
-export type ReceivingOptions = { serializationActive?: boolean; unitLimit?: number; suppliers: { id: string; name: string; code: string; sources: { id: string; name: string; code: string }[] }[]; skus: { id: string; fullCode: string; sourceId: string; productId: string; productName: string; variantId: string; variantName: string }[] };
+export type ReceivingOptions = { canRegisterLocation?: boolean; serializationActive?: boolean; unitLimit?: number; suppliers: { id: string; name: string; code: string; sources: { id: string; name: string; code: string }[] }[]; skus: { id: string; fullCode: string; sourceId: string; productId: string; productName: string; variantId: string; variantName: string }[] };
 export type AcceptedReceipt = {
  serialization?: { unitCount: string; manifestPages: number };
  id: string; batch: { id: string; originId: string; publicCode: string; deliveredOn: string; acceptedAt: string; numberedOn: string; invoiceReference: string | null; supplierName: string; sourceName: string };
- originSequence: string; lines: { id: string; skuId: string; lotId: string; lotCode?: string | null; productCode?: string | null; fullCode: string; productId: string; productName: string; variantName: string; usableQuantity: string; damagedQuantity: string; totalQuantity: string; damageReason: string }[];
+ originSequence: string; lines: { purchaseCost?: {amount:string;currency:'NGN';zeroReason:string}; id: string; skuId: string; lotId: string; lotCode?: string | null; productCode?: string | null; fullCode: string; productId: string; productName: string; variantName: string; usableQuantity: string; damagedQuantity: string; totalQuantity: string; damageReason: string }[];
  totals: { usable: string; damaged: string; delivered: string };
 };
 export type OperationalStock = { asOf: string; lots: { lotId: string; lotCode?: string | null; productCode?: string | null; skuId: string; productId: string; sourceId: string; batchId: string; originId: string; publicCode: string; fullCode: string; productName: string; variantName: string; supplierName: string; sourceName: string; usable: string; damaged: string }[]; bySku: { skuId: string; fullCode: string; usable: string; damaged: string }[]; byProduct: { productId: string; productName: string; usable: string; damaged: string }[] };
@@ -126,3 +128,5 @@ export * from './counts.js';
 export * from './orders.js';
 
 export * from './closing.js';
+
+export * from './financial.js';

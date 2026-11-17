@@ -1,4 +1,5 @@
 'use client';
+import { money } from '../financial';
 import { PagedItems } from '../ui/paged-items';
 import { useState } from 'react';
 import type { AcceptedReceipt, OperationalStock } from '@dayari/contracts';
@@ -81,6 +82,11 @@ export function ReceiptDetails({
       label: 'Damaged',
       align: 'right',
       cell: (line) => <Badge tone="damaged">{line.damagedQuantity}</Badge>,
+    },
+    {
+      key: 'cost',
+      label: 'Original unit cost',
+      cell: (line) => <span>{money(line.purchaseCost?.amount ?? null)}{line.purchaseCost?.zeroReason ? <span className="block text-xs">{line.purchaseCost.zeroReason}</span> : null}</span>,
     },
     {
       key: 'total',

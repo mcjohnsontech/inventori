@@ -1,4 +1,5 @@
 'use client';
+import { FinancialSummary } from './financial';
 import {
   ArrowLeft01Icon,
   ArrowRight01Icon,
@@ -431,6 +432,7 @@ export function InventoryWorkspace({
           title={`${lot.productName} · ${lot.variantName}`}
           onClose={() => setSelected('')}
         >
+          <FinancialSummary key={lot.lotId} lotId={lot.lotId}/>
           <section aria-label="Lot provenance">
             <p className="font-sans text-sm tracking-[-0.02em] text-grey-2">
               {lot.supplierName} · {lot.sourceName}

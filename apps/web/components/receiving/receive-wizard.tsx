@@ -27,13 +27,14 @@ import { notifyAuthFailure } from '../../lib/api';
 import { cn } from '../../lib/cn';
 import { WizardShell } from '../wizard/wizard-shell';
 import { Totals } from './totals';
-import { ProductWizard } from '../catalogue/setup-wizards';
+import { ProductWizard, SupplierWizard } from '../catalogue/setup-wizards';
 
 type DraftLine = {
   skuId: string;
   usableQuantity: string;
   damagedQuantity: string;
   damageReason: string;
+  purchaseCost?: {amount:string;currency:'NGN';zeroReason:string} | null;
 };
 
 async function post(path: string, init?: RequestInit) {
@@ -63,6 +64,7 @@ export function ReceiveWizard({
 }) {
   const [options, setOptions] = useState(initialOptions);
   const [registration, setRegistration] = useState<Catalogue | null>(null);
+  const [vendorRegistration, setVendorRegistration] = useState<Catalogue | null>(null);
   const [registering, setRegistering] = useState(false);
   const [step, setStep] = useState(0);
   const [supplierId, setSupplierId] = useState('');
@@ -75,6 +77,18 @@ export function ReceiveWizard({
   const [error, setError] = useState('');
 
   const submitting = useRef(false);
+
+  async function openVendor() {
+    setRegistering(true); setError('');
+    try { setVendorRegistration(await post('catalogue')); }
+    catch (failure) { setError((failure as Error).message); }
+    finally { setRegistering(false); }
+  }
+  async function vendorSaved(result: {id:string;source:{id:string}}) {
+    const [refreshed,catalogue]: [ReceivingOptions,Catalogue] = await Promise.all([post('receiving/options'),post('catalogue')]);
+    setOptions(refreshed); setSupplierId(result.id); setSourceId(result.source.id);
+    onCatalogueChanged?.(catalogue); setVendorRegistration(null);
+  }
 
   async function openRegistration() {
     setRegistering(true);
@@ -195,6 +209,7 @@ export function ReceiveWizard({
       .includes(productSearch.toLowerCase()),
   );
 
+  if (vendorRegistration) return <SupplierWizard catalogue={vendorRegistration} receiving allowNewLocation={options.canRegisterLocation ?? false} onClose={() => setVendorRegistration(null)} onSaved={async () => {}} onReceivingSaved={vendorSaved} />;
   if (registration) return <ProductWizard catalogue={registration} receivingSourceId={sourceId} onClose={() => setRegistration(null)} onSaved={async () => {}} onReceivingSaved={registered} onConfigureSupplier={() => {}} />;
 
   return (
@@ -212,9 +227,10 @@ export function ReceiveWizard({
       onFinish={finish}
       finishLabel="Confirm receipt"
     >
+      {step === 3 ? <div aria-label="Purchase cost review" className="space-y-2">{lines.map(line=><p key={line.skuId} className="break-words text-sm">{options.skus.find(s=>s.id===line.skuId)?.fullCode}: {line.purchaseCost ? `NGN ${line.purchaseCost.amount} per unit${line.purchaseCost.zeroReason ? ' / '+line.purchaseCost.zeroReason : ''}` : 'Purchase cost unknown'}</p>)}</div> : null}
       {step === 0 ? (
         <>
-          <Field label="Receiving supplier">
+          <div className="flex items-end gap-3"><div className="min-w-0 flex-1"><Field label="Receiving supplier">
             {(id) => (
               <Select
                 id={id}
@@ -234,7 +250,7 @@ export function ReceiveWizard({
                 }))}
               />
             )}
-          </Field>
+          </Field></div><Button variant="secondary" disabled={registering} onClick={openVendor}>Add Vendor</Button></div>
 
           {supplier?.sources.length === 1 ? <Footnote>Saved location: {supplier.sources[0]!.name}. Used automatically for this delivery.</Footnote> : null}
           {supplier && supplier.sources.length > 1 ? (
@@ -358,7 +374,7 @@ export function ReceiveWizard({
 
           <PagedItems items={lines} size={6}>{pageItems => <>{pageItems.map((line) => {
             const index = lines.findIndex(row => row.skuId === line.skuId);
-            const sku = available.find((item) => item.id === line.skuId)!;
+            const sku = options.skus.find((item) => item.id === line.skuId)!;
 
             return (
               <section key={line.skuId} className={cn(card, 'space-y-4 p-4')}>
@@ -415,6 +431,10 @@ export function ReceiveWizard({
                   </Field>
                 </div>
 
+                <Field label={`${sku.fullCode} unit purchase cost (NGN)`}>{id => <Input id={id} inputMode="decimal" placeholder="Unknown" value={line.purchaseCost?.amount ?? ''} onChange={event => change(index, {purchaseCost:event.target.value === '' ? null : {amount:event.target.value,currency:'NGN',zeroReason:line.purchaseCost?.zeroReason ?? ''}})} />}</Field>
+                <Footnote>Actual cost per delivered unit, including damaged arrivals. Leave blank when unknown. Historical receipt costs cannot be edited.</Footnote>
+                {line.purchaseCost && /^0(\.0{1,2})?$/.test(line.purchaseCost.amount) ? <Field label={`${sku.fullCode} zero-cost acquisition reason`}>{id => <Textarea id={id} required minLength={10} value={line.purchaseCost?.zeroReason ?? ''} onChange={event => change(index,{purchaseCost:{...line.purchaseCost!,zeroReason:event.target.value}})} />}</Field> : null}
+                {sku.sourceId !== sourceId ? <p role="alert" className="text-danger">This retained line belongs to a different vendor. Remove it or restore its vendor before confirming.</p> : null}
                 {Number(line.damagedQuantity) > 0 ? (
                   <Field label="Damage explanation">
                     {(id) => (
@@ -466,7 +486,7 @@ export function ReceiveWizard({
           </div>
 
           <PagedItems items={lines} size={8}>{pageItems => <>{pageItems.map((line) => {
-            const sku = available.find((item) => item.id === line.skuId)!;
+            const sku = options.skus.find((item) => item.id === line.skuId)!;
 
             return (
               <div key={line.skuId} className={cn(card, 'p-4')}>
@@ -478,6 +498,7 @@ export function ReceiveWizard({
                   Usable: {line.usableQuantity} · Damaged: {line.damagedQuantity} · Total:{' '}
                   {Number(line.usableQuantity) + Number(line.damagedQuantity)}
                 </p>
+                {sku.sourceId !== sourceId ? <p role="alert" className="text-danger">This retained line belongs to a different vendor. Remove it or restore its vendor before confirming.</p> : null}
                 {Number(line.damagedQuantity) > 0 ? (
                   <p className="mt-2 font-sans text-sm leading-[1.6] tracking-[-0.02em] text-damaged">
                     {line.damageReason}

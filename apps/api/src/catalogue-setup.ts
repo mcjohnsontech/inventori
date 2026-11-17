@@ -6,10 +6,15 @@ import { allocateProductBase } from './product-code.js';
 type Tx = Prisma.TransactionClient;
 
 export async function setupSupplier(tx: Tx, data: SupplierSetupInput, originId: string) {
+  if (!('id' in data.supplier)) {
+    const normalized = data.supplier.name.normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase();
+    const existing = await tx.supplier.findMany({where:{originId},select:{name:true}});
+    if (existing.some(row => row.name.normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase() === normalized)) throw new ConflictException('A vendor with this name already exists. Select the saved vendor.');
+  }
   const supplier = 'id' in data.supplier
     ? await tx.supplier.findUnique({ where: { id: data.supplier.id } })
     : await tx.supplier.create({ data: { name: data.supplier.name, originId, code: nextSupplierCode(data.supplier.name, (await tx.supplier.findMany({ where: { code: { startsWith: supplierCodeSeed(data.supplier.name) } }, select: { code: true } })).map(row => row.code)) } });
-  if (!supplier) throw new BadRequestException('Choose an existing supplier');
+  if (!supplier || supplier.originId !== originId) throw new BadRequestException('Choose an existing supplier');
   let registry;
   if ('registryId' in data.location) registry = await tx.locationRegistry.findUnique({ where: { id: data.location.registryId } });
   else {

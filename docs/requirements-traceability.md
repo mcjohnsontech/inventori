@@ -310,3 +310,16 @@ Actual verification and remaining acceptance limitations are recorded in dayari-
 | Compact reason queue/history controls | ReconciliationWorkspace advanced filters, reset, selected count, detail drawer | Existing immutable reason evidence and idempotency preserved |
 | Admin/Manager exact-unit completion | COMPLETE_PRODUCTION allowlist, session discovery, exact checkout filter, review drawer, migration 032 | Production denied; P → C only, no second U deduction; operational upgrade gated |
 | Supplier catalogue access without redundant top tabs | Internal catalogue controls and Supplier directory retained | No catalogue permission changes |
+
+## Pricing and receiving extension 17 November 2026
+
+Source: owner's Product Pricing Financial Analytics and Vendor Onboarding directive. CONFIRMED scope; operational rollout remains unauthorized. Implementation/accounting details: pricing-financial-extension-report.md.
+
+| ID | Requirement | Implementation | Acceptance evidence |
+| --- | --- | --- | --- |
+| PF-01 | Receiving Add Vendor, selection, preserved draft and retry safety | Receiving wizard, scoped supplier setup command, existing supplier allocator | catalogue integration and financial browser suites |
+| PF-02 | Immutable receipt/lot unit cost, unknown distinct from justified zero | PurchaseCost linked to original ReceiptLine and receipt command | financial unit/integration suites, receiving browser journey |
+| PF-03 | Admin variant selling prices and immutable history | SellingPrice, previous-price precondition, audited/idempotent transactional command | financial integration/browser suites |
+| PF-04 | Evidence-backed U/D valuation, coverage, unrealized profit | Ledger-derived financial report, exact kobo arithmetic | financial unit/integration suite; operational quantity comparison |
+| PF-05 | Overview, reports, product and stock detail integration; actual dated trends | Existing workspaces, financial panels, scoped drilldowns | financial browser suite and responsive captures |
+| PF-06 | Production denial, Manager price-write denial, unchanged stock identities and close | Explicit capabilities, origin scope, additive financial evidence only | financial integration, checkout/completion/closing regression suites |

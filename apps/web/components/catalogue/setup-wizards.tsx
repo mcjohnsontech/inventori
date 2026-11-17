@@ -57,7 +57,7 @@ async function saveSetup(type: string, body: unknown, receiving = false) {
     );
   }
 
-  sessionStorage.removeItem(storageKey);
+  if (type !== 'supplier-setups') sessionStorage.removeItem(storageKey);
   return result;
 }
 
@@ -72,7 +72,10 @@ export function SupplierWizard({
   onClose,
   onSaved,
   initialSupplierId = '',
-}: Props & { initialSupplierId?: string }) {
+  receiving = false,
+  allowNewLocation = true,
+  onReceivingSaved,
+}: Props & { initialSupplierId?: string; receiving?: boolean; allowNewLocation?:boolean; onReceivingSaved?: (result: {id:string;source:{id:string}}) => Promise<void> }) {
   const [step, setStep] = useState(0);
   const [name, setName] = useState('');
   const [registryId, setRegistryId] = useState('');
@@ -113,8 +116,10 @@ export function SupplierWizard({
     };
 
     try {
-      const result = await saveSetup('supplier-setups', body);
-      await onSaved(`Supplier location ready. Prefix: ${result.prefix.code}`);
+      const result = await saveSetup('supplier-setups', body, receiving);
+      if (onReceivingSaved) await onReceivingSaved(result);
+      else await onSaved(`Supplier location ready. Prefix: ${result.prefix.code}`);
+      sessionStorage.removeItem(`dayari_pending_${receiving ? 'receiving_' : ''}supplier-setups`);
     } catch (failure) {
       setError((failure as Error).message);
     } finally {
@@ -127,7 +132,7 @@ export function SupplierWizard({
 
   return (
     <WizardShell
-      title={initialSupplierId ? 'Set up supplier location' : 'Add supplier'}
+      title={initialSupplierId ? 'Set up supplier location' : receiving ? 'Add Vendor' : 'Add supplier'}
       subtitle="Set up a supplier and location once. Select them whenever you add a product."
       steps={['Supplier', 'Location', 'Review prefix']}
       step={step}
@@ -223,7 +228,7 @@ export function SupplierWizard({
                     value: row.id,
                     label: `${row.name} (${row.code})`,
                   })),
-                  { value: 'new', label: 'Register another location' },
+                  ...(allowNewLocation ? [{ value: 'new', label: 'Register another location' }] : []),
                 ]}
               />
             )}

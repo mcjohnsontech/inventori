@@ -878,3 +878,30 @@ model DailyClose {
  @@unique([originId,originSequence])
  @@index([originId,recordedAt])
 }
+
+// Financial evidence is immutable; database guards also enforce receipt/origin provenance.
+model PurchaseCost {
+ receiptLineId String @id @db.Uuid
+ originId String @db.Uuid
+ amount Decimal @db.Decimal(20,2)
+ currency String
+ zeroReason String
+ commandId String @db.Uuid
+ actorId String @db.Uuid
+ recordedAt DateTime @db.Timestamptz(6)
+ @@index([originId,recordedAt])
+}
+model SellingPrice {
+ id String @id @default(uuid()) @db.Uuid
+ originId String @db.Uuid
+ variantId String @db.Uuid
+ amount Decimal @db.Decimal(20,2)
+ currency String
+ reason String
+ previousPriceId String? @unique @db.Uuid
+ commandId String @unique @db.Uuid
+ actorId String @db.Uuid
+ originSequence BigInt
+ recordedAt DateTime @db.Timestamptz(6)
+ @@index([originId,variantId,originSequence(sort: Desc)])
+}

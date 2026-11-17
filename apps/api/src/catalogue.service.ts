@@ -87,11 +87,15 @@ export class CatalogueService {
     return this.execute(user, 'product-setups', keyInput, input, true);
   }
 
+  async createReceivingSupplier(user: User, keyInput: unknown, input: unknown) {
+    return this.execute(user, 'supplier-setups', keyInput, input, true);
+  }
+
   private async execute(user: User, type: string, keyInput: unknown, input: unknown, receiving: boolean) {
     const capability = receiving ? 'RECEIVE' : 'CATALOGUE_WRITE';
     requireCapability(user,capability);
     // Separate command namespace: a receipt registration cannot replay a catalogue command.
-    const commandType = receiving ? 'receiving.product-setups' : type;
+    const commandType = receiving ? `receiving.${type}` : type;
     if (this.mode !== 'SHOP') throw new ForbiddenException('Catalogue writes belong to the shop authority');
     const key = parse(idempotencyKeySchema, keyInput);
     const schemas: Record<string, ZodType> = { products: productSchema, suppliers: supplierSchema, sources: sourceSchema, attributes: attributeSchema, values: valueSchema, variants: variantSchema, skus: skuSchema, 'supplier-setups': supplierSetupSchema, 'product-setups': productSetupSchema };
@@ -116,8 +120,9 @@ export class CatalogueService {
           if (prior.requestHash !== requestHash) throw new ConflictException('Idempotency key reused with different input');
           return prior.response;
         }
+        if (receiving && type === 'supplier-setups' && current.role !== 'ADMIN' && !('registryId' in (data as import('@dayari/contracts').SupplierSetupInput).location)) throw new ForbiddenException('Ask Admin to register a new location code. Select an approved location.');
         const commandId = randomUUID();
-        const eventType = receiving ? 'receiving.product.registered' : `catalogue.${type}.created`;
+        const eventType = receiving ? (type === 'supplier-setups' ? 'receiving.supplier.registered' : 'receiving.product.registered') : `catalogue.${type}.created`;
         const result = await this.insert(tx, type, data, commandId);
         const node = await tx.originNode.update({ where: { id: this.originId }, data: { nextSequence: { increment: 1 } } });
         const response = JSON.parse(JSON.stringify(result)) as Prisma.InputJsonValue;

@@ -291,4 +291,21 @@ describe('catalogue vertical slice against PostgreSQL (FR-01,17–19,23–24)', 
   });
 
 
+  it('receiving vendor setup is scoped, atomic, collision-safe and replay-safe', async () => {
+    const registry=await db.locationRegistry.findFirstOrThrow();
+    const send=(body:object,key=randomUUID(),token=manager)=>request(app.getHttpServer()).post('/v1/receiving/supplier-setups').set('Authorization',`Bearer ${token}`).set('Idempotency-Key',key).send(body);
+    const body={supplier:{name:`Vendor ${randomUUID()}`},location:{registryId:registry.id}},key=randomUUID();
+    const [a,b]=await Promise.all([send(body,key).expect(201),send(body,key).expect(201)]);
+    expect(a.body).toEqual(b.body);expect(a.body.source.supplierId).toBe(a.body.id);
+    await send(body).expect(409);
+    await send({...body,supplier:{name:body.supplier.name+' changed'}},key).expect(409);
+    const collision=(await send({...body,supplier:{name:`Vendor ${randomUUID()}`}}).expect(201)).body;
+    expect(collision.supplier.code).not.toBe(a.body.supplier.code);
+    await send({...body,supplier:{name:`Denied ${randomUUID()}`}},randomUUID(),production).expect(403);
+    await send({...body,location:{name:'Collision location',code:registry.code}},randomUUID(),await shopToken(db,app,originId)).expect(409);
+    await send({...body,location:{name:'Unapproved location',code:'ZZ'}}).expect(403);
+    expect(await db.supplier.count({where:{originId,name:body.supplier.name}})).toBe(1);
+    expect((await request(app.getHttpServer()).get('/v1/receiving/options').set('Authorization',`Bearer ${manager}`).expect(200)).body.suppliers.some((row:any)=>row.id===a.body.id)).toBe(true);
+  });
+
 });

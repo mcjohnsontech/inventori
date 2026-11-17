@@ -1,4 +1,6 @@
 'use client';
+import { useState } from 'react';
+import { FinancialSummary } from './financial';
 import type {Catalogue,OperationalStock,Role} from '@dayari/contracts';
 import {useApiRead} from '../lib/api';
 import {stockOverview} from '../lib/stock-overview';
@@ -8,13 +10,15 @@ import {PagedItems} from './ui/paged-items';
 import type {Workspace} from './shell/destinations';
 export type ReceiptSummary={id:string;batchId:string;publicCode:string;supplierName:string;sourceName:string;deliveredOn:string;acceptedAt:string};
 export function Dashboard({catalogue,name,role,navigate,onReceipt,onReceive}:{catalogue:Catalogue;name:string;role:Role;navigate:(key:Workspace,id?:string,lotId?:string)=>void;onReceipt:(id:string)=>void;onLot:(id:string,lotId:string)=>void;onReceive:()=>void}){
+ const [valuationRevision,setValuationRevision]=useState(0);
  const stock=useApiRead<OperationalStock>('stock'),receipts=useApiRead<ReceiptSummary[]>('receipts');
  const rows=stock.data?stockOverview(catalogue,stock.data):[];
  const attention=rows.filter(row=>row.status!=='available');
  const summary=[['Variants with usable stock',rows.filter(r=>r.status==='available').length],['Variants without usable stock',rows.filter(r=>r.status==='empty').length],['Not yet received',rows.filter(r=>r.status==='unreceived').length],['Lots containing damaged stock',stock.data?.lots.filter(l=>isPositive(l.damaged)).length??0]] as const;
- return <Page><PageHeader title={`Welcome, ${name.split(' ')[0]}`} description="" actions={<><Button variant="secondary" onClick={()=>{stock.refresh();receipts.refresh();}}>Refresh stock</Button><Button onClick={onReceive}>Receive a delivery</Button></>}/>
+ return <Page><PageHeader title={`Welcome, ${name.split(' ')[0]}`} description="" actions={<><Button variant="secondary" onClick={()=>{stock.refresh();receipts.refresh();setValuationRevision(value=>value+1);}}>Refresh stock</Button><Button onClick={onReceive}>Receive a delivery</Button></>}/>
  <div aria-label="Stock summary" aria-busy={stock.loading} className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{summary.map(([label,value])=><div key={label} className="surface p-4"><span className="block text-xs text-grey-2">{label}</span><strong className="mt-2 block text-2xl text-brand">{stock.loading?'Loading…':stock.error?'Unavailable':value}</strong></div>)}</div>
  <div className="mt-5 flex flex-wrap gap-2"><Button variant="secondary" onClick={()=>navigate('inventory')}>Open inventory sheet</Button><Button variant="secondary" onClick={()=>navigate('checkout')}>Production checkout</Button><Button variant="secondary" onClick={()=>navigate('counts')}>Review count evidence</Button><Button variant="secondary" onClick={()=>navigate('reconciliation')}>Review missing reasons</Button><Button variant="secondary" onClick={()=>navigate('requests')}>Review pending requests</Button><Button variant="secondary" onClick={()=>navigate('damage')}>Damaged / BAD</Button></div>
+ <div className="mt-6"><FinancialSummary key={valuationRevision}/></div>
  <div className="mt-6 grid items-start gap-5 xl:grid-cols-2"><Panel title="Stock needing attention">{stock.loading?<ListSkeleton rows={3}/>:stock.error?<ErrorNotice message={stock.error} onRetry={stock.refresh}/>:!attention.length?<EmptyState title="No zero-stock attention items">Browse Inventory for current variant and lot quantities.</EmptyState>:<PagedItems items={attention} size={5}>{items=><ul className="divide-y divide-black/5">{items.map(row=><li key={row.variantId}><button className="w-full py-3 text-left" onClick={()=>navigate('inventory',row.productId)}><strong className="block">{row.productName} · {row.variantName}</strong><span className="text-sm text-grey-2">{row.status==='unreceived'?'Not yet received':'No usable stock'}</span></button></li>)}</ul>}</PagedItems>}</Panel>
  <Panel title="Recent receiving activity" action={<Button variant="secondary" onClick={()=>navigate('receipts')}>View receipts</Button>}>{receipts.loading?<ListSkeleton rows={3}/>:receipts.error?<ErrorNotice message={receipts.error} onRetry={receipts.refresh}/>:!receipts.data?.length?<EmptyState title="Ready for your first delivery">Receive a delivery to begin tracking stock.</EmptyState>:<PagedItems items={receipts.data} size={5}>{items=><ul className="divide-y divide-black/5">{items.map(row=><li key={row.id}><button onClick={()=>onReceipt(row.id)} className="flex w-full flex-wrap justify-between gap-2 py-3 text-left"><span><Code>{row.publicCode}</Code><span className="block text-sm text-grey-2">{row.supplierName} · {row.sourceName}</span></span><span className="text-xs text-grey-2">{formatDate(row.acceptedAt)}</span></button></li>)}</ul>}</PagedItems>}</Panel></div>
  </Page>;

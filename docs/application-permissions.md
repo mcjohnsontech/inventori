@@ -16,7 +16,10 @@ CONFIRMED existing policies plus Phase B authorization, 2026-11-03. Backend enfo
 | Print jobs/native/PDF/reprint/handoff history | Yes | Yes | Denied |
 | Operational reporting administration | Yes | Yes | Denied |
 | Usable availability discovery | Yes | Yes | Minimal scoped DTO |
-| Unrestricted audit/security metadata/valuation endpoint | Unavailable | Unavailable | Unavailable |
+| Unrestricted audit/security metadata | Unavailable | Unavailable | Unavailable |
+| Purchase costs and scoped financial valuation/history (17 November extension) | Read / receive | Read / receive | Denied |
+| Current selling-price append-only change | Yes, explicit confirmation | Denied | Denied |
+| Receiving-specific vendor onboarding | Yes | Yes, approved location registry only | Denied |
 | Exact-unit checkout | Yes | Yes | Yes, own records |
 | Missing-reason reconciliation | Confirm classifications (12 November approval) | Confirm classifications | Denied |
 | BAD reporting | Eligible operational units | Eligible operational units | Own checkout units only |

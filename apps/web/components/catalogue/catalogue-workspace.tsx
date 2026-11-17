@@ -1,4 +1,5 @@
 'use client';
+import { ProductPricing } from '../financial';
 import { PagedItems } from '../ui/paged-items';
 import { ArrowLeft01Icon, ArrowRight01Icon, Building03Icon, PlusSignIcon } from '@hugeicons/core-free-icons';
 import { useEffect, useMemo, useState } from 'react';
@@ -144,6 +145,7 @@ export function CatalogueWorkspace({
 
         <div className="flex flex-wrap items-center gap-3"><Code>{product.productCode??'Code not assigned'}</Code>{role==='ADMIN'?<Button onClick={()=>onProduct(product.id)}>Add variants or source</Button>:null}<Button variant="secondary" onClick={()=>onStock(product.id)}>View stock lots</Button></div>
 
+      <div className="mt-5"><ProductPricing product={product} role={role}/></div>
       <div className="mt-5"><IdentityLookup /></div>
 
         <div className="mt-6 flex flex-wrap items-center gap-2.5">
@@ -361,6 +363,7 @@ export function CatalogueWorkspace({
           </>
         }
       />
+
 
       <div className="mt-5"><IdentityLookup /></div>
 
