@@ -88,3 +88,7 @@ Private handover: .local/environment-split/staging-owner-private.json and stagin
 Remaining gates: owner changes the new staging password; production promotion/release authorization for the tested revision; production-only backend mail/public URL/release configuration at that later cutover; no implicit merge into main or production activation. The existing Heroku database and historical accounts/inventory are preserved. No new infrastructure charges were introduced.
 
 Local tooling issue: the disk was full. Removed only the generated Git deployment ZIP/extracted snapshot and generated .next-e2e/cache/webpack cache; preserved source, unrelated dirty files, database backups, credentials and screenshots. Approximately 188 MB was reclaimed at verification, so further local disk cleanup is advisable before additional builds.
+
+## Production published — 18 November 2026
+
+The owner subsequently authorized “pull to main and deploy to production.” Main and staging were aligned at 6b852225af42fef8e9b5a722a808ce62ab8c2b1e, and production is now live at https://infentri.dayari.ng with the retained Heroku database. Heroku configuration is production-scoped; all 71 database table fingerprints and migration records were preserved. Automatic production build/domain gates remain in place after explicit promotion. This supersedes the pending-release/cutover status above. See [the production deployment report](production-deployment-20261118.md) for backup, build, test and preservation evidence and remaining limitations.
