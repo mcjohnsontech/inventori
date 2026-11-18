@@ -2,7 +2,7 @@
 
 Owner direction: 17 November 2026. This replaces the single hosted staging topology as the deployment target. It does not authorize a production release, a merge into main, operational migration, account/stock transfer or production activation.
 
-## Actual platform state
+## Initial platform state — 17 November 2026 (follow-up below)
 
 | Environment | Frontend | Backend | Database | Branch |
 |---|---|---|---|---|
@@ -70,3 +70,21 @@ This task did not add a GitHub production-deployment Action or protected-branch 
 Evidence screenshots (private local files, not credentials): `.local/environment-split/render-staging-settings.png`, `vercel-staging-tracking.png`, `vercel-production-gate.png`, `staging-sign-in.png`. Additional deployment/migration/smoke records are retained privately alongside them.
 
 References: [Render free services and expiry](https://render.com/docs/free), [Vercel branch tracking](https://vercel.com/docs/git), [Vercel ignored-build exit codes](https://vercel.com/docs/project-configuration/vercel-json).
+
+
+## Owner-confirmed follow-up — 18 November 2026
+
+This section supersedes the pending owner, DNS, database-choice and production API_URL statuses in the initial record above.
+
+- Owner selected **mcj26017@gmail.com** for fresh Render staging. The existing atomic bootstrap created exactly that active ADMIN with explicit staging-origin membership, mandatory password change, audit/outbox/command evidence. No existing account was copied or reset. All receipt, lot, unit and movement counts remained zero. A cold local Prisma transaction-start attempt failed before beginning; the same saved credential was retained and the retry warmed the connection before the unchanged bootstrap completed.
+- Authenticated smoke through the stable Vercel staging proxy passed: login 200, ADMIN role, mustChangePassword true, HttpOnly/Secure/SameSite Strict cookie, me 200, stock before password change 403, logout 200, revoked-session replay 401. No password was changed automatically, no stock was created and no real email was sent. The employee must complete the password-change screen before operational access.
+- The owner saved the DNS CNAME. Vercel verification returned configuredBy CNAME, the exact recommended target, no conflicts and **misconfigured=false**. This is DNS verification, not a production release. A separate local DNS resolver refused its query; the successful provider verification is the recorded evidence.
+- Owner explicitly chose to **retain the existing Heroku PostgreSQL database for production**. It is separate from Render staging. No extra paid database, data copy, migration, DATABASE_URL switch or historical enrollment is needed or was performed.
+- The unreleased production Vercel project's production-only API_URL was configured to the retained Heroku API after staging isolation and the owner's database decision. It never points to Render. Read-back confirms main tracking, ignored builds, automatic domain assignment false, API_URL present and **zero deployments**. Existing backend runtime/release/mail markers remain unchanged pending the separately approved production cutover.
+- Staging configuration commit 9bb7697b0478de35626c6fb612d56b3c655e8db5 automatically built successfully as deployment dpl_4g4gCKgk9X8xCoV24nV6r3aojfHF, READY with the stable staging alias.
+
+Private handover: .local/environment-split/staging-owner-private.json and staging-owner-handover.txt. These are ignored, contain credentials and must never be staged, logged, uploaded or included in deployment archives. Only non-secret test results are recorded here.
+
+Remaining gates: owner changes the new staging password; production promotion/release authorization for the tested revision; production-only backend mail/public URL/release configuration at that later cutover; no implicit merge into main or production activation. The existing Heroku database and historical accounts/inventory are preserved. No new infrastructure charges were introduced.
+
+Local tooling issue: the disk was full. Removed only the generated Git deployment ZIP/extracted snapshot and generated .next-e2e/cache/webpack cache; preserved source, unrelated dirty files, database backups, credentials and screenshots. Approximately 188 MB was reclaimed at verification, so further local disk cleanup is advisable before additional builds.
