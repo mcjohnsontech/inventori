@@ -34,6 +34,12 @@ test('stock overview separates variants, aggregates supplier/batch stock and lin
  const drawer=page.getByRole('dialog',{name:`${parent.name} · Red`,exact:true});await expect(drawer).toContainText('3 usable');await expect(drawer).toContainText('1 damaged');
  await drawer.getByRole('button',{name:'Close lot details',exact:true}).click();await expect(page.getByLabel('Search inventory',{exact:true})).toHaveValue(product.product.productCode);
  await choose(page,'Availability','out');await expect(table.locator('tbody > tr')).toHaveCount(1);await expect(table).toContainText('Brown');
- await choose(page,'Availability','all');await choose(page,'Supplier source',b.source.id);await expect(table.locator('tbody > tr')).toHaveCount(1);await expect(table).toContainText(sourced.skus[0].fullCode);
+ await choose(page,'Availability','all');
+ const sourceLoaded=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/stock'&&new URL(r.url()).searchParams.get('sourceId')===b.source.id);
+ await choose(page,'Supplier source',b.source.id);await sourceLoaded;
+ await expect(grouped.locator('summary')).toContainText('2 usable');
+ // A source change reloads the sheet, so reopen its product before inspecting rows.
+ if(await grouped.getAttribute('open')===null)await grouped.locator('summary').click();
+ await expect(table.locator('tbody > tr')).toHaveCount(1);await expect(table).toContainText(sourced.skus[0].fullCode);
  await page.goto(`/#inventory/${parent.id}/${firstLot.lotId}`);await expect(drawer).toBeVisible();await page.reload();await expect(drawer).toBeVisible();await expect(drawer).toContainText('3 usable');
 });
