@@ -77,7 +77,17 @@ export function InventoryWorkspace({
   const details = useRef<HTMLElement>(null);
 
   useEffect(() => setProductId(initialProductId), [initialProductId]);
-  useEffect(() => setSelected(initialLotId), [initialLotId]);
+  useEffect(() => {
+    setSelected(initialLotId);
+    if (initialLotId) {
+      // An explicit lot link must resolve even when the previous view filtered
+      // out its supplier or variant. Ordinary drawer opens retain draft filters.
+      setSourceId('');
+      setSearch('');
+      setState('all');
+      setPage(1);
+    }
+  }, [initialLotId]);
 
   useEffect(() => {
     if (selected) {
