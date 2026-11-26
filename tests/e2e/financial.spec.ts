@@ -51,7 +51,9 @@ test('Admin adds the missing cost for a delivery a Manager received, once',async
  await page.getByRole('button',{name:'Sign out'}).click();await login(page);
  await page.getByRole('navigation',{name:'Workspace'}).getByRole('button',{name:'Deliveries',exact:true}).click();
  const list=page.getByRole('list',{name:'Deliveries needing a cost'});
- for(let tries=0;tries<20&&!(await list.getByText(name,{exact:false}).count());tries++){const next=page.getByRole('button',{name:'Next page',exact:true}).first();if(!(await next.isEnabled().catch(()=>false)))break;await next.click();}
+ await expect(list).toBeVisible();
+ const costs=page.getByRole('region',{name:'Missing purchase costs',exact:true});
+ for(let tries=0;tries<20&&!(await list.getByText(name,{exact:false}).count());tries++){const next=costs.getByRole('button',{name:'Next page',exact:true});if(!(await next.isEnabled().catch(()=>false)))break;const loaded=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/financial/missing-costs');await next.click();await loaded;await expect(list).toBeVisible();}
  await list.getByRole('button',{name:`Add cost for ${name} Default ${receipt.batch.publicCode}`,exact:true}).click();
  await page.getByLabel('Cost per item (NGN)',{exact:true}).fill('8.75');await page.getByRole('button',{name:'Review cost',exact:true}).click();
  await expect(page.getByText('can’t be changed later',{exact:false})).toBeVisible();

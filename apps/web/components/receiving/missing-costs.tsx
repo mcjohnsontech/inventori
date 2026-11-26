@@ -22,7 +22,7 @@ function MissingCostsPanel({ onSaved }: { onSaved?: () => void }) {
   const data = read.data;
   return (
     <div className="mb-6">
-      <Panel title={data ? `Needing a cost (${data.total})` : 'Needing a cost'}>
+      <Panel label="Missing purchase costs" title={data ? `Needing a cost (${data.total})` : 'Needing a cost'}>
         <div className="space-y-4">
           <p className="text-sm text-grey-2">These deliveries were received without a cost price. Add what was paid per item. Once saved, a cost can’t be changed.</p>
           {notice ? <SuccessNotice message={notice} /> : null}

@@ -8,6 +8,7 @@ process.env.E2E_PASSWORD ??= randomBytes(24).toString('hex');
 process.env.E2E_NODE_ID = '22222222-2222-4222-8222-222222222222';
 export default defineConfig({
   testDir: 'tests/e2e', fullyParallel: false, workers: 1, timeout: 60000,
+  reporter: process.env.CI ? 'line' : 'list',
   globalSetup: './tests/e2e/setup.ts',
   use: { baseURL: 'http://127.0.0.1:3101', channel: process.env.PLAYWRIGHT_CHANNEL, trace: 'retain-on-failure', screenshot: 'only-on-failure' },
   webServer: [

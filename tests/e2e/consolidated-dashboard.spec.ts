@@ -8,7 +8,7 @@ test('consolidated workspaces preserve role boundaries, legacy routes and modal 
  async function login(role:string){await page.goto('/');await page.getByLabel('Email address').fill(`e2e-${role}@dayari.test`);await page.getByLabel('Password',{exact:true}).fill(process.env.E2E_PASSWORD!);await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page.getByRole('navigation',{name:'Workspace'})).toBeVisible();}
  await login('admin');const nav=page.getByRole('navigation',{name:'Workspace'});
  await expect(nav.getByRole('button')).toHaveCount(9);await expect(nav.getByRole('button',{name:'Usable stock',exact:true})).toHaveCount(0);await expect(page.getByRole('region',{name:'Product availability',exact:true})).toHaveCount(0);
- await nav.getByRole('button',{name:'Stock',exact:true}).click();await expect(page.getByRole('button',{name:'Products',exact:true})).toBeVisible();
+ await nav.getByRole('button',{name:'Stock',exact:true}).click();await expect(page.getByRole('group',{name:'Stock grouping'}).getByRole('button',{name:'Products',exact:true})).toBeVisible();
  await page.getByLabel('Search inventory',{exact:true}).fill('keep-context');await page.getByRole('button',{name:'Stock counts',exact:true}).click();await expect(page.getByRole('heading',{name:'Stock counts'})).toBeVisible();await page.getByRole('button',{name:'All stock',exact:true}).click();await expect(page.getByLabel('Search inventory',{exact:true})).toHaveValue('keep-context');
  await nav.getByRole('button',{name:'Deliveries',exact:true}).click();await expect(page.getByRole('heading',{name:'Deliveries',exact:true})).toBeVisible();
  await openWorkspace(page,'Suppliers & sources');await expect(page.getByRole('heading',{name:'Suppliers'})).toBeVisible();
