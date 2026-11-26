@@ -8,11 +8,16 @@ export const formatDate = (value: string) =>
     timeZone: LAGOS,
   });
 
+/** One date style app-wide: "17 Nov 2026, 08:08". The shop runs on Lagos time. */
 export const formatDateTime = (value: string) =>
-  `${new Date(value).toLocaleString('en-GB', { timeZone: LAGOS })} Lagos`;
+  `${formatDate(value)}, ${formatTime(value)}`;
 
 export const formatTime = (value: string) =>
-  `${new Date(value).toLocaleTimeString('en-GB', { timeZone: LAGOS })} Lagos`;
+  new Date(value).toLocaleTimeString('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: LAGOS,
+  });
 
 export const roleLabel = (role: string) =>
   role === 'ADMIN' ? 'Administrator' : role === 'MANAGER' ? 'Inventory Manager' : 'Production Staff';
@@ -25,3 +30,19 @@ export const isPositive = (quantity: string) => {
     return false;
   }
 };
+
+/** Adds ledger quantity strings without losing precision. */
+export const sumQuantities = (values: string[]) =>
+  values
+    .reduce((total, value) => {
+      try {
+        return total + BigInt(value);
+      } catch {
+        return total;
+      }
+    }, 0n)
+    .toString();
+
+/** "1 variant", "3 variants". */
+export const plural = (count: number, word: string, many = `${word}s`) =>
+  `${count} ${count === 1 ? word : many}`;

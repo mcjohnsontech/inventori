@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import type { QrLookup, UnitIdentityLookup } from '@dayari/contracts';
+import type { PublicIdentityLookup, QrLookup, UnitIdentityLookup } from '@dayari/contracts';
+import { Camera01Icon, Search01Icon } from '@hugeicons/core-free-icons';
 import { UnitIdentityResult } from './unit-identity-result';
 import { UnitTrackingDrawer } from '../unit-tracking-drawer';
 import { useQrPresentation } from '../../lib/qr-presentation';
@@ -16,6 +17,7 @@ import {
   ErrorNotice,
   Field,
   Footnote,
+  Icon,
   Input,
   Page,
   PageHeader,
@@ -25,13 +27,19 @@ import {
   WarningNotice,
   card,
 } from '../ui';
-import { IdentityLookup } from '../identity-lookup';
+import { CodesOnly } from '../../lib/role';
+import { CodeNotFound, IdentityResult, lookupIdentity } from '../identity-lookup';
+
+/** Unit Codes use a readable alphabet without 0, O, 1, I or L. */
+const UNIT_CODE = /^[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{6}$/;
+const NOT_A_CODE =
+  "That doesn't look like a Dayari code. Product codes start with P, lot codes start with L, unit codes are six characters, and QR labels start with DYI:.";
 
 type Source = { id: string; name: string; code: string; originId: string };
 
 export function QrWorkspace({ initialCode = '' }: { initialCode?: string }) {
   const [payload, setPayload] = useState('');
-  const [unitCode, setUnitCode] = useState('');
+  const [identity, setIdentity] = useState<PublicIdentityLookup | null>(null);
   const [tracking, setTracking] = useState('');
   const presentation = useQrPresentation();
   const [prefix, setPrefix] = useState('');
@@ -62,6 +70,7 @@ export function QrWorkspace({ initialCode = '' }: { initialCode?: string }) {
     working.current = false;
     setBusy(false);
     setResult(null);
+    setIdentity(null);
     setError('');
   }
 
@@ -91,6 +100,9 @@ export function QrWorkspace({ initialCode = '' }: { initialCode?: string }) {
       controller.abort();
       requestVersion.current += 1;
       request.current?.abort();
+      // The aborted lookup's finally no longer matches the ticket, so release the
+      // in-flight guard here; otherwise a remount (React dev double-mount) never looks up.
+      working.current = false;
       generation.current += 1;
       stopper.current?.();
       streamRef.current?.getTracks().forEach((track) => track.stop());
@@ -149,6 +161,63 @@ export function QrWorkspace({ initialCode = '' }: { initialCode?: string }) {
     setPayload(framed);
     return resolve({ payload: framed },'qr/resolve','POST','QR_INPUT');
   }
+
+  /** Exact Product/Lot Code lookup; 'missing' lets a P… code fall back to a Unit Code. */
+  async function findIdentity(code: string): Promise<'found' | 'missing' | 'invalid' | 'failed'> {
+    if (working.current) return 'failed';
+    working.current = true;
+    const ticket = ++requestVersion.current;
+    const controller = new AbortController();
+    request.current = controller;
+    setBusy(true);
+    setError('');
+    setResult(null);
+    setIdentity(null);
+    try {
+      const found = await lookupIdentity(code, controller.signal);
+      if (ticket === requestVersion.current && found) setIdentity(found);
+      return found ? 'found' : 'invalid';
+    } catch (failure) {
+      if (failure instanceof CodeNotFound) return 'missing';
+      if (ticket === requestVersion.current && !controller.signal.aborted) setError((failure as Error).message);
+      return 'failed';
+    } finally {
+      if (ticket === requestVersion.current) {
+        working.current = false;
+        setBusy(false);
+      }
+    }
+  }
+
+  /** One input for every printed code: works out which kind it is. */
+  async function find(raw = payload) {
+    if (camera) stopCamera();
+    const text = raw.replace(/(?:\r\n|\r|\n)$/, '').trim();
+    if (!text) return;
+    if (text.startsWith('DYI:') || (prefix && text.startsWith(prefix))) return scan(text);
+    const code = text.toUpperCase().replace(/\s+/g, '');
+    if (/^[PL][A-Z0-9]{5}$/.test(code)) {
+      const outcome = await findIdentity(code);
+      if (outcome === 'found' || outcome === 'failed') return;
+      if (outcome === 'missing' && !UNIT_CODE.test(code)) {
+        setError('Code not found in this shop. Check the printed code and try again.');
+        return;
+      }
+    }
+    if (UNIT_CODE.test(code)) {
+      return resolve({}, 'inventory/units/by-code/' + encodeURIComponent(code), 'GET');
+    }
+    clearLookup();
+    setError(NOT_A_CODE);
+  }
+
+  useEffect(() => {
+    if (!initialCode) return;
+    setPayload(initialCode);
+    void find(initialCode);
+    // Runs once per searched code; the workspace remounts for a new code.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialCode]);
 
   async function startCamera() {
     setError('');
@@ -269,93 +338,71 @@ export function QrWorkspace({ initialCode = '' }: { initialCode?: string }) {
   return (
     <Page>
       <PageHeader
-        eyebrow="Identification only"
-        title="QR lookup"
-        description="Scan a lot QR with a camera or connected scanner, or enter an exact Product / Lot Code. Lookup never issues, reserves or deducts stock."
+        title="Scan & find"
+        description="Scan a label or type any Dayari code. Looking up never changes stock."
       />
 
-      <div className="mt-8 space-y-4">
-        <IdentityLookup initialCode={initialCode} />
-
-        <Panel title="Find an individual item"><form className="flex flex-col gap-3 sm:flex-row sm:items-end" onSubmit={event=>{event.preventDefault();stopCamera();void resolve({},'inventory/units/by-code/'+encodeURIComponent(unitCode.trim().toUpperCase()),'GET');}}><div className="min-w-0 flex-1"><Field label="Individual Unit Code" hint="Exactly six readable characters. Omit 0, O, 1, I and L.">{id=><Input id={id} value={unitCode} maxLength={6} required pattern="[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{6}" autoComplete="off" spellCheck={false} placeholder="A7K2M9" className="font-mono tracking-widest" onChange={event=>{clearLookup();setUnitCode(event.target.value.trim().toUpperCase());}} onPaste={event=>{event.preventDefault();clearLookup();const value=event.clipboardData.getData('text').trim().toUpperCase();if(/^[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{6}$/.test(value))setUnitCode(value);else setError('Paste exactly six Unit Code characters, or use the QR field for a complete payload.');}}/>}</Field></div><Button disabled={busy||unitCode.length!==6}>{busy?'Looking up…':'Find unit'}</Button></form></Panel>
-        <Panel title="Scan an inventory QR" description="Individual-unit DYI:2 and existing lot DYI:1 codes are supported.">
+      <div className="mt-6 space-y-4">
+        <Panel
+          label="Scan & find"
+          title="Scan a label or type a code"
+          description="Works with product codes (P…), lot codes (L…), six-character unit codes and QR labels. Looking up never changes stock."
+        >
           <form
             onSubmit={(event) => {
               event.preventDefault();
-              void scan();
+              void find();
             }}
           >
             <Stack gap="tight">
-              <Field label="Scan or enter QR payload">
+              <Field label="Code or QR label">
                 {(id) => (
-                  <Input
-                    id={id}
-                    autoComplete="off"
-                    maxLength={128}
-                    value={payload}
-                    placeholder="DYI:1:…"
-                    onChange={(event) => {
-                      clearLookup();
-                      setPayload(event.target.value);
-                    }}
-                    onPaste={(event) => {
-                      event.preventDefault();
-                      clearLookup();
-                      setPayload(
-                        event.clipboardData.getData('text').replace(/(?:\r\n|\r|\n)$/, ''),
-                      );
-                    }}
-                  />
+                  <div className="flex flex-col gap-2.5 sm:flex-row">
+                    <Input
+                      id={id}
+                      autoFocus
+                      autoComplete="off"
+                      spellCheck={false}
+                      maxLength={128}
+                      value={payload}
+                      placeholder="P7K2M9, L8M4Q2, A7K2M9 — or scan a label"
+                      className="min-w-0 flex-1 font-mono"
+                      onChange={(event) => {
+                        clearLookup();
+                        setPayload(event.target.value);
+                      }}
+                      onPaste={(event) => {
+                        event.preventDefault();
+                        clearLookup();
+                        setPayload(event.clipboardData.getData('text').replace(/(?:\r\n|\r|\n)$/, ''));
+                      }}
+                    />
+                    <div className="flex shrink-0 gap-2.5">
+                      <Button disabled={busy || !payload.trim()} className="flex-1 sm:flex-none">
+                        <Icon icon={Search01Icon} size={16} />
+                        {busy ? 'Looking up…' : 'Find'}
+                      </Button>
+                      {camera ? (
+                        <Button type="button" variant="secondary" className="flex-1 sm:flex-none" onClick={stopCamera}>
+                          <Icon icon={Camera01Icon} size={16} />
+                          Stop camera
+                        </Button>
+                      ) : (
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          className="flex-1 sm:flex-none"
+                          disabled={busy}
+                          onClick={() => void startCamera()}
+                        >
+                          <Icon icon={Camera01Icon} size={16} />
+                          Use camera
+                        </Button>
+                      )}
+                    </div>
+                  </div>
                 )}
               </Field>
-
-              <Disclosure summary="Scanner framing profile">
-                <div className="mt-3 space-y-2">
-                  <Field label="Known scanner prefix">
-                    {(id) => (
-                      <Select
-                        id={id}
-                        label="Known scanner prefix"
-                        value={prefix || 'none'}
-                        onChange={(value) => {
-                          clearLookup();
-                          setPrefix(value === 'none' ? '' : value);
-                        }}
-                        options={[
-                          { value: 'none', label: 'None (default)' },
-                          {
-                            value: ']Q3',
-                            label: 'AIM ]Q3 — enable only after testing the device',
-                          },
-                        ]}
-                      />
-                    )}
-                  </Field>
-                  <Footnote>
-                    Only the selected known prefix and one terminal CR/LF are removed. Case and
-                    punctuation are preserved. Input is captured only while focused here.
-                  </Footnote>
-                </div>
-              </Disclosure>
-
-              <div className="flex flex-wrap gap-2.5">
-                <Button disabled={busy || !payload}>
-                  {busy ? 'Looking up…' : 'Resolve QR'}
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  disabled={camera || busy}
-                  onClick={() => void startCamera()}
-                >
-                  Use camera
-                </Button>
-                {camera ? (
-                  <Button type="button" variant="secondary" onClick={stopCamera}>
-                    Stop camera
-                  </Button>
-                ) : null}
-              </div>
 
               <video
                 ref={video}
@@ -372,36 +419,38 @@ export function QrWorkspace({ initialCode = '' }: { initialCode?: string }) {
 
         {error ? <ErrorNotice message={error} /> : null}
 
+        {identity ? <IdentityResult result={identity} /> : null}
+
         {result?.payloadVersion===2 ? <div className="space-y-3"><UnitIdentityResult unit={result}/><Button variant="secondary" onClick={()=>setTracking(result.unitId)}>View unit history</Button>
-          {presentation.state!=='idle'?<section aria-label="QR presentation evidence" className="space-y-2 text-sm"><p>{presentation.state==='saved'?'QR presentation recorded. No stock was changed.':presentation.state==='saving'?'Saving QR presentation history…':'Identity resolved; QR presentation history was not confirmed.'}</p>{presentation.state==='error'?<><p className="text-grey-2">{presentation.error}</p><Button variant="secondary" onClick={presentation.retry}>Retry scan record</Button></>:null}</section>:null}
+          {presentation.state!=='idle'?<section aria-label="Scan history" className="space-y-2 text-sm"><p>{presentation.state==='saved'?'QR presentation recorded. No stock was changed.':presentation.state==='saving'?'Saving QR presentation history…':'Identity resolved; QR presentation history was not confirmed.'}</p>{presentation.state==='error'?<><p className="text-grey-2">{presentation.error}</p><Button variant="secondary" onClick={presentation.retry}>Retry scan record</Button></>:null}</section>:null}
         </div> : null}
         {result?.payloadVersion===1 ? (
           <section
-            aria-label="Resolved stock lot"
+            aria-label="Stock found"
             className={cn(card, 'border-brand/15 bg-brand-tint p-6')}
           >
             <p className="font-sans text-xs font-semibold tracking-[0.1em] text-brand uppercase">
-              Resolved stock lot
+              Stock found
             </p>
             <h2 className="mt-2 font-display text-2xl font-semibold tracking-[-0.03em] break-words text-brand-deep">
               {result.productName} · {result.variantName}
             </h2>
 
-            <div className="mt-3 space-y-1.5">
+            <CodesOnly><div className="mt-3 space-y-1.5">
               <Code className="block text-sm text-ink">
-                Product {result.productCode ?? 'Code not assigned'} · Lot{' '}
-                {result.lotCode ?? 'Code not assigned'}
+                Product {result.productCode ?? '—'} · Lot{' '}
+                {result.lotCode ?? '—'}
               </Code>
               <span className="group flex items-start gap-2">
                 <Code className="text-sm text-ink">{result.fullSku}</Code>
-                <CopyButton value={result.fullSku} label="supplier SKU" />
+                <CopyButton value={result.fullSku} label="supplier code" />
               </span>
               <Code className="block text-ink">Batch {result.publicBatchCode}</Code>
-            </div>
+            </div></CodesOnly>
 
             <div className="mt-4 space-y-1">
               <p className="font-display text-lg font-semibold tracking-[-0.03em] text-usable">
-                Usable availability: {result.usable}
+                Usable: {result.usable}
               </p>
               {result.damaged !== undefined ? (
                 <p className="font-sans text-sm tracking-[-0.02em] text-damaged">
@@ -428,87 +477,113 @@ export function QrWorkspace({ initialCode = '' }: { initialCode?: string }) {
           </section>
         ) : null}
 
-        <Panel
-          title="Exact manual lookup"
-          description="No approximate matches or new stock identities are created."
-        >
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              const source = sources.find((item) => item.id === sourceId);
-              if (source) {
-                void resolve(
-                  { sourceId, originId: source.originId, fullSku, publicBatchCode: batch },
-                  'qr/manual',
-                );
-              }
-            }}
-          >
-            <Stack gap="tight">
-              <Field label="Stock source">
-                {(id) => (
-                  <Select
-                    id={id}
-                    required
-                    label="Stock source"
-                    placeholder="Choose source"
-                    value={sourceId}
-                    onChange={(value) => {
-                      clearLookup();
-                      setSourceId(value);
-                    }}
-                    options={sources.map((source) => ({
-                      value: source.id,
-                      label: `${source.name} · ${source.code}`,
-                    }))}
-                  />
-                )}
-              </Field>
-
-              {sourceId ? (
+        <CodesOnly><Disclosure summary="More lookup options">
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Panel
+              title="Scanner settings"
+              description="Only needed if a connected scanner adds extra characters before each code."
+            >
+              <Stack gap="tight">
+                <Field label="Known scanner prefix">
+                  {(id) => (
+                    <Select
+                      id={id}
+                      label="Known scanner prefix"
+                      value={prefix || 'none'}
+                      onChange={(value) => {
+                        clearLookup();
+                        setPrefix(value === 'none' ? '' : value);
+                      }}
+                      options={[
+                        { value: 'none', label: 'None (default)' },
+                        { value: ']Q3', label: 'AIM ]Q3 — enable only after testing the device' },
+                      ]}
+                    />
+                  )}
+                </Field>
                 <Footnote>
-                  <Code tone="muted">
-                    Origin {sources.find((source) => source.id === sourceId)?.originId}
-                  </Code>
+                  Only the selected prefix and one trailing line break are removed. Case and
+                  punctuation are kept as scanned.
                 </Footnote>
-              ) : null}
+              </Stack>
+            </Panel>
 
-              <Field label="Exact saved SKU">
-                {(id) => (
-                  <Input
-                    id={id}
-                    required
-                    maxLength={400}
-                    value={fullSku}
-                    onChange={(event) => {
-                      clearLookup();
-                      setSku(event.target.value);
-                    }}
-                  />
-                )}
-              </Field>
-
-              <Field label="Exact batch code">
-                {(id) => (
-                  <Input
-                    id={id}
-                    required
-                    maxLength={64}
-                    value={batch}
-                    onChange={(event) => {
-                      clearLookup();
-                      setBatch(event.target.value);
-                    }}
-                  />
-                )}
-              </Field>
-
-              <Button disabled={busy}>Look up exact lot</Button>
-            </Stack>
-          </form>
-        </Panel>
+            <Panel
+              title="Look up by supplier code and batch"
+              description="For a label that can't be scanned. Matches must be exact."
+            >
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  const source = sources.find((item) => item.id === sourceId);
+                  if (source) {
+                    void resolve(
+                      { sourceId, originId: source.originId, fullSku, publicBatchCode: batch },
+                      'qr/manual',
+                    );
+                  }
+                }}
+              >
+                <Stack gap="tight">
+                  <Field label="Stock source">
+                    {(id) => (
+                      <Select
+                        id={id}
+                        required
+                        label="Stock source"
+                        placeholder="Choose source"
+                        value={sourceId}
+                        onChange={(value) => {
+                          clearLookup();
+                          setSourceId(value);
+                        }}
+                        options={sources.map((source) => ({
+                          value: source.id,
+                          label: `${source.name} · ${source.code}`,
+                        }))}
+                      />
+                    )}
+                  </Field>
+                  <Field label="Supplier code">
+                    {(id) => (
+                      <Input
+                        id={id}
+                        required
+                        maxLength={400}
+                        value={fullSku}
+                        className="font-mono"
+                        onChange={(event) => {
+                          clearLookup();
+                          setSku(event.target.value);
+                        }}
+                      />
+                    )}
+                  </Field>
+                  <Field label="Exact batch code">
+                    {(id) => (
+                      <Input
+                        id={id}
+                        required
+                        maxLength={64}
+                        value={batch}
+                        className="font-mono"
+                        onChange={(event) => {
+                          clearLookup();
+                          setBatch(event.target.value);
+                        }}
+                      />
+                    )}
+                  </Field>
+                  <Button disabled={busy} className="self-start">
+                    Look up lot
+                  </Button>
+                </Stack>
+              </form>
+            </Panel>
+          </div>
+        </Disclosure></CodesOnly>
       </div>
-      {tracking ? <UnitTrackingDrawer key={tracking} unitId={tracking} onClose={()=>setTracking('')} /> : null}
+      {tracking ? <UnitTrackingDrawer key={tracking} unitId={tracking} onClose={() => setTracking('')} /> : null}
     </Page>
   );
 }

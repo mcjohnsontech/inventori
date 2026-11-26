@@ -10,7 +10,7 @@ async function login(page: Page) {
   const response = page.waitForResponse(r => r.url().endsWith('/api/sessions') && r.request().method() === 'POST');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   expect((await response).status()).toBe(200);
-  await expect(page.getByRole('heading', { name: 'Welcome, Test' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /^Good (morning|afternoon|evening), Test$/ })).toBeVisible();
 }
 async function navigate(page: Page, label: string, expectedStatus=200) {
   const reads:Record<string,string>={'Inventory':'/api/stock','Receiving':'/api/receiving/options','Receipts & activity':'/api/receipts','Labels & printing':'/api/unit-label-config','Account & shop':'/api/account'};
@@ -29,7 +29,7 @@ test('Admin product extension, deep links and complete responsive workspaces use
   await login(page);
   const catalogue = await (await page.request.get('/api/catalogue')).json();
   const supplier = await post(page, 'catalogue/supplier-setups', { supplier: { name: `Harper Studio ${randomUUID().slice(0, 6)}` }, location: { registryId: catalogue.locations.find((row: { code: string }) => row.code === 'LG').id } });
-  const product = await post(page, 'catalogue/product-setups', { sourceId: supplier.source.id, product: { name: `Maple Notebook ${randomUUID().slice(0, 6)}`, description: 'A5 leatherbound notebook · shared product, distinct supplier SKUs' }, variants: ['Red', 'Brown'].map(name => ({ name, suffix: name.toUpperCase(), attributes: [{ attribute: 'Colour', value: name }] })) });
+  const product = await post(page, 'catalogue/product-setups', { sourceId: supplier.source.id, product: { name: `Maple Notebook ${randomUUID().slice(0, 6)}`, description: 'A5 leatherbound notebook · shared product, distinct supplier codes' }, variants: ['Red', 'Brown'].map(name => ({ name, suffix: name.toUpperCase(), attributes: [{ attribute: 'Colour', value: name }] })) });
   const receipt = await post(page, 'receipts', { sourceId: supplier.source.id, deliveredOn: '2020-01-01', lines: [{ skuId: product.skus[0].id, usableQuantity: 3, damagedQuantity: 1, damageReason: 'Cover damaged during arrival' }, { skuId: product.skus[1].id, usableQuantity: 2, damagedQuantity: 0 }] });
   await page.reload();
   await navigate(page, 'Catalogue');
@@ -69,7 +69,7 @@ test('Admin product extension, deep links and complete responsive workspaces use
   for (const sku of product.skus) expect(after.skus.find((row: { id: string }) => row.id === sku.id).fullCode).toBe(sku.fullCode);
   const acceptedAgain = await (await page.request.get(`/api/receipts/${receipt.id}`)).json();
   expect(acceptedAgain).toEqual(receipt);
-  await expect(page.getByRole('heading', { name: 'Green', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Green', exact: true }).first()).toBeVisible();
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.screenshot({ path: 'test-results/admin/product-detail-1440.png' });
   await page.setViewportSize({ width: 320, height: 900 });
@@ -89,7 +89,7 @@ test('Admin product extension, deep links and complete responsive workspaces use
     for (const [key, label] of [['overview', 'Overview'], ['catalogue', 'Catalogue'], ['inventory', 'Inventory'], ['receipts', 'Receipts & activity'], ['qr', 'QR lookup'], ['labels', 'Labels & printing'], ['settings', 'Account & shop']]) {
       await navigate(page, label!);
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-      if (key === 'overview') await expect(page.getByText('Lots containing damaged stock', { exact: true })).toBeVisible();
+      if (key === 'overview') await expect(page.getByText('Total cost of stock left', { exact: true })).toBeVisible();
       if (key === 'catalogue') await page.getByLabel('Search catalogue', { exact: true }).fill(product.product.productCode);
       if (key === 'inventory') {
         await page.getByRole('button',{name:'Delivery lots',exact:true}).click();
@@ -99,11 +99,11 @@ test('Admin product extension, deep links and complete responsive workspaces use
       }
       if (key === 'receipts') {
         await page.getByLabel('Search receipts', { exact: true }).fill(receipt.batch.publicCode);
-        await page.getByRole('button').filter({ hasText: receipt.batch.publicCode }).filter({ hasText: 'View receipt' }).click();
+        await page.getByRole('button', { name: `View receipt ${receipt.batch.publicCode}`, exact: true }).click();
         await expect(page.getByRole('region', { name: 'Accepted receipt', exact: true })).toContainText(receipt.lines[0].lotCode);
       }
       if (key === 'labels') {
-        await page.getByRole('button', {name:'Shared lot labels',exact:true}).click();
+        await page.getByRole('button', {name:'Print shared batch labels (advanced)',exact:true}).click();
         await page.getByLabel('Search label receipts', { exact: true }).fill(receipt.batch.publicCode);
         await choose(page, 'Accepted receipt', receipt.id);
         await expect(page.getByRole('heading', { name: '1. Print queue', exact: true })).toBeVisible();
@@ -115,14 +115,14 @@ test('Admin product extension, deep links and complete responsive workspaces use
     }
   }
   await navigate(page, 'QR lookup');
-  const lookup = page.getByRole('region', { name: 'Exact code lookup' });
-  await lookup.getByLabel('Product or Lot Code', { exact: true }).fill(receipt.lines[0].lotCode);
-  await lookup.getByRole('button', { name: 'Find code', exact: true }).click();
-  await expect(lookup.getByRole('status')).toContainText('Usable availability: 3');
-  await lookup.getByLabel('Product or Lot Code', { exact: true }).fill('invalid');
+  const lookup = page.locator('#workspace-content');
+  await lookup.getByLabel('Code or QR label', { exact: true }).fill(receipt.lines[0].lotCode);
+  await lookup.getByRole('button', { name: 'Find', exact: true }).click();
+  await expect(lookup.getByRole('status')).toContainText('Usable: 3');
+  await lookup.getByLabel('Code or QR label', { exact: true }).fill('invalid');
   await expect(lookup.getByRole('status')).toHaveCount(0);
-  await lookup.getByRole('button', { name: 'Find code', exact: true }).click();
-  await expect(lookup.getByRole('alert')).toContainText('six-character');
+  await lookup.getByRole('button', { name: 'Find', exact: true }).click();
+  await expect(lookup.getByRole('alert')).toContainText('Dayari code');
 });
 
 test('read failures retry safely and changed code input cancels stale results', async ({ page }) => {
@@ -140,7 +140,7 @@ test('read failures retry safely and changed code input cancels stale results', 
   const product = catalogue.products.find((row: { productCode?: string }) => row.productCode);
   expect(product).toBeTruthy();
   await navigate(page, 'QR lookup');
-  const lookup = page.getByRole('region', { name: 'Exact code lookup' });
+  const lookup = page.locator('#workspace-content');
   let release!: () => void;
   let started!: () => void;
   const ready = new Promise<void>(resolve => { started = resolve; });
@@ -149,12 +149,12 @@ test('read failures retry safely and changed code input cancels stale results', 
     const response = await route.fetch(); started(); await held;
     await route.fulfill({ response }).catch(() => {}); // Client cancellation is the expected case.
   });
-  await lookup.getByLabel('Product or Lot Code', { exact: true }).fill(product.productCode);
-  await lookup.getByRole('button', { name: 'Find code', exact: true }).click();
+  await lookup.getByLabel('Code or QR label', { exact: true }).fill(product.productCode);
+  await lookup.getByRole('button', { name: 'Find', exact: true }).click();
   await ready;
-  await lookup.getByLabel('Product or Lot Code', { exact: true }).fill('L23456');
+  await lookup.getByLabel('Code or QR label', { exact: true }).fill('L23456');
   release();
-  await expect(lookup.getByRole('button', { name: 'Find code', exact: true })).toBeEnabled();
+  await expect(lookup.getByRole('button', { name: 'Find', exact: true })).toBeEnabled();
   await expect(lookup.getByRole('status')).toHaveCount(0);
   // Real endpoint denial is still enforced independently of navigation.
   await navigate(page, 'Account & shop');

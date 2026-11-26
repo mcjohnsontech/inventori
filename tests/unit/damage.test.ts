@@ -4,7 +4,7 @@ import { can, damageDraftSchema, damageQuerySchema, damageReportSchema, damageRe
 
 it('preserves approved BAD and Manager-only disposition permissions', () => {
   for (const role of ['ADMIN', 'MANAGER', 'PRODUCTION'] as const) {
-    expect(can(role, 'REPORT_BAD')).toBe(true); expect(can(role, 'REVIEW_DAMAGE')).toBe(role === 'MANAGER');
+    expect(can(role, 'REPORT_BAD')).toBe(true); expect(can(role, 'REVIEW_DAMAGE')).toBe(role !== 'PRODUCTION');
   }
 });
 it('requires exact distinct unit identities and meaningful damage evidence without client state authority', () => {

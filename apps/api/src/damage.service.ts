@@ -2,8 +2,9 @@ import { randomUUID } from 'node:crypto';
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { Prisma, type PrismaClient, type User } from '@prisma/client';
 import { damageQuerySchema, damageReportSchema, damageReviewSchema, damageSelectionSchema, idempotencyKeySchema,
-  type CheckoutItemIdentity, type DamageCandidate, type DamageReportInput, type DamageReviewInput, type DamageView } from '@dayari/contracts';
+  type CheckoutItemIdentity, type DamageCandidate, type DamageReportInput, type DamageReviewInput, type DamageView, LIST_PAGE_SIZE } from '@dayari/contracts';
 import { requireCapability } from './permissions.js';
+import { canDoManagerWork, managerOrAdmin, requireAdminParity } from './admin-parity.js';
 import { canonical, digest } from './security.js';
 
 export type DamageSelection = CheckoutItemIdentity & { state: string; version: bigint; lastEventId: string; receiptId: string;
@@ -18,7 +19,7 @@ export class DamageService {
   }
   async configuration(user: User) {
     await this.allow(user);
-    return { originId: this.originId, limit: 500, canReport: this.mode === 'SHOP', canReview: user.role === 'MANAGER' && this.mode === 'SHOP',
+    return { originId: this.originId, limit: 500, canReport: this.mode === 'SHOP', canReview: this.mode === 'SHOP' && await canDoManagerWork(this.db, user),
       ownIssuedOnly: user.role === 'PRODUCTION', canViewReviews: user.role !== 'PRODUCTION' };
   }
   async selection(tx: Prisma.TransactionClient, user: User, ids: string[]): Promise<DamageSelection[]> {
@@ -62,8 +63,8 @@ export class DamageService {
     return this.db.$transaction(async tx => {
       const [count] = await tx.$queryRaw<{ n: bigint }[]>(Prisma.sql`SELECT count(*) AS n FROM ${root} r WHERE ${filter}`);
       const rows = await tx.$queryRaw(Prisma.sql`SELECT r.id,r."recordedAt",r."unitCount",u.name AS "actorName",${review ? Prisma.sql`r.outcome` : Prisma.sql`r.cause`}
-        FROM ${root} r JOIN "User" u ON u.id=r."actorId" WHERE ${filter} ORDER BY r."recordedAt" DESC,r.id DESC LIMIT 20 OFFSET ${(query.data.page - 1) * 20}`);
-      return { page: query.data.page, pageSize: 20, total: Number(count!.n), rows };
+        FROM ${root} r JOIN "User" u ON u.id=r."actorId" WHERE ${filter} ORDER BY r."recordedAt" DESC,r.id DESC LIMIT ${LIST_PAGE_SIZE} OFFSET ${(query.data.page - 1) * LIST_PAGE_SIZE}`);
+      return { page: query.data.page, pageSize:LIST_PAGE_SIZE, total: Number(count!.n), rows };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
   }
   async get(user: User, input: unknown, review = false): Promise<DamageView> {
@@ -76,11 +77,11 @@ export class DamageService {
     return (await this.db.commandResult.findUniqueOrThrow({ where: { id: root.commandId } })).response as unknown as DamageView;
   }
   async create(user: User, keyInput: unknown, input: unknown, review = false): Promise<DamageView> {
-    await this.allow(user, review); if (review) requireCapability(user, 'REVIEW_DAMAGE');
+    await this.allow(user, review); if (review) { requireCapability(user, 'REVIEW_DAMAGE'); await requireAdminParity(this.db, user); }
     if (this.mode !== 'SHOP') throw new ForbiddenException('Stock commands belong to the shop.');
     const parsed = review ? damageReviewSchema.safeParse(input) : damageReportSchema.safeParse(input), key = idempotencyKeySchema.safeParse(keyInput);
     if (!parsed.success) throw new BadRequestException(parsed.error.issues.map(issue => issue.message).join('. '));
-    if (!key.success) throw new BadRequestException('A valid idempotency key is required.');
+    if (!key.success) throw new BadRequestException('This request is missing its safety key. Refresh the page and try again.');
     const body = parsed.data, badBody = body as DamageReportInput, reviewBody = body as DamageReviewInput;
     const removed = review && ['DISCARDED', 'RETURNED_TO_VENDOR'].includes(reviewBody.outcome), moves = !review || removed;
     const commandType = review ? 'inventory.damage.review' : 'inventory.damage.report', eventType = review ? 'inventory.damage.reviewed' : 'inventory.damage.reported';

@@ -10,6 +10,8 @@ export type Option = { value: string; label: string; disabled?: boolean };
 
 export function Select({
   value,
+  defaultValue,
+  name,
   onChange,
   options,
   placeholder = 'Select',
@@ -20,8 +22,12 @@ export function Select({
   className,
   size = 'default',
 }: {
-  value: string;
-  onChange: (value: string) => void;
+  /** Controlled value; omit and pass defaultValue + name for a plain form field. */
+  value?: string;
+  defaultValue?: string;
+  /** Submits the value with its form under this name. */
+  name?: string;
+  onChange?: (value: string) => void;
   options: Option[];
   placeholder?: string;
   label: string;
@@ -32,15 +38,17 @@ export function Select({
   size?: 'default' | 'compact';
 }) {
   const [portalContainer,setPortalContainer]=useState<HTMLElement>();
+  const [own,setOwn]=useState(defaultValue??'');
+  const current=value??own;
   const setTrigger=useCallback((node:HTMLButtonElement|null)=>{if(node)setPortalContainer(node.closest('dialog')??undefined);},[]);
   return (
-    <RadixSelect.Root value={value} onValueChange={onChange} disabled={disabled} required={required}>
+    <RadixSelect.Root value={current} name={name} onValueChange={(next)=>{setOwn(next);onChange?.(next);}} disabled={disabled} required={required}>
       <RadixSelect.Trigger
         ref={setTrigger}
         id={id}
         aria-label={label}
         // A native select exposes its value; this keeps it assertable.
-        data-value={value}
+        data-value={current}
         className={cn(
           'inline-flex min-w-0 w-full items-center justify-between gap-3 rounded-lg border border-black/13 bg-white font-sans tracking-[-0.02em] text-ink outline-none transition-colors',
           'data-[placeholder]:text-grey-3 hover:border-black/25 focus-visible:border-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand',

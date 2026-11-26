@@ -55,7 +55,7 @@ export function ReceivingWorkspace({
     <Page>
       <PageHeader
         eyebrow="Local stock operations"
-        title="Receiving"
+        title="Deliveries"
         description="Accept one supplier delivery with all its products and variants. Usable and damaged arrivals are recorded separately."
         actions={
           <>
@@ -104,8 +104,8 @@ export function ReceivingWorkspace({
       </div>
 
       <Footnote className="mt-5">
-        Acceptance creates immutable receipt evidence. After a lost response, retry the same
-        unchanged draft; Dayari preserves its submission key.
+        Accepted receipts can't be edited. If the connection drops while saving, retry the same
+        draft; it won't be recorded twice.
       </Footnote>
 
       {open && options.data ? (

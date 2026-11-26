@@ -1,15 +1,16 @@
 import {randomUUID} from 'node:crypto';
 import {BadRequestException,ConflictException,ForbiddenException,NotFoundException,ServiceUnavailableException} from '@nestjs/common';
 import {Prisma,type PrismaClient,type User} from '@prisma/client';
-import {closeDaySchema,closingHistorySchema,idempotencyKeySchema,type ClosingSnapshot,type DailyCloseView,type ClosingIssueView} from '@dayari/contracts';
+import {closeDaySchema,closingHistorySchema,idempotencyKeySchema,type ClosingSnapshot,type DailyCloseView,type ClosingIssueView, LIST_PAGE_SIZE } from '@dayari/contracts';
 import {requireCapability} from './permissions.js';
+import {canDoManagerWork,managerOrAdmin,requireAdminParity} from './admin-parity.js';
 import {canonical,digest} from './security.js';
 const commandType='inventory.day.close',eventType='inventory.day.closed';
 export class ClosingService {
  constructor(readonly db:PrismaClient,readonly originId:string,readonly mode:string){}
  private async allow(user:User,write=false){
   requireCapability(user,'OPERATIONAL_STOCK');
-  if(write&&(user.role!=='MANAGER'||this.mode!=='SHOP'))throw new ForbiddenException('Only the shop Inventory Manager confirms daily closing.');
+  if(write&&(!managerOrAdmin(user.role)||this.mode!=='SHOP'))throw new ForbiddenException('Only a shop Admin or Inventory Manager confirms daily closing.');if(write)await requireAdminParity(this.db,user);
   const [row]=await this.db.$queryRaw<{ready:boolean}[]>`SELECT to_regclass('"DailyClose"') IS NOT NULL AS ready`;
   if(!row?.ready)throw new ServiceUnavailableException('Daily closing requires the separately approved shop database upgrade.');
  }
@@ -18,14 +19,14 @@ export class ClosingService {
   // Keep PostgreSQL microseconds: JS Date truncation could omit count evidence
   // accepted just before the origin lock in the same millisecond.
   const [row]=await tx.$queryRaw<{now:string;today:string;sequence:bigint}[]>`WITH moment AS MATERIALIZED(SELECT clock_timestamp() stamp) SELECT to_char(stamp AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS now,(stamp AT TIME ZONE 'Africa/Lagos')::date::text AS today,"nextSequence" AS sequence FROM "OriginNode" CROSS JOIN moment WHERE id=${this.originId}::uuid`;
-  if(!row||day>row.today)throw new BadRequestException('Future business dates cannot be certified.');return row;
+  if(!row||day>row.today)throw new BadRequestException('You can’t close a day that hasn’t happened yet.');return row;
  }
  private async snapshot(tx:Prisma.TransactionClient,day:string,now:string,sequence:bigint){
   await tx.$executeRawUnsafe("SET LOCAL statement_timeout='8s'");
   const [row]=await tx.$queryRaw<{snapshot:ClosingSnapshot;hash:string}[]>`WITH prepared AS MATERIALIZED(SELECT dayari_closing_snapshot(${this.originId}::uuid,${day}::date,${now}::timestamptz,${sequence}::bigint) AS snapshot) SELECT snapshot,encode(sha256(convert_to(snapshot::text,'UTF8')),'hex') AS hash FROM prepared`;
   return row!;
  }
- async configuration(user:User){await this.allow(user);const row=await this.boundary(this.db,'0001-01-01');return {originId:this.originId,today:row.today,timezone:'Africa/Lagos',canConfirm:user.role==='MANAGER'&&this.mode==='SHOP'};}
+ async configuration(user:User){await this.allow(user);const row=await this.boundary(this.db,'0001-01-01');return {originId:this.originId,today:row.today,timezone:'Africa/Lagos',canConfirm:this.mode==='SHOP'&&await canDoManagerWork(this.db,user)};}
  async preview(user:User,input:unknown){
   await this.allow(user);const day=this.date(input);
   return this.db.$transaction(async tx=>{const b=await this.boundary(tx,day);const prepared=await this.snapshot(tx,day,b.now,b.sequence);const existing=await tx.$queryRaw<{id:string}[]>`SELECT id FROM "DailyClose" WHERE "originId"=${this.originId}::uuid AND "businessDate"=${day}::date`;return {snapshot:prepared.snapshot,existingId:existing[0]?.id??null};},{isolationLevel:Prisma.TransactionIsolationLevel.RepeatableRead,timeout:12000,maxWait:10000});
@@ -33,8 +34,8 @@ export class ClosingService {
  async list(user:User,input:unknown){
   await this.allow(user);const p=closingHistorySchema.safeParse(input);if(!p.success)throw new BadRequestException('Invalid closing page.');
   return this.db.$transaction(async tx=>{const [count]=await tx.$queryRaw<{n:bigint}[]>`SELECT count(*) n FROM "DailyClose" WHERE "originId"=${this.originId}::uuid`;
-   const rows=await tx.$queryRaw<{id:string;businessDate:string;recordedAt:Date;managerName:string;snapshotHash:string}[]>`SELECT c.id,c."businessDate"::text,c."recordedAt",u.name AS "managerName",c."snapshotHash" FROM "DailyClose" c JOIN "User" u ON u.id=c."actorId" WHERE c."originId"=${this.originId}::uuid ORDER BY c."businessDate" DESC,c.id LIMIT 20 OFFSET ${(p.data.page-1)*20}`;
-   return {page:p.data.page,pageSize:20,total:Number(count!.n),rows:rows.map(r=>({...r,recordedAt:r.recordedAt.toISOString()}))};
+   const rows=await tx.$queryRaw<{id:string;businessDate:string;recordedAt:Date;managerName:string;snapshotHash:string}[]>`SELECT c.id,c."businessDate"::text,c."recordedAt",u.name AS "managerName",c."snapshotHash" FROM "DailyClose" c JOIN "User" u ON u.id=c."actorId" WHERE c."originId"=${this.originId}::uuid ORDER BY c."businessDate" DESC,c.id LIMIT ${LIST_PAGE_SIZE} OFFSET ${(p.data.page - 1) * LIST_PAGE_SIZE}`;
+   return {page:p.data.page,pageSize:LIST_PAGE_SIZE,total:Number(count!.n),rows:rows.map(r=>({...r,recordedAt:r.recordedAt.toISOString()}))};
   },{isolationLevel:Prisma.TransactionIsolationLevel.RepeatableRead});
  }
  async get(user:User,input:unknown){
@@ -49,15 +50,15 @@ export class ClosingService {
  }
  async issue(user:User,kind:string,input:string):Promise<ClosingIssueView>{
   await this.allow(user);const [rawId,state]=input.split(':');const id=idempotencyKeySchema.safeParse(rawId);
-  if(!id.success||!['MISSING_REASON','COUNT_REQUIRED','COUNT_MISMATCH','CERTIFICATION_APPROVAL','BALANCE_MISMATCH','MOVEMENT_EVIDENCE'].includes(kind)||input.split(':').length>2||(kind==='BALANCE_MISMATCH'?!state||!['U','P','D','C','X'].includes(state):!!state))throw new BadRequestException('Invalid closing evidence reference.');
+  if(!id.success||!['MISSING_REASON','COUNT_REQUIRED','COUNT_MISMATCH','CERTIFICATION_APPROVAL','BALANCE_MISMATCH','MOVEMENT_EVIDENCE'].includes(kind)||input.split(':').length>2||(kind==='BALANCE_MISMATCH'?!state||!['U','P','D','C','X'].includes(state):!!state))throw new BadRequestException('That end-of-day issue could not be found.');
   const facts:ClosingIssueView['facts']=[];let recordId=id.data,title='',workspace:ClosingIssueView['workspace']='inventory',unitCode:string|undefined;
   if(kind==='MISSING_REASON'){
    const [r]=await this.db.$queryRaw<{code:string;employee:string;acceptedAt:Date;checkoutId:string;orderReference:string|null;resolved:string|null}[]>`SELECT cl.snapshot->>'unitCode' code,u.name employee,c."acceptedAt",c.id AS "checkoutId",cl."orderReference",r."reasonCode" resolved FROM "CheckoutException" e JOIN "CheckoutLine" cl ON cl.id=e."lineId" JOIN "Checkout" c ON c.id=cl."checkoutId" JOIN "User" u ON u.id=c."actorId" LEFT JOIN "CheckoutReasonResolution" x ON x."exceptionId"=e.id LEFT JOIN "ReasonReconciliation" r ON r.id=x."reconciliationId" WHERE e.id=${id.data}::uuid AND e."originId"=${this.originId}::uuid`;
-   if(!r)throw new NotFoundException('Reason evidence not available.');title='Checkout reason obligation';workspace='reconciliation';unitCode=r.code;
+   if(!r)throw new NotFoundException('This reason could not be found.');title='Checkout reason obligation';workspace='reconciliation';unitCode=r.code;
    facts.push({label:'Unit Code',value:r.code},{label:'Checkout',value:r.checkoutId},{label:'Employee',value:r.employee},{label:'Accepted',value:r.acceptedAt.toISOString()},{label:'Order ID',value:r.orderReference??'No Order ID'},{label:'Original reason',value:'Reason not provided'},{label:'Current resolution',value:r.resolved??'Unresolved'});
   }else if(kind==='COUNT_REQUIRED'||kind==='COUNT_MISMATCH'){
    const [r]=await this.db.$queryRaw<{id:string;purpose:string;lotId:string;state:string;status:string|null;quantity:string|null;evidence:string|null;explanation:string|null}[]>(Prisma.sql`SELECT s.id,s.purpose,s."lotId",s.state,latest.status,latest."observedQuantity"::text quantity,latest.evidence,latest.explanation FROM "CountSession" s LEFT JOIN LATERAL(SELECT r.* FROM "CountAttempt" a LEFT JOIN "CountResult" r ON r."attemptId"=a.id WHERE a."sessionId"=s.id ORDER BY a."recordedAt" DESC,a.id DESC LIMIT 1) latest ON true WHERE s."originId"=${this.originId}::uuid AND ${kind==='COUNT_REQUIRED'?Prisma.sql`s.id=${id.data}::uuid`:Prisma.sql`EXISTS(SELECT 1 FROM "CountAttempt" a JOIN "CountResult" r ON r."attemptId"=a.id WHERE a."sessionId"=s.id AND r.id=${id.data}::uuid)`}`);
-   if(!r)throw new NotFoundException('Count evidence not available.');recordId=r.id;title='Required physical count evidence';workspace='counts';facts.push({label:'Count session',value:r.id},{label:'Lot',value:r.lotId},{label:'State',value:r.state},{label:'Purpose',value:r.purpose},{label:'Latest recorded result',value:r.status??'Incomplete'},{label:'Latest observed quantity',value:r.quantity??'Not recorded'},{label:'Evidence',value:r.evidence??'Not recorded'},{label:'Explanation',value:r.explanation??'Not recorded'});
+   if(!r)throw new NotFoundException('This count could not be found.');recordId=r.id;title='Required physical count evidence';workspace='counts';facts.push({label:'Count session',value:r.id},{label:'Lot',value:r.lotId},{label:'State',value:r.state},{label:'Purpose',value:r.purpose},{label:'Latest recorded result',value:r.status??'Incomplete'},{label:'Latest observed quantity',value:r.quantity??'Not recorded'},{label:'Evidence',value:r.evidence??'Not recorded'},{label:'Explanation',value:r.explanation??'Not recorded'});
   }else if(kind==='CERTIFICATION_APPROVAL'){
    const [r]=await this.db.$queryRaw<{kind:string;status:string;reason:string;evidence:string}[]>`SELECT kind,status,reason,evidence FROM "AuthorizationRequest" WHERE id=${id.data}::uuid AND "originId"=${this.originId}::uuid`;
    if(!r)throw new NotFoundException('Request not available.');title='Pending certification authorization';workspace='requests';facts.push(...Object.entries(r).map(([label,value])=>({label,value})),{label:'Execution',value:'Deferred cloud authorization. No local approval or stock adjustment is available.'});
@@ -66,17 +67,17 @@ export class ClosingService {
    if(!r)throw new NotFoundException('Movement not available.');title='Accepted movement evidence';workspace='reports';facts.push({label:'Transaction',value:id.data},{label:'Type',value:r.type},{label:'Recorded',value:r.recordedAt.toISOString()},{label:'Acceptance sequence',value:r.originSequence.toString()},{label:'Action',value:'Investigate the incomplete evidence. Closing has no override.'});
   }else{
    const [r]=await this.db.$queryRaw<{fullSku:string;ledger:string;projection:string}[]>`SELECT sku."fullCode" AS "fullSku",COALESCE((SELECT sum(CASE WHEN m."toState"=${state!} THEN m.quantity WHEN m."fromState"=${state!} THEN -m.quantity ELSE 0 END) FROM "StockMovement" m WHERE m."lotId"=l.id),0)::text ledger,COALESCE((SELECT quantity FROM "StockBalance" WHERE "lotId"=l.id AND "StockBalance".state=${state!}),0)::text projection FROM "StockLot" l JOIN "SupplierVariantSku" sku ON sku.id=l."skuId" WHERE l.id=${id.data}::uuid AND l."originId"=${this.originId}::uuid`;
-   if(!r)throw new NotFoundException('Lot evidence not available.');title='Stock-to-ledger discrepancy';facts.push({label:'Lot',value:id.data},{label:'SKU',value:r.fullSku},{label:'State',value:state!},{label:'Current ledger quantity',value:r.ledger},{label:'Current projection quantity',value:r.projection});
+   if(!r)throw new NotFoundException('This lot could not be found.');title='Stock-to-ledger discrepancy';facts.push({label:'Lot',value:id.data},{label:'SKU',value:r.fullSku},{label:'State',value:state!},{label:'Current ledger quantity',value:r.ledger},{label:'Current projection quantity',value:r.projection});
   }
   return {kind,id:input,recordId,title,workspace,facts,...(unitCode?{unitCode}:{})};
  }
  async confirm(user:User,keyInput:unknown,input:unknown):Promise<DailyCloseView>{
-  await this.allow(user,true);const day=this.date(input),key=idempotencyKeySchema.safeParse(keyInput);if(!key.success)throw new BadRequestException('A valid idempotency key is required.');
+  await this.allow(user,true);const day=this.date(input),key=idempotencyKeySchema.safeParse(keyInput);if(!key.success)throw new BadRequestException('This request is missing its safety key. Refresh the page and try again.');
   const hash=digest(canonical({businessDate:day}));
   for(let attempt=0;;attempt++)try{return await this.db.$transaction(async tx=>{
    const [origin]=await tx.$queryRaw<{mode:string}[]>`SELECT mode FROM "OriginNode" WHERE id=${this.originId}::uuid FOR UPDATE`;if(origin?.mode!=='SHOP')throw new ForbiddenException();
    await tx.$queryRaw`SELECT id FROM "User" WHERE id=${user.id}::uuid FOR SHARE`;const actor=await tx.user.findUniqueOrThrow({where:{id:user.id}});requireCapability(actor,'OPERATIONAL_STOCK');
-   if(actor.role!=='MANAGER'||actor.authVersion!==user.authVersion||!await tx.shopMembership.findUnique({where:{userId_originId:{userId:actor.id,originId:this.originId}}}))throw new ForbiddenException('Account or shop access changed.');
+   if(!managerOrAdmin(actor.role)||actor.role!==user.role||actor.authVersion!==user.authVersion||!await tx.shopMembership.findUnique({where:{userId_originId:{userId:actor.id,originId:this.originId}}}))throw new ForbiddenException('Account or shop access changed.');
    const prior=await tx.commandResult.findUnique({where:{originId_actorId_commandType_key:{originId:this.originId,actorId:actor.id,commandType,key:key.data}}});
    if(prior){if(prior.requestHash!==hash)throw new ConflictException('Idempotency key reused for a different closing.');return prior.response as unknown as DailyCloseView;}
    const existing=await tx.$queryRaw<{id:string}[]>`SELECT id FROM "DailyClose" WHERE "originId"=${this.originId}::uuid AND "businessDate"=${day}::date`;

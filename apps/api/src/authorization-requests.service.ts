@@ -2,8 +2,9 @@ import { randomUUID } from 'node:crypto';
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { Prisma, type PrismaClient, type User } from '@prisma/client';
 import { authorizationHistoryQuerySchema, authorizationRequestSchema, authorizationSelectionSchema, idempotencyKeySchema,
-  type AuthorizationPreview, type AuthorizationRequestView, type CorrectionTarget, type DamageCandidate, type RecoveryRequestTarget } from '@dayari/contracts';
+  type AuthorizationPreview, type AuthorizationRequestView, type CorrectionTarget, type DamageCandidate, type RecoveryRequestTarget, LIST_PAGE_SIZE } from '@dayari/contracts';
 import { requireCapability } from './permissions.js';
+import { canDoManagerWork, managerOrAdmin, requireAdminParity } from './admin-parity.js';
 import { canonical, digest } from './security.js';
 import { DamageService, type DamageSelection } from './damage.service.js';
 
@@ -19,7 +20,8 @@ export class AuthorizationRequestsService {
   }
   async configuration(user: User) {
     await this.allow(user);
-    return { originId: this.originId, limit: 500, canSubmit: user.role === 'MANAGER' && this.mode === 'SHOP', approvalDelivery: 'DEFERRED' as const, executionEnabled: false };
+    return { originId: this.originId, limit: 500, canSubmit: this.mode === 'SHOP' && await canDoManagerWork(this.db, user), approvalDelivery: 'DEFERRED' as const, executionEnabled: false,
+      canDecide: this.mode === 'SHOP' && user.role === 'ADMIN' && Boolean((await this.db.$queryRaw<{ ready: boolean }[]>`SELECT to_regclass('"AuthorizationDecision"') IS NOT NULL AS ready`)[0]?.ready) };
   }
   private candidate(row: DamageSelection): RecoveryRequestTarget {
     return { unit: this.damage.identity(row), state: row.state as DamageCandidate['state'], checkoutId: row.checkoutId, checkoutLineId: row.checkoutLineId,
@@ -63,17 +65,21 @@ export class AuthorizationRequestsService {
     const filter = Prisma.sql`r."originId"=${this.originId}::uuid ${query.data.kind ? Prisma.sql`AND r.kind=${query.data.kind}` : Prisma.empty}`;
     return this.db.$transaction(async tx => {
       const [count] = await tx.$queryRaw<{ n: bigint }[]>(Prisma.sql`SELECT count(*) AS n FROM "AuthorizationRequest" r WHERE ${filter}`);
-      const rows = await tx.$queryRaw(Prisma.sql`SELECT r.id,r.kind,r.status,r."recordedAt",r."unitCount",r."requestedDelta"::text AS "requestedDelta",u.name AS "managerName"
-        FROM "AuthorizationRequest" r JOIN "User" u ON u.id=r."actorId" WHERE ${filter} ORDER BY r."recordedAt" DESC,r.id DESC LIMIT 20 OFFSET ${(query.data.page - 1) * 20}`);
-      return { page: query.data.page, pageSize: 20, total: Number(count!.n), rows };
+      const [decisions] = await tx.$queryRaw<{ ready: boolean }[]>`SELECT to_regclass('"AuthorizationDecision"') IS NOT NULL AS ready`;
+      const decision = decisions?.ready
+        ? Prisma.sql`(SELECT d.outcome FROM "AuthorizationDecision" d WHERE d."requestId"=r.id) AS decision,(SELECT a.name FROM "AuthorizationDecision" d JOIN "User" a ON a.id=d."actorId" WHERE d."requestId"=r.id) AS "decidedBy"`
+        : Prisma.sql`NULL::text AS decision,NULL::text AS "decidedBy"`;
+      const rows = await tx.$queryRaw(Prisma.sql`SELECT r.id,r.kind,r.status,r."recordedAt",r."unitCount",r."requestedDelta"::text AS "requestedDelta",u.name AS "managerName",r."actorId" AS "requestedById",${decision}
+        FROM "AuthorizationRequest" r JOIN "User" u ON u.id=r."actorId" WHERE ${filter} ORDER BY r."recordedAt" DESC,r.id DESC LIMIT ${LIST_PAGE_SIZE} OFFSET ${(query.data.page - 1) * LIST_PAGE_SIZE}`);
+      return { page: query.data.page, pageSize:LIST_PAGE_SIZE, total: Number(count!.n), rows };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
   }
   async create(user: User, keyInput: unknown, input: unknown): Promise<AuthorizationRequestView> {
-    await this.allow(user); requireCapability(user, 'REQUEST_STOCK_AUTHORIZATION');
+    await this.allow(user); requireCapability(user, 'REQUEST_STOCK_AUTHORIZATION'); await requireAdminParity(this.db, user);
     if (this.mode !== 'SHOP') throw new ForbiddenException('Requests are recorded at the shop.');
     const parsed = authorizationRequestSchema.safeParse(input), key = idempotencyKeySchema.safeParse(keyInput);
     if (!parsed.success) throw new BadRequestException(parsed.error.issues.map(issue => issue.message).join('. '));
-    if (!key.success) throw new BadRequestException('A valid idempotency key is required.');
+    if (!key.success) throw new BadRequestException('This request is missing its safety key. Refresh the page and try again.');
     const body = parsed.data, requestHash = digest(canonical(body)), commandType = 'inventory.authorization.request', eventType = 'inventory.authorization.requested';
     for (let attempt = 0; ; attempt++) try {
       return await this.db.$transaction(async tx => {
@@ -83,7 +89,7 @@ export class AuthorizationRequestsService {
         const actor = await tx.user.findUniqueOrThrow({ where: { id: user.id } }); requireCapability(actor, 'REQUEST_STOCK_AUTHORIZATION');
         if (actor.authVersion !== user.authVersion || !await tx.shopMembership.findUnique({ where: { userId_originId: { userId: actor.id, originId: this.originId } } })) throw new ForbiddenException('Session or shop access changed.');
         const prior = await tx.commandResult.findUnique({ where: { originId_actorId_commandType_key: { originId: this.originId, actorId: actor.id, commandType, key: key.data } } });
-        if (prior) { if (prior.requestHash !== requestHash) throw new ConflictException('Idempotency key reused with different request evidence.'); return prior.response as unknown as AuthorizationRequestView; }
+        if (prior) { if (prior.requestHash !== requestHash) throw new ConflictException('This request was already sent with different details. Refresh the page and try again.'); return prior.response as unknown as AuthorizationRequestView; }
         if (body.kind === 'RECOVERY') {
           const ids = Prisma.join(body.unitIds.map(id => Prisma.sql`${id}::uuid`));
           await tx.$queryRaw(Prisma.sql`SELECT id FROM "StockUnit" WHERE "originId"=${this.originId}::uuid AND id IN (${ids}) ORDER BY id FOR UPDATE`);
@@ -97,7 +103,7 @@ export class AuthorizationRequestsService {
         const observed = body.kind === 'CORRECTION' ? BigInt(body.observedQuantity) : null;
         if (target && body.kind === 'CORRECTION' && (target.ledgerQuantity !== body.reviewedLedgerQuantity || target.projectionQuantity !== body.reviewedProjectionQuantity))
           throw new ConflictException('Stock quantities changed since review. Refresh the preview and review this request again. Stock has not changed.');
-        if (target && observed === BigInt(target.ledgerQuantity) && target.projectionQuantity === target.ledgerQuantity) throw new BadRequestException('Observed quantity agrees with the ledger and projection. No correction is requested.');
+        if (target && observed === BigInt(target.ledgerQuantity) && target.projectionQuantity === target.ledgerQuantity) throw new BadRequestException('The count matches the stock records, so there is nothing to correct.');
         const id = randomUUID(), commandId = randomUUID(), now = new Date(), members = rows.map(row => ({ id: randomUUID(), unitId: row.unitId }));
         const payload = { input: body, preview, members }, canonicalEvidence = canonical(payload), evidenceHash = digest(canonicalEvidence);
         await tx.authorizationRequest.create({ data: { id, originId: this.originId, actorId: actor.id, actorRole: actor.role, commandId, recordedAt: now,

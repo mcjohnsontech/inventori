@@ -5,7 +5,7 @@ import { useState } from 'react';
 import type { AcceptedReceipt, OperationalStock } from '@dayari/contracts';
 
 import { useApiRead } from '../../lib/api';
-import { formatDateTime } from '../../lib/format';
+import { formatDate, formatDateTime } from '../../lib/format';
 import {
   Badge,
   Button,
@@ -41,7 +41,7 @@ export function ReceiptDetails({
   const columns: Column<(typeof receipt.lines)[number]>[] = [
     {
       key: 'product',
-      label: 'Product / saved SKU',
+      label: 'Product / supplier code',
       wide: true,
       cell: (line) => (
         <>
@@ -50,12 +50,12 @@ export function ReceiptDetails({
           </span>
           <span className="mt-1 flex items-start gap-2">
             <Code>{line.fullCode}</Code>
-            <CopyButton value={line.fullCode} label="saved SKU" />
+            <CopyButton value={line.fullCode} label="supplier code" />
           </span>
           <span className="mt-1 block">
             <Code tone="brand">
-              Product {line.productCode ?? 'Code not assigned'} · Lot{' '}
-              {line.lotCode ?? 'Code not assigned'}
+              Product {line.productCode ?? '—'} · Lot{' '}
+              {line.lotCode ?? '—'}
             </Code>
           </span>
           {onStock ? (
@@ -86,6 +86,7 @@ export function ReceiptDetails({
     {
       key: 'cost',
       label: 'Original unit cost',
+      moneyOnly: true,
       cell: (line) => <span>{money(line.purchaseCost?.amount ?? null)}{line.purchaseCost?.zeroReason ? <span className="block text-xs">{line.purchaseCost.zeroReason}</span> : null}</span>,
     },
     {
@@ -105,7 +106,7 @@ export function ReceiptDetails({
       >
         <Stack gap="tight">
           <Footnote>
-            Delivered {receipt.batch.deliveredOn} · Accepted{' '}
+            Delivered {formatDate(receipt.batch.deliveredOn)} · Accepted{' '}
             {formatDateTime(receipt.batch.acceptedAt)}
           </Footnote>
 
@@ -118,7 +119,7 @@ export function ReceiptDetails({
 
           <Totals {...receipt.totals} />
 
-          <Disclosure summary="Acceptance evidence" className="border-t border-black/[0.06] pt-4">
+          <Disclosure summary="Delivery record" className="border-t border-black/[0.06] pt-4">
             <Footnote className="mt-3">
               <Code tone="muted" className="block">
                 Origin {receipt.batch.originId}
@@ -132,7 +133,7 @@ export function ReceiptDetails({
       </Panel>
 
       {receipt.serialization ? <Panel title="Individual physical units" action={<Badge>{receipt.serialization.unitCount} unique units</Badge>}>
-        <Disclosure summary="View received Unit Codes" onOpen={() => setUnitsOpen(true)}>
+        <Disclosure summary="View item codes" onOpen={() => setUnitsOpen(true)}>
           {unitsOpen ? <ReceivedUnits key={receipt.id} receiptId={receipt.id} /> : null}
         </Disclosure>
       </Panel> : null}
@@ -150,7 +151,7 @@ export function ReceiptDetails({
           rowKey={(line) => line.id}
           emptyMessage="This receipt has no lines."
         />}</PagedItems>
-        <Footnote className="px-5 py-4">Accepted history is immutable.</Footnote>
+        <Footnote className="px-5 py-4">Accepted receipts can't be edited.</Footnote>
       </Panel>
 
       <Panel level={3} label="Accepted batch balances" title="Current balances in this batch">
@@ -159,10 +160,10 @@ export function ReceiptDetails({
         ) : stock.error ? (
           <ErrorNotice message={stock.error} onRetry={stock.refresh} />
         ) : (
-          <PagedItems items={(stock.data?.lots ?? [])} size={10}>{pageItems => <ul className="space-y-2.5">{pageItems.map((lot) => (
+          <PagedItems items={(stock.data?.lots ?? [])}>{pageItems => <ul className="space-y-2.5">{pageItems.map((lot) => (
               <li key={lot.lotId} className="group flex flex-wrap items-center gap-2">
                 <Code>{lot.fullCode}</Code>
-                <CopyButton value={lot.fullCode} label="supplier SKU" />
+                <CopyButton value={lot.fullCode} label="supplier code" />
                 <Badge tone="usable">{lot.usable} usable</Badge>
                 <Badge tone="damaged">{lot.damaged} damaged</Badge>
               </li>

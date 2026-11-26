@@ -25,13 +25,13 @@ test('Manager records pending recovery/correction evidence with retry, while Adm
   const unit = (await get(`receipts/${receipt.id}/units`)).units.find((row: any) => row.state === 'D');
   await page.getByRole('button', { name: 'Sign out', exact: true }).click(); await login('e2e-manager@dayari.test');
   await openWorkspace(page, 'Recovery & corrections');await page.getByRole('button',{name:'New recovery / correction request',exact:true}).click();
-  await page.getByLabel('Recovery Unit Code or individual QR', { exact: true }).fill(unit.unitCode); await page.getByRole('button', { name: 'Add unit', exact: true }).click();
+  await page.getByLabel('Item code or QR label', { exact: true }).fill(unit.unitCode); await page.getByRole('button', { name: 'Add unit', exact: true }).click();
   await expect(page.getByRole('button', { name: `Remove ${unit.unitCode}`, exact: true })).toBeVisible();
   await page.getByLabel('Request explanation', { exact: true }).fill('Inspect repaired cover for possible recovery');
-  await page.getByLabel('Supporting evidence', { exact: true }).fill('Original damaged intake and repair observations recorded');
+  await page.getByLabel('Supporting notes', { exact: true }).fill('Original damaged intake and repair observations recorded');
   await page.getByRole('button', { name: 'Review request', exact: true }).click(); await page.getByRole('button', { name: 'Back to request', exact: true }).click();
   await expect(page.getByLabel('Request explanation', { exact: true })).toHaveValue('Inspect repaired cover for possible recovery');
-  page.once('dialog', dialog => dialog.dismiss()); await page.getByRole('button', { name: 'Discard request draft', exact: true }).click();
+  await page.getByRole('button', { name: 'Discard request draft', exact: true }).click();await page.getByRole('button',{name:'Keep editing',exact:true}).click();
   const restored = page.waitForResponse(r => new URL(r.url()).pathname === '/api/authorization-requests/preview' && r.request().method() === 'POST'); await page.reload(); expect((await restored).status()).toBe(200);
   await page.getByRole('button', { name: 'Review request', exact: true }).click();
   let lost = false; const keys: string[] = [];
@@ -41,7 +41,7 @@ test('Manager records pending recovery/correction evidence with retry, while Adm
   });
   await page.getByRole('button', { name: 'Record pending request', exact: true }).click(); await expect(page.getByRole('button', { name: 'Retry saved pending request', exact: true })).toBeVisible();
   await page.reload(); await page.getByRole('button', { name: 'Retry saved pending request', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Request recorded — pending authorization', exact: true })).toBeFocused(); expect(keys).toHaveLength(2); expect(keys[1]).toBe(keys[0]);
+  await expect(page.getByRole('heading', { name: 'Request details', exact: true })).toBeFocused(); expect(keys).toHaveLength(2); expect(keys[1]).toBe(keys[0]);
   expect((await get(`stock?batchId=${receipt.batch.id}`)).lots).toEqual(stockBefore);
   await page.unroute('**/api/authorization-requests');
   await page.getByRole('button', { name: 'Start another request', exact: true }).click(); await choose(page, 'New request kind', 'CORRECTION');
@@ -49,7 +49,7 @@ test('Manager records pending recovery/correction evidence with retry, while Adm
   await page.getByRole('button', { name: 'Choose lot', exact: true }).click();
   await page.getByLabel('Reported observed quantity', { exact: true }).fill('2');
   await page.getByLabel('Request explanation', { exact: true }).fill('One item was not found during shelf observation');
-  await page.getByLabel('Supporting evidence', { exact: true }).fill('Observed two usable items against the recorded three; investigation remains open');
+  await page.getByLabel('Supporting notes', { exact: true }).fill('Observed two usable items against the recorded three; investigation remains open');
   await page.getByRole('button', { name: 'Review request', exact: true }).click();
   await expect(page.getByText('Reviewed ledger 3 · projection 3 · reported observation 2', { exact: true })).toBeVisible();
   await mkdir('test-results/consolidation/completion/milestone-7', { recursive: true });
@@ -60,16 +60,25 @@ test('Manager records pending recovery/correction evidence with retry, while Adm
   await page.setViewportSize({ width: 1440, height: 1000 });
   const accepted = page.waitForResponse(r => new URL(r.url()).pathname === '/api/authorization-requests' && r.request().method() === 'POST');
   await page.getByRole('button', { name: 'Record pending request', exact: true }).click(); const response = await accepted; expect(response.status()).toBe(201); const result = await response.json();
-  await expect(page.getByRole('heading', { name: 'Request recorded — pending authorization', exact: true })).toBeFocused();
+  await expect(page.getByRole('heading', { name: 'Request details', exact: true })).toBeFocused();
   expect(result).toMatchObject({ requestedDelta: '-1', observedQuantity: '2', stockChanged: false, status: 'PENDING_CLOUD_AUTHORIZATION' });
   expect((await get(`stock?batchId=${receipt.batch.id}`)).lots).toEqual(stockBefore); expect((await get(`receipts/${receipt.id}/units`)).total).toBe(5);
   await page.evaluate(() => window.scrollTo(0, 0)); await page.screenshot({ path: 'test-results/consolidation/completion/milestone-7/pending-request-accepted-1440.png', fullPage: true });
   await page.getByRole('button', { name: 'Sign out', exact: true }).click(); await login('e2e-admin@dayari.test');
   await openWorkspace(page, 'Recovery & corrections');
-  await expect(page.getByLabel('New request kind', { exact: true })).toHaveCount(0); await expect(page.getByRole('button', { name: /approve|execute|authorize/i })).toHaveCount(0);
+  // Owner decision 24 Nov 2026: Admin can do everything a Manager can, including submitting requests.
+  await expect(page.getByLabel('New request kind', { exact: true })).toHaveCount(1); await expect(page.getByRole('button', { name: /approve|execute|authorize/i })).toHaveCount(0);
   await choose(page, 'Request type', 'CORRECTION'); await page.getByRole('button', { name: 'View request', exact: true }).first().click();
-  await expect(page.getByRole('dialog', { name: 'Pending request evidence', exact: true })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Request', exact: true })).toBeVisible();
   await expect(page.getByRole('dialog').getByText('Requested difference — not applied', { exact: true })).toBeVisible();
+  // Owner decisions 24 Nov 2026: an Admin approves a Manager's shortfall correction at the shop by ticking the missing item.
+  const drawer = page.getByRole('dialog', { name: 'Request', exact: true });
+  await drawer.getByRole('button', { name: 'Approve', exact: true }).click();
+  await drawer.getByRole('checkbox').first().check();
+  await drawer.getByLabel('Reason for your decision', { exact: true }).fill('One notebook is missing from the shelf');
+  const decided = page.waitForResponse(r => /\/api\/authorization-requests\/[0-9a-f-]{36}\/decision$/.test(new URL(r.url()).pathname) && r.request().method() === 'POST');
+  await drawer.getByRole('button', { name: 'Confirm: approve', exact: true }).click(); expect((await decided).status()).toBe(201);
+  await expect(drawer.getByText('Approved', { exact: true })).toBeVisible(); await expect(drawer.getByText('1 item marked as missing and removed:', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Close request details', exact: true }).click();
   await page.getByRole('button', { name: 'Sign out', exact: true }).click(); await login('e2e-production@dayari.test');
   await expect(page.getByRole('button', { name: 'Recovery & corrections', exact: true })).toHaveCount(0); expect((await page.request.get('/api/authorization-requests')).status()).toBe(403);

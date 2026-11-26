@@ -2,6 +2,7 @@
 import type { ReactNode } from 'react';
 
 import { cn } from '../../lib/cn';
+import { ConfirmHost } from '../ui/confirm';
 import { TooltipProvider } from '../ui/tooltip';
 import { Sidebar } from './sidebar';
 import { TopBar } from './top-bar';
@@ -21,7 +22,7 @@ export function AppShell({
   available: Workspace[];
   account: { name: string; role: string };
   busy: boolean;
-  onNavigate: (workspace: Workspace) => void;
+  onNavigate: (workspace: Workspace, id?: string) => void;
   onLogout: () => void;
   children: ReactNode;
 }) {
@@ -51,7 +52,7 @@ export function AppShell({
           account={account}
           collapsed={collapsed}
           busy={busy}
-          onNavigate={onNavigate}
+          onNavigate={(key) => onNavigate(key)}
           onLogout={onLogout}
           onToggle={toggle}
         />
@@ -60,12 +61,17 @@ export function AppShell({
           // a half-applied margin briefly overflows the page at narrow widths.
           className={cn('min-w-0', collapsed ? 'lg:ml-[84px]' : 'lg:ml-[264px]')}
         >
-          <TopBar workspace={workspace} account={account} />
-          <main id="workspace-content" tabIndex={-1} className="scroll-mt-[124px] outline-none lg:scroll-mt-16">
+          <TopBar
+            workspace={workspace}
+            onSearch={(term) => onNavigate('qr', term ? encodeURIComponent(term) : '')}
+          />
+          {/* Bottom padding keeps content clear of the phone navigation bar. */}
+          <main id="workspace-content" tabIndex={-1} className="scroll-mt-[124px] pb-24 outline-none lg:scroll-mt-16 lg:pb-0">
             {children}
           </main>
         </div>
       </div>
+      <ConfirmHost />
     </TooltipProvider>
   );
 }

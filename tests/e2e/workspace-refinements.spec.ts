@@ -21,7 +21,7 @@ test('History opens all sessions, filters exact Order ID and keeps catalogue and
  await page.getByRole('button',{name:'Show all',exact:true}).click();await expect(page.getByRole('button',{name:'Session '+unlinked.id.slice(0,8),exact:true})).toBeVisible();
  await mkdir('test-results/workspace-refinements',{recursive:true});await page.setViewportSize({width:1440,height:1000});await page.screenshot({path:'test-results/workspace-refinements/history-1440.png',fullPage:true});
  await openWorkspace(page,'Catalogue');await expect(page.getByRole('navigation',{name:'catalogue views'})).toHaveCount(0);await expect(page.getByRole('button',{name:'Add product',exact:true})).toBeVisible();
- await openWorkspace(page,'Suppliers & sources');await expect(page.getByRole('heading',{name:'Suppliers & sources',exact:true})).toBeVisible();
+ await openWorkspace(page,'Suppliers & sources');await expect(page.getByRole('heading',{name:'Suppliers',exact:true})).toBeVisible();
  await openWorkspace(page,'Reason reconciliation');await expect(page.getByLabel('Original employee',{exact:true})).toBeHidden();await page.getByText('Employee and date filters',{exact:true}).click();await expect(page.getByLabel('Original employee',{exact:true})).toBeVisible();await page.getByLabel('Exact Order ID',{exact:true}).fill(order);await page.getByRole('button',{name:'Reset filters',exact:true}).click();await expect(page.getByLabel('Exact Order ID',{exact:true})).toHaveValue('');
  await page.setViewportSize({width:390,height:844});await page.screenshot({path:'test-results/workspace-refinements/reasons-390.png',fullPage:false});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
 });

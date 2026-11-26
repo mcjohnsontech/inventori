@@ -1,4 +1,4 @@
-import { AlertCircleIcon, CheckmarkCircle02Icon, PackageOpenIcon } from '@hugeicons/core-free-icons';
+import { AlertCircleIcon, CheckmarkCircle02Icon, InformationCircleIcon, PackageOpenIcon } from '@hugeicons/core-free-icons';
 import type { ReactNode } from 'react';
 
 import { cn } from '../../lib/cn';
@@ -95,6 +95,21 @@ export function WarningNotice({
     >
       {children}
     </p>
+  );
+}
+
+/** Neutral background information. Amber WarningNotice is kept for real problems. */
+export function InfoNotice({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <div
+      className={cn(
+        'flex items-start gap-2.5 rounded-xl border border-black/[0.08] bg-white px-4 py-3.5 font-sans text-sm leading-[1.6] tracking-[-0.02em] text-grey-2',
+        className,
+      )}
+    >
+      <Icon icon={InformationCircleIcon} size={18} className="mt-px text-grey-3" />
+      <div className="min-w-0">{children}</div>
+    </div>
   );
 }
 

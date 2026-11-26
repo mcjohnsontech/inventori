@@ -2,7 +2,7 @@ import type { ButtonHTMLAttributes } from 'react';
 
 import { cn } from '../../lib/cn';
 
-/** An inline textual action — "View product", "Inspect lot provenance". */
+/** An inline textual action — "View product", "View lot history". */
 export function LinkButton({
   className,
   ...props

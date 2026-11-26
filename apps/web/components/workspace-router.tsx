@@ -9,7 +9,8 @@ import { CompletionWorkspace } from './completion-workspace';
 import { AuthorizationRequestsWorkspace } from './authorization-requests-workspace';
 import { DamageWorkspace } from './damage-workspace';
 import { ReconciliationWorkspace } from './reconciliation-workspace';
-import { CheckoutLookupWorkspace } from './checkout-lookup-workspace';
+import { CheckoutWorkspace } from './checkout-workspace';
+import { QrWorkspace } from './labels/qr-workspace';
 import { CatalogueWorkspace } from './catalogue/catalogue-workspace';
 import { Dashboard } from './dashboard';
 import { HelpWorkspace } from './help-workspace';
@@ -21,9 +22,10 @@ import { ReportsWorkspace } from './operational-reports-workspace';
 import { SettingsWorkspace } from './settings-workspace';
 import { SuppliersWorkspace } from './suppliers-workspace';
 import { UsersWorkspace } from './users-workspace';
-import { Button, DetailSkeleton, EmptyState, Page, card } from './ui';
+import { RoleProvider } from '../lib/role';
+import { Button, DetailSkeleton, EmptyState, Page, SectionTabs, card } from './ui';
 import { cn } from '../lib/cn';
-import { workspaceAllowed, mainDestination, type Workspace } from './shell/destinations';
+import { destinations, sectionTabs, tabLabel, workspaceAllowed, mainDestination, type Workspace } from './shell/destinations';
 
 /** Workspaces that cannot render until the catalogue snapshot has loaded. */
 const NEEDS_CATALOGUE: Workspace[] = [
@@ -91,7 +93,7 @@ function WorkspaceContent({
   onCatalogueChanged: (catalogue: Catalogue) => void;
   onReceive: () => void;
 }) {
-  const home = () => navigate(user.role === 'PRODUCTION' ? 'inventory' : 'dashboard');
+  const home = () => navigate(user.role === 'PRODUCTION' ? 'checkout' : 'dashboard');
 
   if (missing) {
     return (
@@ -145,7 +147,7 @@ function WorkspaceContent({
       return <ReconciliationWorkspace actorId={user.id} />;
 
     case 'checkout':
-      return <CheckoutLookupWorkspace key="checkout" actorId={user.id} />;
+      return <CheckoutWorkspace actorId={user.id} />;
 
     case 'help':
       return <HelpWorkspace role={user.role} navigate={navigate} />;
@@ -176,7 +178,7 @@ function WorkspaceContent({
       return <SettingsWorkspace user={user} onPasswordChanged={onPasswordChanged} />;
 
     case 'qr':
-      return <CheckoutLookupWorkspace key={`lookup:${detail.qrCode}`} actorId={user.id} initialCode={detail.qrCode} initialMode="lookup" />;
+      return <QrWorkspace key={`lookup:${detail.qrCode}`} initialCode={detail.qrCode} />;
 
     case 'labels':
       return <PrintingWorkspace actorId={user.id} initialLegacyJobId={detail.labelJob} initialReceiptId={detail.labelReceipt} />;
@@ -249,17 +251,14 @@ function WorkspaceContent({
 export function WorkspaceRouter(props:ComponentProps<typeof WorkspaceContent>){
  const {workspace,user,navigate}=props;
  const main=mainDestination(workspace);
- const groups:Partial<Record<Workspace,{key:Workspace;label:string}[]>>={
- inventory:[{key:'inventory',label:'Stock'},{key:'counts',label:'Count history'},{key:'requests',label:'Requests'},{key:'damage',label:'Damaged / BAD'},{key:'closing',label:'Close day'}],
- checkout:[{key:'checkout',label:'Checkout & lookup'},{key:'orders',label:'Orders'},{key:'completion',label:'Completion'},{key:'checkoutHistory',label:'History'},{key:'reconciliation',label:'Reason follow-up'}],
- settings:[{key:'settings',label:'My account'},{key:'users',label:'Staff & invitations'},{key:'help',label:'Help'}],
- };
- const tabs=(groups[main]??[]).filter(item=>workspaceAllowed(user.role,item.key));
+ const tabs=(sectionTabs[main]??[]).filter(key=>workspaceAllowed(user.role,key));
+ // The production role's usable-stock view belongs to the Stock tab.
+ const current=workspace==='availability'?'inventory':workspace;
  // Stock browsing stays mounted while inspecting inventory subviews, preserving filters/pages.
  const [stockVisited,setStockVisited]=useState(false);
  if(workspace==='inventory'&&!stockVisited)setStockVisited(true);
  const preserveStock=main==='inventory'&&stockVisited;
- return <>{tabs.length>1?<nav aria-label={`${main} views`} className="flex flex-wrap gap-2 px-4 pt-5 sm:px-6 lg:px-10">{tabs.map(item=><Button key={item.key} variant={(workspace===item.key||(workspace==='availability'&&item.key==='inventory')||(workspace==='qr'&&item.key==='checkout'))?'primary':'secondary'} aria-pressed={workspace===item.key} onClick={()=>navigate(item.key)}>{item.label}</Button>)}</nav>:null}
+ return <RoleProvider role={user.role}>{tabs.length>1?<SectionTabs label={`${destinations[main].label} views`} className="px-4 pt-4 sm:px-6 lg:px-10" value={current} onChange={key=>navigate(key)} items={tabs.map(key=>({value:key,label:tabLabel(key),icon:destinations[key].icon}))}/>:null}
  {preserveStock?<div hidden={workspace!=='inventory'}><WorkspaceContent {...props} workspace="inventory"/></div>:null}
- {(!preserveStock||workspace!=='inventory')?<WorkspaceContent {...props}/>:null}</>;
+ {(!preserveStock||workspace!=='inventory')?<WorkspaceContent {...props}/>:null}</RoleProvider>;
 }

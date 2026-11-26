@@ -13,17 +13,35 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   }
   return body;
 }
-export function useApiRead<T>(path: string | null) {
+export function useApiRead<T>(path: string | null, options: { refreshOnFocus?: boolean } = {}) {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(Boolean(path));
   const [revision, setRevision] = useState(0);
+  const [loadedAt, setLoadedAt] = useState<Date | null>(null);
   const refresh = useCallback(() => setRevision(value => value + 1), []);
   useEffect(() => {
     const controller = new AbortController();
     setData(null); setError(''); setLoading(Boolean(path));
-    if (path) api<T>(path, { signal: controller.signal }).then(value => { if (!controller.signal.aborted) setData(value); }).catch(failure => { if (!controller.signal.aborted) setError(failure.message); }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    if (path) api<T>(path, { signal: controller.signal }).then(value => { if (!controller.signal.aborted) { setData(value); setLoadedAt(new Date()); } }).catch(failure => { if (!controller.signal.aborted) setError(failure.message); }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [path, revision]);
-  return { data, error, loading, refresh };
+  // Opt-in quiet refresh when staff return to the tab: keeps showing the old
+  // figures until the new ones arrive, so nothing flickers or resets.
+  const refreshOnFocus = Boolean(options.refreshOnFocus);
+  useEffect(() => {
+    if (!refreshOnFocus || !path) return;
+    let controller: AbortController | null = null;
+    const quiet = () => {
+      if (document.visibilityState !== 'visible') return;
+      controller?.abort();
+      controller = new AbortController();
+      const signal = controller.signal;
+      api<T>(path, { signal }).then(value => { if (!signal.aborted) { setData(value); setError(''); setLoadedAt(new Date()); } }).catch(() => {});
+    };
+    window.addEventListener('focus', quiet);
+    document.addEventListener('visibilitychange', quiet);
+    return () => { controller?.abort(); window.removeEventListener('focus', quiet); document.removeEventListener('visibilitychange', quiet); };
+  }, [path, refreshOnFocus]);
+  return { data, error, loading, refresh, loadedAt };
 }

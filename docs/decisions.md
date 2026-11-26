@@ -262,9 +262,61 @@ OPEN: the separately asked concurrency/recount/resolution baseline is awaiting t
 ## B05 count validation — owner confirmation 9 November 2026
 CONFIRMED: operations continue while counting. A relevant movement invalidates an in-progress attempt and requires explicit recount. Preserve all attempts/findings. A Manager may resolve a mistaken finding only with an explained matching recount, without stock change. Genuine discrepancies remain pending correction. Starting a targeted count makes its evidence mandatory for closing. This resolves the remaining count concurrency/recount policy; implementation and isolated validation follow. No operational migration or stock correction execution is authorized.
 
+
+## Local operational unit-workflow upgrade — owner approval 9 November 2026
+CONFIRMED and executed: private backup, local shop migrations 014–028, original-record preservation verification and API restart. 37 original business-table fingerprints and prior migration records preserved; 22 existing lots classified LEGACY; no units/events fabricated. Historical enrollment, stock adjustment, live email and production deployment remain unauthorized. See local-unit-workflows-upgrade-report.md. Feature development remains paused.
+
 ## Final sprint authorization — 12 November 2026
 CONFIRMED by the owner in the final 60-minute sprint directive: Admin and Inventory Manager may record exact missing-reason reconciliations. This specifically supersedes the earlier Manager-only RECONCILE_REASON policy. Production remains denied. No other Manager-only permission expands: closing, completion, count evidence and damage disposition retain their approved roles. Original checkout reason and reusable Order ID remain immutable; reconciliation creates no stock effect and requires explicit review/confirmation.
 O4 certification, O8 selected-unit completion and O5 deferred cloud-delivered approval rules remain unchanged. DailyClose implementation/migrations are authorized only for isolated development/testing in this sprint. No operational migration, historical enrollment, local approval substitute, infrastructure or production deployment is authorized.
 
 ## 12 November 2026 — Admin and Manager production completion (CONFIRMED)
 Owner response: “Admin and manager only selection flow.” Admin and Inventory Manager may select, review and confirm exact eligible In Production units; Production remains excluded. This supersedes only O8's previous Manager-only confirmation permission. Reusable Order IDs, exact-unit scope, atomicity, idempotency, immutable evidence and no second usable deduction remain unchanged. O4 Manager-only closing and O5 deferred cloud approvals remain unchanged. Migration 032 is developed and tested in isolation; no operational upgrade or deployment is implied.
+
+## 21 November 2026 — UX consistency pass (PROPOSED, presentation only)
+PROPOSED, requested by the owner as a design review and fix: navigation, wording and layout changes only. No API, schema, permission, ledger or closing-rule change.
+- One name and icon per screen; one underline tab bar per section; Help moved to the sidebar footer; phone bottom navigation; "Scan & find" is a top-level destination with a single code box (product, lot, unit or QR) plus a top-bar search. Old `#qr/<code>` links still resolve.
+- Checkout reason field starts empty ("Choose a reason") instead of pre-selecting "Reason not provided". Leaving it empty still stores no reason (null) and still creates Manager follow-up, exactly as before; the skip option remains available.
+- Close day shows one row per lot (states as columns), hides lots with no stock or movement by default (toggle to show), and keeps a status bar with the blocker count and the existing review/confirm flow. Blockers and confirmation rules are unchanged.
+- Discard-draft confirmations use an in-app dialog; leave-page guards keep the browser prompt because they must answer synchronously.
+- Financial tiles state explicitly when cost or selling prices are missing; calculations are unchanged.
+OPEN: owner review of the renamed screens and wording before rollout.
+
+## 23 November 2026 — Plain-English wording and 10-row pages (PROPOSED, presentation only)
+Requested by the owner. No stock, permission, ledger or closing-rule change.
+- Every paged list shows 10 rows (`LIST_PAGE_SIZE` in packages/contracts, used by the API list endpoints and the web app). History windows such as "latest 100 receipts" are unchanged.
+- Screen names: Inventory→Stock (tabs All stock, Stock counts, Correction requests, Damaged items, End of day); Receiving→Deliveries; Production→Checkout (tabs Product checkout, Finished items, Orders, History, Missing reasons); Labels & printing→Print labels; Catalogue→Products.
+- Terms: SKU→supplier code; Unit Code→item code; In Production→Checked out; Completed→Finished; BAD report→damage report; disposition→decision/outcome; reconciliation→missing reasons; damaged intake→damaged on arrival. Role names (Admin, Inventory Manager, Production Staff) and code names in the PRD/API are unchanged.
+- Overview tiles: usable stock (items), total cost of stock left, total selling price of stock left. Cost and selling totals only include items that have those prices recorded; the tile says how many.
+- User-facing API error messages reworded in plain English.
+OPEN: owner review of the new names before rollout.
+
+## 24 November 2026 — Owner answers to the end-to-end UX assessment (CONFIRMED)
+Owner answered five questions raised by the UX assessment. Each answer is quoted as "yes"/"later" in the owner's reply.
+1. CONFIRMED: Admin may do everything an Inventory Manager may do — record and recount stock counts, confirm daily closing, record damage decisions (dispositions) and submit recovery/correction requests. This supersedes the Manager-only rules for counts (8B), O4 closing confirmation, damage disposition and request submission. An actor may never approve their own request.
+2. CONFIRMED: Admin may approve recovery (damaged → usable) and quantity-correction requests on the shop server, without cloud delivery, while signed in at the shop. This supersedes the O5 default "no local approval substitute" for Admin. Approval creates new compensating ledger events; history is never edited. Self-approval remains denied. Design and implementation follow as a separate vertical slice.
+3. CONFIRMED: Production Staff see only the item (unit) code plus product name and options. Supplier codes, batch codes, lot codes and product codes are hidden from Production screens.
+4. CONFIRMED: Individual item labels are the normal labelling path. Shared lot labels remain available as an advanced option.
+5. DEFERRED (owner: "later"): low-stock warnings and Excel/CSV download.
+No production deployment is authorized by these answers; operational migration of the shop database requires the usual backup and explicit go-ahead.
+
+## 24 November 2026 — Local Admin approval details (CONFIRMED)
+Owner answers to the OPEN items in `docs/local-admin-approval-design.md`:
+1. Fewer items than recorded: on approval the Admin ticks the exact missing item codes (pre-filled from a count when available); those items move to Removed – missing. The number ticked must equal the shortfall.
+2. More items than recorded: approval never creates items. The Admin closes the request as "receive the extra items as a new delivery"; extras are received and labelled normally.
+3. An Admin may never approve or reject their own request, including in a single-Admin shop. Managers submit; Admins approve.
+4. Rejecting a correction does not unblock closing on its own; the underlying count difference must still be recounted or explained.
+
+## 26 November 2026 — Suppliers, money visibility and selling prices (CONFIRMED)
+Owner answers, 26 Nov 2026:
+1. CONFIRMED: an Inventory Manager may add a new supplier (with its location) while receiving a delivery. This matches the current receive wizard; the old "Ask an Admin" receiving page is retired. New location registry codes stay Admin-only, as before.
+2. CONFIRMED: money is Admin-only. Managers maintain inventory and see no costs, selling prices, stock values or financial reports. Only an Admin enters purchase costs. This supersedes the 17 Nov 2026 "Admin/Manager financial read" boundary (`docs/pricing-financial-extension-report.md`, `docs/application-permissions.md`).
+3. CONFIRMED: one selling price per product normally covers all its variants. A variant may have its own price only when an Admin sets one explicitly ("except stated otherwise").
+4. CONFIRMED (owner choice, 26 Nov 2026): purchase cost is recorded per delivery line, as now. When a Manager receives without a cost, the Admin adds it afterwards from a "Deliveries needing a cost" list, prefilled with that variant's last cost. A saved cost stays append-only: corrections are new entries, never edits. This authorizes adding a cost after receipt (previously blocked as "historical cost enrollment"); a migration will relax that guard for Admin-entered costs only.
+5. CONFIRMED (owner choice, 26 Nov 2026): when the product price changes, a variant with its own price keeps it until an Admin removes that override. The variant then follows the product price again.
+As built (development only, 26 Nov 2026):
+- Migration `202611260036_admin_costs_product_prices`: `PurchaseCost.enteredLater` plus `originSequence`, Admin-only later-cost provenance and one cost per line; new append-only `ProductSellingPrice`; `SellingPrice.amount` may be null to record "own price removed". Additive only, with no backfill.
+- API: `GET /financial/missing-costs`, `POST /financial/purchase-costs`, `POST /financial/product-prices`, `GET /financial/products/:id/prices`; `POST /financial/selling-prices` accepts `amount: null` to remove an override. All are Admin-only and idempotent, and each writes audit, outbox and command result.
+- Valuation uses the variant's own price, falling back to the product price. A later cost counts from the moment it was entered, so earlier reports reproduce.
+- UI: "Needing a cost" list on Deliveries, plus an Overview attention item (Admin only); product price with per-option "own price" in Products and in receiving.
+- Applied to the development database after a backup (`dayari_dev_backup_20261126` plus a JSON snapshot); the 72 pre-existing tables were verified unchanged.

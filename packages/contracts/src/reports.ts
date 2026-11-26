@@ -2,7 +2,7 @@ import { z } from 'zod';
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(value => value >= '0001-01-01' && Number.isFinite(Date.parse(value + 'T00:00:00Z')) && new Date(value + 'T00:00:00Z').toISOString().slice(0, 10) === value, 'Enter a valid business date');
 const page = z.coerce.number().int().min(1).max(1000000).default(1), id = z.uuid().transform(value => value.toLowerCase());
 const range = { from: date, to: date, productId: id.optional(), sourceId: id.optional(), skuId: id.optional() };
-export const reportQuerySchema = z.object({ ...range, page, type: z.enum(['RECEIPT', 'ISSUE', 'DAMAGE', 'DISPOSITION', 'COMPLETE']).optional() }).strict().refine(value => value.to >= value.from && Date.parse(value.to + 'T00:00:00Z') - Date.parse(value.from + 'T00:00:00Z') <= 365 * 86400000, 'Choose up to 366 business dates in chronological order');
+export const reportQuerySchema = z.object({ ...range, page, type: z.enum(['RECEIPT', 'ISSUE', 'DAMAGE', 'DISPOSITION', 'COMPLETE', 'RECOVERY', 'CORRECTION']).optional() }).strict().refine(value => value.to >= value.from && Date.parse(value.to + 'T00:00:00Z') - Date.parse(value.from + 'T00:00:00Z') <= 365 * 86400000, 'Choose up to 366 business dates in chronological order');
 export const orderInvestigationSchema = z.object({ orderReference: z.string().trim().min(1).max(120), page }).strict();
 export type ReportQuery = z.infer<typeof reportQuerySchema>;
 export type ReportFreshness = {
@@ -14,7 +14,7 @@ export type ReportFreshness = {
 export type MovementReportRow = {
     id: string;
     transactionId: string;
-    type: 'RECEIPT' | 'ISSUE' | 'DAMAGE' | 'DISPOSITION' | 'COMPLETE';
+    type: 'RECEIPT' | 'ISSUE' | 'DAMAGE' | 'DISPOSITION' | 'COMPLETE' | 'RECOVERY' | 'CORRECTION';
     recordedAt: string;
     originSequence: string;
     actorName: string;
@@ -47,7 +47,7 @@ export type MovementReport = ReportFreshness & {
     total: number;
     rows: MovementReportRow[];
 };
-export type ReportFlows=Record<'receivedUsable'|'receivedDamaged'|'issued'|'reportedBad'|'completed'|'removed',string>;
+export type ReportFlows=Record<'receivedUsable'|'receivedDamaged'|'issued'|'reportedBad'|'completed'|'removed'|'recovered'|'missing',string>;
 export type ReportBalance = {
     flows:ReportFlows;
     skuId: string;

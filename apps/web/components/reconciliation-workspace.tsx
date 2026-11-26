@@ -1,4 +1,6 @@
 'use client';
+import { LIST_PAGE_SIZE } from '@dayari/contracts';
+import { confirmAction } from './ui/confirm';
 import {OrderDrawer} from './orders-workspace';
 import {TaskModal} from './ui/task-modal';
 import { useEffect, useRef, useState } from 'react';
@@ -9,7 +11,7 @@ import { formatDateTime } from '../lib/format';
 import { ReasonField } from './reason-field';
 import { UnitTrackingDrawer } from './unit-tracking-drawer';
 import { CheckoutAcceptance } from './checkout-workspace';
-import { Badge, Button, Checkbox, Code, DataTable, DetailsDrawer, DetailSkeleton, EmptyState, ErrorNotice, Field, Input, Page, PageHeader, Pager, Panel, Select, Textarea, WarningNotice, type Column } from './ui';
+import { Badge, Button, Checkbox, Code, DataTable, DetailsDrawer, DetailSkeleton, EmptyState, ErrorNotice, Field, Input, Page, PageHeader, Pager, Panel, Select, Textarea, WarningNotice, type Column,InfoNotice} from './ui';
 
 type Config = { originId: string; limit: number; canResolve: boolean; adminUpgradeRequired?: boolean; employees: { id: string; name: string }[] };
 function OriginalCheckout({ id, onClose }: { id: string; onClose: () => void }) {
@@ -56,7 +58,7 @@ function Body({ actorId, config }: { actorId: string; config: Config }) {
   function change(body: ReasonReconciliationDraft) { try { update(body); setError(''); } catch (failure) { setError((failure as Error).message); } }
   function toggle(id: string) {
     const selected = draft.body.exceptionIds.includes(id);
-    if (!selected && draft.body.exceptionIds.length >= config.limit) { setError(`Select at most ${config.limit} exact obligations per confirmation.`); return; }
+    if (!selected && draft.body.exceptionIds.length >= config.limit) { setError(`Select up to ${config.limit} items at a time.`); return; }
     change({ ...draft.body, exceptionIds: selected ? draft.body.exceptionIds.filter(value => value !== id) : [...draft.body.exceptionIds, id] }); setSelectionPage(1);
   }
   async function confirm() {
@@ -65,23 +67,23 @@ function Body({ actorId, config }: { actorId: string; config: Config }) {
   }
   const rowColumns: Column<ReasonQueueRow>[] = [
     ...(config.canResolve ? [{ key: 'select', label: 'Select', cell: (row: ReasonQueueRow) => <Checkbox aria-label={`Select exception for ${row.unit.unitCode}`} disabled={disabled || row.status !== 'UNRESOLVED'} checked={draft.body.exceptionIds.includes(row.exceptionId)} onChange={() => toggle(row.exceptionId)} /> }] : []),
-    { key: 'unit', label: 'Unit / product', cell: row => <><button className="min-h-11 font-mono font-semibold text-brand underline" onClick={() => setTracking(row.unit.unitId)}>{row.unit.unitCode}</button><span className="block text-sm">{row.unit.productName} · {row.unit.variantName}</span><Code className="block text-xs">{row.unit.fullSku}</Code></> },
+    { key: 'unit', label: 'Item / product', cell: row => <><button className="min-h-11 font-mono font-semibold text-brand underline" onClick={() => setTracking(row.unit.unitId)}>{row.unit.unitCode}</button><span className="block text-sm">{row.unit.productName} · {row.unit.variantName}</span><Code className="block text-xs">{row.unit.fullSku}</Code></> },
     { key: 'employee', label: 'Original checkout', cell: row => <>{row.employee.name}<span className="block text-xs text-grey-2">{formatDateTime(row.acceptedAt)}</span>{row.orderReference?<button className="block min-h-11 break-words text-xs text-brand underline" onClick={()=>setOrder(row.orderReference!)}>{row.orderReference}</button>:<span className="block text-xs">No Order ID</span>}</> },
-    { key: 'status', label: 'Classification', cell: row => <><button className="min-h-11 underline decoration-dotted underline-offset-4" onClick={() => setDetail(row)}><Badge tone={row.status === 'RESOLVED' ? 'usable' : 'neutral'}>{row.status === 'RESOLVED' ? 'Reconciled' : 'Reason not provided'}</Badge></button>{row.resolution ? <div className="mt-2 space-y-1 text-xs"><p>{checkoutReasonLabels[row.resolution.reason.code]}</p><p>{row.resolution.manager.name} · {formatDateTime(row.resolution.recordedAt)}</p><button className="min-h-11 text-brand underline" onClick={()=>setDetail(row)}>View classification details</button></div> : null}</> },
-    { key: 'open', label: 'Evidence', cell: row => <Button variant="secondary" onClick={() => setOriginal(row.checkoutId)}>Original checkout</Button> },
+    { key: 'status', label: 'Reason', cell: row => <><button className="min-h-11 underline decoration-dotted underline-offset-4" onClick={() => setDetail(row)}><Badge tone={row.status === 'RESOLVED' ? 'usable' : 'neutral'}>{row.status === 'RESOLVED' ? 'Reconciled' : 'Reason not provided'}</Badge></button>{row.resolution ? <div className="mt-2 space-y-1 text-xs"><p>{checkoutReasonLabels[row.resolution.reason.code]}</p><p>{row.resolution.manager.name} · {formatDateTime(row.resolution.recordedAt)}</p><button className="min-h-11 text-brand underline" onClick={()=>setDetail(row)}>View classification details</button></div> : null}</> },
+    { key: 'open', label: 'Details', cell: row => <Button variant="secondary" onClick={() => setOriginal(row.checkoutId)}>Original checkout</Button> },
   ];
   const validation = reconcileReasonsSchema.safeParse(draft.body);
   const canConfirm = validation.success && !previewBusy && !previewError && preview.length === draft.body.exceptionIds.length && preview.every(row => row.status === 'UNRESOLVED');
   return <div className="space-y-5">
-    {config.adminUpgradeRequired?<WarningNotice>Admin reason reconciliation requires the separately approved shop database upgrade. Existing operational review remains available.</WarningNotice>:null}
-    {!config.canResolve ? <p className="text-sm text-grey-2">Read-only operational review. Admin and Inventory Managers record missing-reason classifications in the shop.</p> : null}
+    {config.adminUpgradeRequired?<InfoNotice>Admins can't classify reasons on this shop server yet; it needs a database upgrade. You can still review them.</InfoNotice>:null}
+    {!config.canResolve ? <p className="text-sm text-grey-2">View only. An Admin or Inventory Manager adds missing reasons on the shop server.</p> : null}
     {accepted.loading ? <DetailSkeleton rows={3} /> : accepted.error ? <ErrorNotice message={accepted.error} onRetry={accepted.refresh} /> : accepted.data ? <AcceptedClassification key={accepted.data.id} value={accepted.data} /> : null}
     {!(review && taskOpen) ? <Panel title="Missing-reason queue and history" label="Reason exception queue"><div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        <Field label="Exception status">{id => <Select id={id} label="Exception status" value={filters.status} options={[{ value: 'UNRESOLVED', label: 'Unresolved' }, { value: 'RESOLVED', label: 'Reconciled' }, { value: 'ALL', label: 'All exceptions' }]} onChange={status => setFilters(value => ({ ...value, status }))} />}</Field>
+        <Field label="Exception status">{id => <Select id={id} label="Exception status" value={filters.status} options={[{ value: 'UNRESOLVED', label: 'Unresolved' }, { value: 'RESOLVED', label: 'Reason added' }, { value: 'ALL', label: 'All items' }]} onChange={status => setFilters(value => ({ ...value, status }))} />}</Field>
 
         <Field label="Exact Order ID">{id => <Input id={id} value={filters.orderReference} maxLength={120} onChange={event => setFilters(value => ({ ...value, orderReference: event.target.value }))} />}</Field>
-        <Field label="Exact Unit Code" hint="Enter all six characters to apply this filter.">{id => <Input id={id} value={filters.unitCode} maxLength={6} onChange={event => setFilters(value => ({ ...value, unitCode: event.target.value.toUpperCase() }))} />}</Field>
+        <Field label="Item code" hint="Enter all six characters to apply this filter.">{id => <Input id={id} value={filters.unitCode} maxLength={6} onChange={event => setFilters(value => ({ ...value, unitCode: event.target.value.toUpperCase() }))} />}</Field>
       </div>
       <details className="rounded-xl border border-black/10 p-3">
         <summary className="cursor-pointer text-sm font-semibold">Employee and date filters{filters.employeeId||filters.from||filters.to?' · active':''}</summary>
@@ -92,32 +94,32 @@ function Body({ actorId, config }: { actorId: string; config: Config }) {
         </div>
       </details>
       <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm">{draft.body.exceptionIds.length} selected across pages</p><Button variant="ghost" onClick={()=>setFilters({status:'UNRESOLVED',employeeId:'',orderReference:'',unitCode:'',from:'',to:''})}>Reset filters</Button></div>
-      <div className="flex flex-wrap justify-between gap-3"><p className="text-sm text-grey-2">Original missing-reason evidence is permanent. Reconciliation classifies it without another deduction.</p><Button variant="secondary" onClick={queue.refresh}>Refresh exceptions</Button></div>
+      <div className="flex flex-wrap justify-between gap-3"><p className="text-sm text-grey-2">The original missing reason is kept. Adding a reason never takes stock away again.</p><Button variant="secondary" onClick={queue.refresh}>Refresh exceptions</Button></div>
       {queue.loading ? <DetailSkeleton rows={5} /> : queue.error ? <ErrorNotice message={queue.error} onRetry={queue.refresh} /> : queue.data ? <><DataTable label="Checkout reason exceptions" rows={queue.data.rows} columns={rowColumns} rowKey={row => row.exceptionId} emptyMessage="No exceptions match these filters." mobileStack />
         <Pager page={page} pageCount={Math.ceil(queue.data.total / queue.data.pageSize)} total={queue.data.total} onChange={setPage} /></> : null}
     </div></Panel> : null}
-    {config.canResolve && ready ? <><Button disabled={!draft.body.exceptionIds.length&&!draft.pending} onClick={()=>setTaskOpen(true)}>Resolve Reason</Button><TaskModal title="Reconcile missing reasons" open={taskOpen} busy={busy} onClose={()=>setTaskOpen(false)}><Panel label="Manager reason classification" title={review ? 'Confirm Reconciliation' : 'Edit Reason'}><div className="space-y-4">
+    {config.canResolve && ready ? <><Button disabled={!draft.body.exceptionIds.length&&!draft.pending} onClick={()=>setTaskOpen(true)}>Resolve reason</Button><TaskModal title="Add missing reasons" open={taskOpen} busy={busy} onClose={()=>setTaskOpen(false)}><Panel label="Manager reason classification" title={review ? 'Confirm reason' : 'Edit reason'}><div className="space-y-4">
       {error ? <ErrorNotice message={error} /> : null}
-      {draft.pending ? <WarningNotice>The classification response is unresolved. Retry the same saved request; no new stock deduction is involved.<Button className="mt-2" disabled={busy} onClick={() => void confirm()}>Retry saved classification</Button></WarningNotice> : null}
+      {draft.pending ? <WarningNotice>We couldn't confirm your last classification was saved. Retry it; stock won't be deducted again.<Button className="mt-2" disabled={busy} onClick={() => void confirm()}>Retry saved classification</Button></WarningNotice> : null}
       <p className="text-sm">{draft.body.exceptionIds.length} exact obligations selected. Selection is preserved across filters and pages.</p>
-      {!review ? <div className="grid gap-4 md:grid-cols-2"><ReasonField label="Reconciliation reason" emptyLabel="Choose a classification" disabled={disabled} value={draft.body.reason} onChange={reason => change({ ...draft.body, reason: reason ?? null })} />
-        <Field label="Reconciliation remarks (optional)">{id => <Textarea id={id} disabled={disabled} value={draft.body.remarks} maxLength={2000} onChange={event => change({ ...draft.body, remarks: event.target.value })} />}</Field></div> : <div className="space-y-2"><p className="font-semibold">{draft.body.reason ? checkoutReasonLabels[draft.body.reason.code] : 'Classification required'}</p>{draft.body.reason?.note ? <p className="break-words text-sm">{draft.body.reason.note}</p> : null}{draft.body.remarks ? <p className="break-words text-sm">Remarks: {draft.body.remarks}</p> : null}</div>}
-      {previewBusy ? <DetailSkeleton rows={3} /> : previewError ? <ErrorNotice message={previewError} onRetry={() => setRevision(value => value + 1)} /> : preview.length ? <><DataTable label="Selected reason obligations" rows={preview.slice((selectionPage - 1) * 12, selectionPage * 12)} rowKey={row => row.exceptionId} mobileStack emptyMessage="No selected obligations." columns={[
-        { key: 'unit', label: 'Exact unit', cell: row => <><Code>{row.unit.unitCode}</Code><span className="block text-sm">{row.unit.productName} · {row.unit.variantName}</span></> },
-        { key: 'original', label: 'Original evidence', cell: row => <>{row.employee.name}{row.orderReference?<button className="block min-h-11 break-words text-xs text-brand underline" onClick={()=>setOrder(row.orderReference!)}>{row.orderReference}</button>:<span className="block text-xs">No Order ID</span>}<span className="block text-xs">{row.status === 'RESOLVED' ? 'Already reconciled — remove before confirming' : 'Original reason not provided'}</span></> },
-        ...(!review ? [{ key: 'remove', label: 'Selection', cell: (row: ReasonQueueRow) => <Button variant="ghost" disabled={disabled} onClick={() => toggle(row.exceptionId)}>Remove {row.unit.unitCode}</Button> }] : []),
-      ]} /><Pager page={selectionPage} pageCount={Math.ceil(preview.length / 12)} total={preview.length} onChange={setSelectionPage} /></> : <EmptyState title="No obligations selected">Select unresolved exceptions from the queue.</EmptyState>}
+      {!review ? <div className="grid gap-4 md:grid-cols-2"><ReasonField label="Reason" emptyLabel="Choose a classification" disabled={disabled} value={draft.body.reason} onChange={reason => change({ ...draft.body, reason: reason ?? null })} />
+        <Field label="Notes (optional)">{id => <Textarea id={id} disabled={disabled} value={draft.body.remarks} maxLength={2000} onChange={event => change({ ...draft.body, remarks: event.target.value })} />}</Field></div> : <div className="space-y-2"><p className="font-semibold">{draft.body.reason ? checkoutReasonLabels[draft.body.reason.code] : 'Classification required'}</p>{draft.body.reason?.note ? <p className="break-words text-sm">{draft.body.reason.note}</p> : null}{draft.body.remarks ? <p className="break-words text-sm">Remarks: {draft.body.remarks}</p> : null}</div>}
+      {previewBusy ? <DetailSkeleton rows={3} /> : previewError ? <ErrorNotice message={previewError} onRetry={() => setRevision(value => value + 1)} /> : preview.length ? <><DataTable label="Selected items" rows={preview.slice((selectionPage - 1) * LIST_PAGE_SIZE, selectionPage * LIST_PAGE_SIZE)} rowKey={row => row.exceptionId} mobileStack emptyMessage="No items selected." columns={[
+        { key: 'unit', label: 'Item', cell: row => <><Code>{row.unit.unitCode}</Code><span className="block text-sm">{row.unit.productName} · {row.unit.variantName}</span></> },
+        { key: 'original', label: 'Original record', cell: row => <>{row.employee.name}{row.orderReference?<button className="block min-h-11 break-words text-xs text-brand underline" onClick={()=>setOrder(row.orderReference!)}>{row.orderReference}</button>:<span className="block text-xs">No Order ID</span>}<span className="block text-xs">{row.status === 'RESOLVED' ? 'Already has a reason — remove before confirming' : 'Original reason not provided'}</span></> },
+        ...(!review ? [{ key: 'remove', label: 'Select', cell: (row: ReasonQueueRow) => <Button variant="ghost" disabled={disabled} onClick={() => toggle(row.exceptionId)}>Remove {row.unit.unitCode}</Button> }] : []),
+      ]} /><Pager page={selectionPage} pageCount={Math.ceil(preview.length / LIST_PAGE_SIZE)} total={preview.length} onChange={setSelectionPage} /></> : <EmptyState title="No items selected">Select unresolved exceptions from the queue.</EmptyState>}
       {draft.body.exceptionIds.length && !validation.success ? <p className="text-sm text-grey-2">{draft.body.reason === null ? 'Choose a classification before review.' : validation.error.issues.map(issue => issue.message).join('. ')}</p> : null}
-      <p className="text-sm text-grey-2">Confirmation permanently appends a reconciliation. Original reason: Reason not provided. It does not rewrite the employee's original reason, change the Order ID, move stock or complete Production work.</p>
-      <div className="flex flex-wrap justify-between gap-3"><Button variant="secondary" disabled={disabled} onClick={() => { if (review) setReview(false); else if (window.confirm('Discard this reconciliation draft? Original checkout and stock records will remain unchanged.')) change({ exceptionIds: [], reason: null, remarks: '' }); }}>{review ? 'Cancel' : 'Discard classification draft'}</Button>
-        <Button disabled={disabled || !canConfirm} onClick={() => { if (review) void confirm(); else { setReview(true); setSelectionPage(1); } }}>{busy ? 'Recording classification…' : review ? 'Confirm Reconciliation' : 'Save'}</Button></div>
+      <p className="text-sm text-grey-2">Confirming permanently adds this reason. Original reason: Reason not provided. The employee's entry, the Order ID and stock stay unchanged.</p>
+      <div className="flex flex-wrap justify-between gap-3"><Button variant="secondary" disabled={disabled} onClick={() => { if (review) setReview(false); else void confirmAction('Discard this classification draft? The original checkout stays unchanged.').then(ok => { if (ok) change({ exceptionIds: [], reason: null, remarks: '' }); }); }}>{review ? 'Cancel' : 'Discard classification draft'}</Button>
+        <Button disabled={disabled || !canConfirm} onClick={() => { if (review) void confirm(); else { setReview(true); setSelectionPage(1); } }}>{busy ? 'Recording classification…' : review ? 'Confirm reason' : 'Save'}</Button></div>
     </div></Panel></TaskModal></> : null}
     {detail ? <DetailsDrawer title="Reason details" onClose={() => setDetail(null)}>
       <div className="space-y-4"><Code>{detail.unit.unitCode}</Code><p>{detail.unit.productName} · {detail.unit.variantName}</p><Code>{detail.unit.fullSku}</Code>
       <p>Order ID: {detail.orderReference ?? 'No Order ID'}</p><p>Checkout: <Code>{detail.checkoutId}</Code></p><p>{detail.employee.name} · {formatDateTime(detail.acceptedAt)}</p>
       <p>Original reason: Reason not provided</p><p>Current resolution: {detail.resolution ? checkoutReasonLabels[detail.resolution.reason.code] : 'Unresolved'}</p>
-      {detail.resolution ? <><p>{detail.resolution.reason.note}</p><p>{detail.resolution.manager.name} · {formatDateTime(detail.resolution.recordedAt)}</p><p>{detail.resolution.remarks}</p></> : config.canResolve ? <Button disabled={disabled} onClick={() => { change({...draft.body, exceptionIds:[detail.exceptionId]}); setReview(false); setDetail(null); setTaskOpen(true); }}>Edit Reason</Button> : null}
-      <p className="text-sm text-grey-2">Original checkout evidence is immutable. Reconciliation never changes stock.</p></div>
+      {detail.resolution ? <><p>{detail.resolution.reason.note}</p><p>{detail.resolution.manager.name} · {formatDateTime(detail.resolution.recordedAt)}</p><p>{detail.resolution.remarks}</p></> : config.canResolve ? <Button disabled={disabled} onClick={() => { change({...draft.body, exceptionIds:[detail.exceptionId]}); setReview(false); setDetail(null); setTaskOpen(true); }}>Edit reason</Button> : null}
+      <p className="text-sm text-grey-2">The original checkout record is kept as it was. Classifying a reason never changes stock.</p></div>
     </DetailsDrawer> : null}
     {order?<OrderDrawer orderReference={order} onClose={()=>setOrder('')}/>:null}
     {tracking ? <UnitTrackingDrawer key={tracking} unitId={tracking} onClose={() => setTracking('')} /> : null}
@@ -126,5 +128,5 @@ function Body({ actorId, config }: { actorId: string; config: Config }) {
 }
 export function ReconciliationWorkspace({ actorId }: { actorId: string }) {
   const config = useApiRead<Config>('reason-reconciliation-config');
-  return <Page className="space-y-6"><PageHeader title="Reason reconciliation" description="" />{config.loading ? <DetailSkeleton rows={5} /> : config.error ? <ErrorNotice message={config.error} onRetry={config.refresh} /> : config.data ? <Body actorId={actorId} config={config.data} /> : null}</Page>;
+  return <Page className="space-y-6"><PageHeader title="Missing reasons" description="" />{config.loading ? <DetailSkeleton rows={5} /> : config.error ? <ErrorNotice message={config.error} onRetry={config.refresh} /> : config.data ? <Body actorId={actorId} config={config.data} /> : null}</Page>;
 }

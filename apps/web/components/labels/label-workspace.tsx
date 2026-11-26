@@ -436,7 +436,7 @@ export function LabelWorkspace({
             <Stack>
               <Panel
                 title="1. Print queue"
-                description={plan ? `Batch ${plan.batch.publicCode}` : 'Saved manifest'}
+                description={plan ? `Batch ${plan.batch.publicCode}` : 'Saved label list'}
               >
                 {(['USABLE', 'DAMAGED_INTAKE'] as const).map((purpose) => {
                   const rows = queue.filter((l) => l.purpose === purpose);
@@ -447,10 +447,10 @@ export function LabelWorkspace({
                           {purpose === 'USABLE'
                             ? 'Usable'
                             : job && job.profile.layoutVersion !== 2
-                              ? 'Damaged intake · historical sheet order'
-                              : 'Damaged intake · separate sheets'}
+                              ? 'Damaged on arrival · original sheet order'
+                              : 'Damaged on arrival · separate sheets'}
                         </Badge>
-                        <PagedItems items={rows} size={10}>{pageItems => <ul className="mt-2 max-h-64 divide-y divide-black/[0.06] overflow-y-auto">{pageItems.map((line) => (
+                        <PagedItems items={rows}>{pageItems => <ul className="mt-2 max-h-64 divide-y divide-black/[0.06] overflow-y-auto">{pageItems.map((line) => (
                             <li
                               key={line.id}
                               className="flex items-center justify-between gap-3 py-1.5"
@@ -520,7 +520,7 @@ export function LabelWorkspace({
                 {job && (
                   <div className="mt-3 space-y-3 border-t border-black/[0.06] pt-3">
                     {job.kind === 'REPRINT' && (
-                      <h3 className="text-sm font-semibold">Reprint manifest</h3>
+                      <h3 className="text-sm font-semibold">Reprint list</h3>
                     )}
                     {BigInt(job.chunks) > 1n && (
                       <Field label="PDF part">
@@ -670,7 +670,7 @@ export function LabelWorkspace({
                     className="border-t border-black/[0.06] pt-4"
                   >
                     <Stack gap="tight" className="mt-4">
-                      <PagedItems items={job.lines} size={10}>{pageItems => <>{pageItems.map((line) => (
+                      <PagedItems items={job.lines}>{pageItems => <>{pageItems.map((line) => (
                         <div key={line.id} className="flex flex-wrap items-end gap-3">
                           <label className="flex flex-1 cursor-pointer items-center gap-2.5 font-sans text-sm tracking-[-0.02em] text-ink">
                             <Checkbox
@@ -728,7 +728,7 @@ export function LabelWorkspace({
                   </Disclosure>
 
                   <Disclosure summary="Print attempt history">
-                    <PagedItems items={job.events} size={10}>{pageItems => <ul className="mt-3 space-y-1.5">{pageItems.map((entry) => (
+                    <PagedItems items={job.events}>{pageItems => <ul className="mt-3 space-y-1.5">{pageItems.map((entry) => (
                         <li
                           key={entry.id}
                           className="font-sans text-xs leading-[1.7] tracking-[-0.02em] text-grey-2"
@@ -786,7 +786,7 @@ export function LabelWorkspace({
     <Page>
       <PageHeader
         eyebrow="Delivery identification"
-        title="Labels & printing"
+        title="Print labels"
         description="Choose a delivery, position your labels, inspect the PDF and print."
       />
       {topContent ? <div className="mt-5">{topContent}</div> : null}

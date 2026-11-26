@@ -1,6 +1,8 @@
 'use client';
 import { ProductPricing } from '../financial';
+import { useCanSeeMoney } from '../../lib/role';
 import { PagedItems } from '../ui/paged-items';
+import { formatDate } from '../../lib/format';
 import { useRef, useState } from 'react';
 import {
   lagosDate,
@@ -70,6 +72,8 @@ export function ReceiveWizard({
   const [vendorRegistration, setVendorRegistration] = useState<Catalogue | null>(null);
   const [registering, setRegistering] = useState(false);
   const [step, setStep] = useState(0);
+  // Owner decision 26 Nov 2026: only an Admin enters purchase costs or views selling prices.
+  const seeMoney = useCanSeeMoney();
   const [supplierId, setSupplierId] = useState('');
   const [sourceId, setSourceId] = useState('');
   const [productSearch, setProductSearch] = useState('');
@@ -98,7 +102,7 @@ export function ReceiveWizard({
     setError('');
     try {
       const catalogue: Catalogue = await post('catalogue');
-      if (!catalogue.suppliers.some(supplier => supplier.sources.some(source => source.id === sourceId && source.skuPrefix))) throw new Error('Ask Admin to configure this saved location’s SKU prefix before registering products. Existing SKUs can still be received.');
+      if (!catalogue.suppliers.some(supplier => supplier.sources.some(source => source.id === sourceId && source.skuPrefix))) throw new Error('Ask an Admin to set this location’s code prefix before adding products. Products that already have codes can still be received.');
       setRegistration(catalogue);
     }
     catch (failure) { setError((failure as Error).message); }
@@ -148,6 +152,7 @@ export function ReceiveWizard({
         invoiceReference,
         lines: lines.map((row) => ({
           ...row,
+          ...(seeMoney ? {} : { purchaseCost: null }),
           usableQuantity: Number(row.usableQuantity),
           damagedQuantity: Number(row.damagedQuantity),
         })),
@@ -174,6 +179,7 @@ export function ReceiveWizard({
         invoiceReference,
         lines: lines.map((row) => ({
           ...row,
+          ...(seeMoney ? {} : { purchaseCost: null }),
           usableQuantity: Number(row.usableQuantity),
           damagedQuantity: Number(row.damagedQuantity),
         })),
@@ -231,7 +237,7 @@ export function ReceiveWizard({
       onFinish={finish}
       finishLabel="Confirm receipt"
     >
-      {step === 3 ? <div aria-label="Purchase cost review" className="space-y-2">{lines.map(line=><p key={line.skuId} className="break-words text-sm">{options.skus.find(s=>s.id===line.skuId)?.fullCode}: {line.purchaseCost ? `NGN ${line.purchaseCost.amount} per unit${line.purchaseCost.zeroReason ? ' / '+line.purchaseCost.zeroReason : ''}` : 'Purchase cost unknown'}</p>)}</div> : null}
+      {step === 3 && seeMoney ? <div aria-label="Purchase cost review" className="space-y-2">{lines.map(line=><p key={line.skuId} className="break-words text-sm">{options.skus.find(s=>s.id===line.skuId)?.fullCode}: {line.purchaseCost ? `NGN ${line.purchaseCost.amount} per unit${line.purchaseCost.zeroReason ? ' / '+line.purchaseCost.zeroReason : ''}` : 'Purchase cost unknown'}</p>)}</div> : null}
       {step === 0 ? (
         <>
           <div className="flex items-end gap-3"><div className="min-w-0 flex-1"><Field label="Receiving supplier">
@@ -254,7 +260,8 @@ export function ReceiveWizard({
                 }))}
               />
             )}
-          </Field></div><Button variant="secondary" disabled={registering} onClick={openVendor}>Add Vendor</Button></div>
+          </Field></div><Button variant="secondary" disabled={registering} onClick={openVendor}>Add supplier</Button></div>
+          {!options.suppliers.length ? <Footnote>No suppliers yet. Use Add supplier to register the one delivering today.</Footnote> : null}
 
           {supplier?.sources.length === 1 ? <Footnote>Saved location: {supplier.sources[0]!.name}. Used automatically for this delivery.</Footnote> : null}
           {supplier && supplier.sources.length > 1 ? (
@@ -291,15 +298,15 @@ export function ReceiveWizard({
             label="Search receiving products"
             value={productSearch}
             onChange={setProductSearch}
-            placeholder="Find a product, variant or SKU…"
+            placeholder="Find a product, variant or supplier code…"
           />
           <Badge tone="brand">
             {lines.length} variant line{lines.length === 1 ? '' : 's'} selected
           </Badge>
           <Button type="button" variant="secondary" disabled={registering} onClick={openRegistration}>{registering ? 'Loading catalogue…' : 'Register a new product'}</Button>
-          <Footnote>Registration saves the product and its SKUs. Stock is added only when you confirm this receipt.</Footnote>
+          <Footnote>Saving adds the product and its codes. Stock is only added when you confirm this delivery.</Footnote>
 
-          <PagedItems items={visibleProducts} size={8} key={productSearch}>{pageItems => <>{pageItems.map(([productId, name]) => (
+          <PagedItems items={visibleProducts} key={productSearch}>{pageItems => <>{pageItems.map(([productId, name]) => (
             <section key={productId} className={cn(card, 'p-4')}>
               <h4 className="font-sans text-sm font-semibold tracking-[-0.02em] text-ink">
                 {name}
@@ -376,7 +383,7 @@ export function ReceiveWizard({
             </Field>
           </div>
 
-          <PagedItems items={lines} size={6}>{pageItems => <>{pageItems.map((line) => {
+          <PagedItems items={lines}>{pageItems => <>{pageItems.map((line) => {
             const index = lines.findIndex(row => row.skuId === line.skuId);
             const sku = options.skus.find((item) => item.id === line.skuId)!;
 
@@ -435,10 +442,12 @@ export function ReceiveWizard({
                   </Field>
                 </div>
 
+                {seeMoney ? <>
                 <Field label={`${sku.fullCode} unit purchase cost (NGN)`}>{id => <Input id={id} inputMode="decimal" placeholder="Unknown" value={line.purchaseCost?.amount ?? ''} onChange={event => change(index, {purchaseCost:event.target.value === '' ? null : {amount:event.target.value,currency:'NGN',zeroReason:line.purchaseCost?.zeroReason ?? ''}})} />}</Field>
                 <Button type="button" variant="secondary" aria-label={`${options.canSetSellingPrice ? 'Set' : 'View'} selling price for ${sku.fullCode}`} onClick={() => setPricingSku(sku)}>{options.canSetSellingPrice ? 'Set selling price' : 'View selling price'}</Button>
                 <Footnote>Actual cost per delivered unit, including damaged arrivals. Leave blank when unknown. Historical receipt costs cannot be edited.</Footnote>
                 {line.purchaseCost && /^0(\.0{1,2})?$/.test(line.purchaseCost.amount) ? <Field label={`${sku.fullCode} zero-cost acquisition reason`}>{id => <Textarea id={id} required minLength={10} value={line.purchaseCost?.zeroReason ?? ''} onChange={event => change(index,{purchaseCost:{...line.purchaseCost!,zeroReason:event.target.value}})} />}</Field> : null}
+                </> : null}
                 {sku.sourceId !== sourceId ? <p role="alert" className="text-danger">This retained line belongs to a different vendor. Remove it or restore its vendor before confirming.</p> : null}
                 {Number(line.damagedQuantity) > 0 ? (
                   <Field label="Damage explanation">
@@ -477,7 +486,7 @@ export function ReceiveWizard({
               <strong className="font-semibold">{supplier?.name}</strong> · {source?.name}
             </p>
             <p className="mt-1.5 font-sans text-sm tracking-[-0.02em] text-ink">
-              Delivery date: {deliveredOn}
+              Delivery date: {deliveredOn ? formatDate(deliveredOn) : ""}
             </p>
             {invoiceReference ? (
               <p className="mt-1.5 font-sans text-sm tracking-[-0.02em] text-ink">
@@ -490,7 +499,7 @@ export function ReceiveWizard({
             </Footnote>
           </div>
 
-          <PagedItems items={lines} size={8}>{pageItems => <>{pageItems.map((line) => {
+          <PagedItems items={lines}>{pageItems => <>{pageItems.map((line) => {
             const sku = options.skus.find((item) => item.id === line.skuId)!;
 
             return (

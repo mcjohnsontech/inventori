@@ -5,12 +5,12 @@ import { choose } from './ui.js';
 
 test('Manager registers products inside receiving while preserving the delivery draft', async ({ page }) => {
   test.setTimeout(120000);
-  const login = async (email: string) => { await page.goto('/'); await page.getByLabel('Email address').fill(email); await page.getByLabel('Password',{exact:true}).fill(process.env.E2E_PASSWORD!); await page.getByRole('button',{name:'Sign in',exact:true}).click(); await expect(page.getByRole('heading',{name:/Welcome/})).toBeVisible({timeout:30000}); };
+  const login = async (email: string) => { await page.goto('/'); await page.getByLabel('Email address').fill(email); await page.getByLabel('Password',{exact:true}).fill(process.env.E2E_PASSWORD!); await page.getByRole('button',{name:'Sign in',exact:true}).click(); await expect(page.getByRole('heading',{name:/Good (morning|afternoon|evening)/})).toBeVisible({timeout:30000}); };
   await login('e2e-admin@dayari.test');
   const catalogue = await (await page.request.get('/api/catalogue')).json();
   const response = await page.request.post('/api/catalogue/supplier-setups',{headers:{Origin:'http://127.0.0.1:3101','Idempotency-Key':randomUUID()},data:{supplier:{name:`Inline ${randomUUID().slice(0,8)}`},location:{registryId:catalogue.locations.find((item:any)=>item.code==='LG').id}}});
   expect(response.status()).toBe(201); const supplier = await response.json();
-  await expect(page.locator('[aria-label="Stock summary"] button')).toHaveCount(0);
+  await expect(page.locator('[aria-label="Stock summary"] button')).toHaveCount(3);
   await expect(page.locator('[data-page-header] p')).toHaveCount(0);
   await page.getByRole('button',{name:'Sign out'}).click();await login('e2e-manager@dayari.test');
   await page.getByRole('button',{name:'Receive a delivery',exact:true}).click();
@@ -45,10 +45,11 @@ test('Manager registers products inside receiving while preserving the delivery 
   await dialog.getByRole('button',{name:'Continue',exact:true}).click();await expect(dialog).toContainText('Usable: 7');
   await dialog.getByRole('button',{name:'Confirm receipt',exact:true}).click();await expect(page.getByRole('dialog',{name:'Receive delivery',exact:true})).toBeHidden();
   await expect(page.getByRole('region',{name:'Accepted receipt',exact:true})).toContainText(product.skus[0].fullCode);
-  await page.getByRole('button',{name:'Close receipt details',exact:true}).click();await page.getByRole('button',{name:'Inventory',exact:true}).click();
+  await page.getByRole('button',{name:'Close receipt details',exact:true}).click();await page.getByRole('button',{name:'Stock',exact:true}).click();
   await page.getByLabel('Search inventory',{exact:true}).fill(name);
-  await expect(page.getByRole('region',{name:'Exact code lookup'})).toBeVisible();
-  const regions=await page.locator('[aria-label="Exact code lookup"]').boundingBox();const sheet=await page.getByLabel('Search inventory',{exact:true}).boundingBox();expect(regions!.y).toBeLessThan(sheet!.y);
+  // Code lookup moved to the top-bar search, which stays above the stock sheet.
+  await expect(page.getByRole('searchbox',{name:'Find any code',exact:true})).toBeVisible();
+  const search=await page.getByRole('searchbox',{name:'Find any code',exact:true}).boundingBox();const sheet=await page.getByLabel('Search inventory',{exact:true}).boundingBox();expect(search!.y).toBeLessThan(sheet!.y);
   await page.screenshot({path:'test-results/consolidation/page-receiving-ux/inventory-desktop.png'});
 });
 
@@ -60,13 +61,13 @@ test('compact supplier lists and catalogue grids paginate with title-only header
     const product=data.products[0];data.products=Array.from({length:25},(_,index)=>({...product,id:randomUUID(),name:`Paged product ${String(index+1).padStart(2,'0')}`,variants:[],attributes:[]}));data.skus=[];data.sourcings=[];
     await route.fulfill({response,json:data});
   });
-  await page.goto('/');await page.getByLabel('Email address').fill('e2e-admin@dayari.test');await page.getByLabel('Password',{exact:true}).fill(process.env.E2E_PASSWORD!);await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page.getByRole('heading',{name:/Welcome/})).toBeVisible({timeout:30000});
-  await page.getByRole('button',{name:'Catalogue',exact:true}).click();await expect(page.getByRole('button',{name:/View product/})).toHaveCount(18);
-  await page.getByRole('button',{name:'Next page',exact:true}).click();await expect(page.getByText('Paged product 25',{exact:true})).toBeVisible();await expect(page.getByText('Paged product 01',{exact:true})).toHaveCount(0);
+  await page.goto('/');await page.getByLabel('Email address').fill('e2e-admin@dayari.test');await page.getByLabel('Password',{exact:true}).fill(process.env.E2E_PASSWORD!);await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page.getByRole('heading',{name:/Good (morning|afternoon|evening)/})).toBeVisible({timeout:30000});
+  await page.getByRole('button',{name:'Products',exact:true}).click();await expect(page.getByRole('button',{name:/View product/})).toHaveCount(10);
+  await page.getByRole('button',{name:'Next page',exact:true}).click();await expect(page.getByText('Paged product 11',{exact:true})).toBeVisible();await expect(page.getByText('Paged product 01',{exact:true})).toHaveCount(0);
   await page.getByLabel('Search catalogue',{exact:true}).fill('product 01');await expect(page.getByText('Paged product 01',{exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Next page',exact:true})).toHaveCount(0);
   await page.getByLabel('Search catalogue',{exact:true}).fill('');
-  await page.getByRole('group',{name:'Catalogue view'}).getByRole('button',{name:'Suppliers',exact:true}).click();await page.getByRole('button',{name:'Supplier directory',exact:true}).click();await expect(page.getByRole('heading',{name:/Paged supplier/})).toHaveCount(12);
-  await page.getByRole('button',{name:'Next page',exact:true}).click();await expect(page.getByRole('heading',{name:'Paged supplier 13',exact:true})).toBeVisible();
+  await page.getByRole('group',{name:'Catalogue view'}).getByRole('button',{name:'Suppliers',exact:true}).click();await page.getByRole('button',{name:'Supplier directory',exact:true}).click();await expect(page.getByRole('heading',{name:/Paged supplier/})).toHaveCount(10);
+  await page.getByRole('button',{name:'Next page',exact:true}).click();await expect(page.getByRole('heading',{name:'Paged supplier 11',exact:true})).toBeVisible();
   await page.getByLabel('Search suppliers',{exact:true}).fill('supplier 25');await expect(page.getByRole('heading',{name:'Paged supplier 25',exact:true})).toBeVisible();
   await expect(page.locator('[data-page-header] p')).toHaveCount(0);expect(await page.locator('[data-page-header]').evaluate(element=>getComputedStyle(element).borderLeftWidth)).toBe('0px');
   await page.getByLabel('Search suppliers',{exact:true}).fill('');

@@ -61,8 +61,8 @@ it('atomically receives 50 unique physical identities with exact usable/damaged 
 it('provides bounded receipt-unit reads only to receiving roles and scopes foreign identities', async () => {
   for (const auth of [token,manager]) {
     const first = (await request(app.getHttpServer()).get(`/v1/receipts/${accepted.id}/units`).set('Authorization','Bearer '+auth).expect(200)).body;
-    expect(first.total).toBe(50);expect(first.units).toHaveLength(20);expect(first.historicalUnassigned).toBe(false);
-    const last=(await request(app.getHttpServer()).get(`/v1/receipts/${accepted.id}/units?page=3`).set('Authorization','Bearer '+auth).expect(200)).body;expect(last.units).toHaveLength(10);
+    expect(first.total).toBe(50);expect(first.units).toHaveLength(10);expect(first.historicalUnassigned).toBe(false);
+    const last=(await request(app.getHttpServer()).get(`/v1/receipts/${accepted.id}/units?page=5`).set('Authorization','Bearer '+auth).expect(200)).body;expect(last.units).toHaveLength(10);
     expect(JSON.stringify(first)).not.toMatch(/password|registrationCommandId|invoiceReference|canonicalPayload/);
   }
   await request(app.getHttpServer()).get(`/v1/receipts/${accepted.id}/units`).expect(401);

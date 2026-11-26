@@ -47,10 +47,11 @@ afterAll(async () => { await app?.close(); await db.$disconnect(); });
 it('enforces Manager submission, operational review and no Production administration', async () => {
   const body = recovery([damaged[0]!.id]);
   await request(app.getHttpServer()).post('/v1/authorization-requests').send(body).expect(401);
-  await post('authorization-requests', body, randomUUID(), admin).expect(403); await post('authorization-requests', body, randomUUID(), production).expect(403);
+  // Owner decision 24 Nov 2026: Admin may submit requests; an invalid body proves the role gate is passed without recording anything.
+  await post('authorization-requests', {}, randomUUID(), admin).expect(400); await post('authorization-requests', body, randomUUID(), production).expect(403);
   for (const path of ['authorization-request-config', 'authorization-requests']) await get(path, production).expect(403);
   await post('authorization-requests/preview', { kind: 'RECOVERY', unitIds: [damaged[0]!.id] }, randomUUID(), production).expect(403);
-  expect((await get('authorization-request-config', admin).expect(200)).body).toMatchObject({ canSubmit: false, executionEnabled: false, approvalDelivery: 'DEFERRED' });
+  expect((await get('authorization-request-config', admin).expect(200)).body).toMatchObject({ canSubmit: true, executionEnabled: false, approvalDelivery: 'DEFERRED' });
 });
 it('records exact BAD/intake recovery evidence with concurrent canonical replay and zero stock effects', async () => {
   const before = await stock(), body = recovery([badUnit, damaged[0]!.id]), key = randomUUID();
@@ -124,9 +125,11 @@ it('isolates origins and paginates/filter requests without exposing other shops'
   } finally { await foreign.close(); }
   for (let index = 0; index < 21; index++) await post('authorization-requests', recovery([damaged[0]!.id])).expect(201);
   const first = (await get('authorization-requests?kind=RECOVERY').expect(200)).body, second = (await get('authorization-requests?kind=RECOVERY&page=2').expect(200)).body;
-  expect(first.rows).toHaveLength(20); expect(second.rows.length).toBeGreaterThan(0); expect(second.total).toBe(first.total);
+  expect(first.rows).toHaveLength(10); expect(second.rows.length).toBeGreaterThan(0); expect(second.total).toBe(first.total);
   expect(first.rows.every((row: any) => row.kind === 'RECOVERY' && row.status === 'PENDING_CLOUD_AUTHORIZATION')).toBe(true);
-  expect(new Set([...first.rows, ...second.rows].map(row => row.id)).size).toBe(first.total);
+  const rest: any[] = [];
+  for (let page = 3; page <= Math.ceil(first.total / first.pageSize); page++) rest.push(...(await get(`authorization-requests?kind=RECOVERY&page=${page}`).expect(200)).body.rows);
+  expect(new Set([...first.rows, ...second.rows, ...rest].map(row => row.id)).size).toBe(first.total);
 });
 it('records a 500-unit recovery request without changing a single unit or stock quantity', async () => {
   const receipt = (await post('receipts', { sourceId, deliveredOn: '2020-01-01', lines: [{ skuId, usableQuantity: 0, damagedQuantity: 500, damageReason: 'Synthetic damaged intake for request benchmark' }] }).expect(201)).body;

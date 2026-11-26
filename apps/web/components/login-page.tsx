@@ -1,5 +1,5 @@
 'use client';
-import { ArrowRight01Icon, Layers01Icon, PackageIcon, SecurityCheckIcon } from '@hugeicons/core-free-icons';
+import { ArrowRight01Icon, Layers01Icon, SecurityCheckIcon } from '@hugeicons/core-free-icons';
 import type { FormEvent } from 'react';
 
 import { Button, ErrorNotice, Field, Icon, Input, PasswordInput } from './ui';
@@ -17,10 +17,10 @@ export function LoginPage({
     <main className="grid min-h-dvh lg:grid-cols-2">
       <section className="flex flex-col justify-between bg-brand-deep p-6 text-white lg:p-16">
         <span className="flex items-center gap-2.5">
-          <span className="grid size-10 place-items-center rounded-xl bg-white/10">
-            <Icon icon={Layers01Icon} size={22} strokeWidth={2} />
+          <Icon icon={Layers01Icon} size={26} strokeWidth={2} />
+          <span className="font-display text-[26px] leading-none font-semibold tracking-[-0.04em]">
+            dayari<span className="text-[#7fc4a4]">.</span>
           </span>
-          <span className="font-display text-2xl font-semibold tracking-[-0.04em]">dayari</span>
           <span className="mt-1 font-sans text-[9px] font-semibold tracking-[0.18em] text-white/50 uppercase">
             Inventory
           </span>
@@ -44,14 +44,14 @@ export function LoginPage({
 
         <p className="flex items-center gap-2 font-sans text-xs tracking-[-0.02em] text-white/60">
           <Icon icon={SecurityCheckIcon} size={15} />
-          Connected to your local shop service
+          Connected to the shop server
         </p>
       </section>
 
       <section className="flex items-center justify-center p-6 sm:p-8">
         <div className="w-full max-w-sm">
           <span className="grid size-12 place-items-center rounded-2xl border border-black/[0.07] bg-white text-brand">
-            <Icon icon={PackageIcon} size={23} />
+            <Icon icon={Layers01Icon} size={23} strokeWidth={2} />
           </span>
 
           <p className="mt-7 font-sans text-xs font-semibold tracking-[0.1em] text-brand uppercase">

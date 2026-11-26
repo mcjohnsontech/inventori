@@ -305,6 +305,7 @@ model StockMovement {
   damageLineId String? @unique @db.Uuid
   damageReviewLineId String? @unique @db.Uuid
   completionLineId String? @unique @db.Uuid
+  decisionLineId String? @unique @db.Uuid
   fromState String
   toState String
   quantity BigInt
@@ -488,6 +489,7 @@ model UnitEvent {
   damageLineId String? @unique @db.Uuid
   damageReviewLineId String? @unique @db.Uuid
   completionLineId String? @unique @db.Uuid
+  decisionLineId String? @unique @db.Uuid
   @@unique([unitId,ordinal])
   @@index([commandId])
 }
@@ -889,13 +891,17 @@ model PurchaseCost {
  commandId String @db.Uuid
  actorId String @db.Uuid
  recordedAt DateTime @db.Timestamptz(6)
+ /// Owner decision 26 Nov 2026: an Admin may add a cost after receipt.
+ enteredLater Boolean @default(false)
+ originSequence BigInt?
  @@index([originId,recordedAt])
 }
 model SellingPrice {
  id String @id @default(uuid()) @db.Uuid
  originId String @db.Uuid
  variantId String @db.Uuid
- amount Decimal @db.Decimal(20,2)
+ /// Null removes the variant's own price; it then follows the product price.
+ amount Decimal? @db.Decimal(20,2)
  currency String
  reason String
  previousPriceId String? @unique @db.Uuid
@@ -904,4 +910,54 @@ model SellingPrice {
  originSequence BigInt
  recordedAt DateTime @db.Timestamptz(6)
  @@index([originId,variantId,originSequence(sort: Desc)])
+}
+/// Owner decision 26 Nov 2026: one selling price per product covers all its variants.
+model ProductSellingPrice {
+ id String @id @db.Uuid
+ originId String @db.Uuid
+ productId String @db.Uuid
+ amount Decimal @db.Decimal(20,2)
+ currency String
+ reason String
+ previousPriceId String? @unique @db.Uuid
+ commandId String @unique @db.Uuid
+ actorId String @db.Uuid
+ originSequence BigInt
+ recordedAt DateTime @db.Timestamptz(6)
+ @@index([originId,productId,originSequence(sort: Desc)])
+}
+
+// Local Admin approval of recovery/correction requests (migration 035, owner decisions 24 Nov 2026).
+model AuthorizationDecision {
+ id String @id @db.Uuid
+ originId String @db.Uuid
+ requestId String @unique @db.Uuid
+ actorId String @db.Uuid
+ actorRole Role
+ commandId String @unique @db.Uuid
+ transactionId String? @unique @db.Uuid
+ recordedAt DateTime @db.Timestamptz(6)
+ outcome String
+ note String
+ unitCount Int
+ manifest Json
+ canonicalManifest String
+ manifestHash String
+ @@index([originId,recordedAt,id])
+}
+model AuthorizationDecisionLine {
+ id String @id @db.Uuid
+ decisionId String @db.Uuid
+ originId String @db.Uuid
+ unitId String @db.Uuid
+ lotId String @db.Uuid
+ batchId String @db.Uuid
+ fromState String
+ toState String
+ previousEventId String @db.Uuid
+ movementId String @unique @db.Uuid
+ eventId String @unique @db.Uuid
+ snapshot Json
+ @@unique([decisionId,unitId])
+ @@index([unitId])
 }

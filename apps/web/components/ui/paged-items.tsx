@@ -1,9 +1,10 @@
 'use client';
 import { useState, type ReactNode } from 'react';
+import { LIST_PAGE_SIZE } from '@dayari/contracts';
 import { Pager } from './pager';
 
 /** Small read-only collections share the same bounded, accessible page controls. */
-export function PagedItems<T>({ items, size = 12, children }: {
+export function PagedItems<T>({ items, size = LIST_PAGE_SIZE, children }: {
   items: readonly T[];
   size?: number;
   children: (items: readonly T[]) => ReactNode;

@@ -1,12 +1,14 @@
 'use client';
+import { LIST_PAGE_SIZE } from '@dayari/contracts';
 import { ArrowLeft01Icon, ArrowRight01Icon, Invoice01Icon, RefreshIcon } from '@hugeicons/core-free-icons';
 import { useEffect, useState } from 'react';
 import type { AcceptedReceipt } from '@dayari/contracts';
 
 import { cn } from '../../lib/cn';
 import { useApiRead } from '../../lib/api';
-import { formatDateTime } from '../../lib/format';
+import { formatDate, formatDateTime, plural } from '../../lib/format';
 import type { ReceiptSummary } from '../dashboard';
+import { MissingCosts } from './missing-costs';
 import {
   Badge,
   Breadcrumb,
@@ -30,7 +32,16 @@ import {
 } from '../ui';
 import { ReceiptDetails } from './receipt-details';
 
-const PER_PAGE = 12;
+const PER_PAGE = LIST_PAGE_SIZE;
+
+/** Label progress for a delivery. "Printed" means the labels were sent to the printer. */
+function LabelStatus({ row }: { row: ReceiptSummary }) {
+  const units = row.labelledUnits ?? 0, printed = row.labelsPrinted ?? 0;
+  if (!units) return null;
+  if (printed >= units) return <Badge tone="usable">Labels printed</Badge>;
+  if (printed > 0) return <Badge tone="damaged">{printed} of {units} labels printed</Badge>;
+  return <Badge tone="danger">Labels not printed</Badge>;
+}
 
 export function ReceiptsWorkspace({
   initialReceiptId = '',
@@ -74,8 +85,8 @@ export function ReceiptsWorkspace({
   return (
     <Page>
       <PageHeader
-        eyebrow="Accepted operational evidence"
-        title="Receiving"
+        eyebrow="Deliveries"
+        title="Deliveries"
         description="Immutable delivery records, ordered by acceptance. Delivery dates remain separate from the time stock was recorded."
         actions={
           <>
@@ -93,6 +104,8 @@ export function ReceiptsWorkspace({
           </>
         }
       />
+
+      <MissingCosts onSaved={() => { if (id) receipt.refresh(); }} />
 
       {id ? (
         <DetailsDrawer wide title="Accepted receipt" closeLabel="Close receipt details" onClose={()=>select('')}>
@@ -157,7 +170,7 @@ export function ReceiptsWorkspace({
           </div>
 
           <Footnote className="border-b border-black/[0.06] px-5 py-3">
-            Latest 100 accepted deliveries. Filters apply to this recent-history window.
+            Showing the latest 100 deliveries. Search and date filters apply to these.
           </Footnote>
 
           {history.loading ? (
@@ -178,28 +191,26 @@ export function ReceiptsWorkspace({
                   <button
                     type="button"
                     onClick={() => select(row.id)}
-                    className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 px-5 py-4 text-left transition-colors hover:bg-surface-muted/70 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_auto_auto]"
+                    aria-label={`View receipt ${row.publicCode}`}
+                    className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 px-5 py-4 text-left transition-colors hover:bg-surface-muted/70 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_auto]"
                   >
                     <span className="min-w-0">
-                      <Code tone="brand" className="block font-medium">
-                        {row.publicCode}
-                      </Code>
-                      <span className="mt-0.5 block truncate font-sans text-xs tracking-[-0.02em] text-grey-3">
+                      <span className="block truncate font-sans text-sm font-semibold tracking-[-0.02em] text-ink">
                         {row.supplierName} · {row.sourceName}
                       </span>
+                      <Code tone="muted" className="mt-0.5 block text-xs">
+                        {row.publicCode}
+                      </Code>
+                      <span className="mt-1.5 flex flex-wrap items-center gap-2 font-sans text-xs text-grey-2">
+                        <span>{plural(Number(row.totalItems ?? 0), 'item')} received</span>
+                        <LabelStatus row={row} />
+                      </span>
                     </span>
-                    <span className="col-span-2 font-sans text-xs leading-[1.7] tracking-[-0.02em] text-grey-3 md:col-span-1">
-                      Delivered {row.deliveredOn}
-                      <br />
-                      Accepted {formatDateTime(row.acceptedAt)}
+                    <span className="col-span-2 row-start-2 font-sans text-xs leading-[1.7] tracking-[-0.02em] text-grey-2 md:col-span-1 md:row-start-auto">
+                      Delivered {formatDate(row.deliveredOn)}
+                      <span className="block text-grey-3">Received {formatDateTime(row.acceptedAt)}</span>
                     </span>
-                    <Badge tone="usable" className="justify-self-start">
-                      Accepted
-                    </Badge>
-                    <span className="flex items-center gap-1.5 justify-self-end font-sans text-[13px] font-semibold tracking-[-0.02em] text-brand">
-                      <span className="hidden sm:inline">View receipt</span>
-                      <Icon icon={ArrowRight01Icon} size={14} strokeWidth={2} />
-                    </span>
+                    <Icon icon={ArrowRight01Icon} size={16} strokeWidth={2} className="row-start-1 justify-self-end text-grey-3 md:row-start-auto" />
                   </button>
                 </li>
               ))}
@@ -210,8 +221,7 @@ export function ReceiptsWorkspace({
         </section>
 
       <Footnote className="mt-5">
-        Receipt and lot movement summaries are operational evidence. Security logs and unrestricted
-        audit snapshots are not exposed here.
+        Accepted deliveries can't be edited. Open a receipt to see its items, lots and labels.
       </Footnote>
     </Page>
   );

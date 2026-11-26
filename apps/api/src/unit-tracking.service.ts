@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException, ServiceUnavailableException, UnprocessableEntityException } from '@nestjs/common';
 import { Prisma, type PrismaClient, type User } from '@prisma/client';
-import { decodeInventoryQr, idempotencyKeySchema, unitObservationSchema, unitTrackingQuerySchema, type UnitHistoryItem, type UnitObservationResult, type UnitTracking } from '@dayari/contracts';
+import { decodeInventoryQr, idempotencyKeySchema, unitObservationSchema, unitTrackingQuerySchema, type UnitHistoryItem, type UnitObservationResult, type UnitTracking, LIST_PAGE_SIZE } from '@dayari/contracts';
 import { requireCapability } from './permissions.js';
 import { canonical, digest } from './security.js';
 import { UnitsService } from './units.service.js';
@@ -70,7 +70,7 @@ export class UnitTrackingService {
         JOIN "OutboxEvent" o ON o."commandId"=e."commandId" AND o."originId"=e."originId"
         WHERE e."unitId"=${id.data}::uuid AND e."originId"=${this.originId}::uuid AND (e.kind='ISSUED' OR (e.kind='BAD_REPORTED' AND e."actorRole"='PRODUCTION')) AND e."actorId"=${user.id}::uuid`;
       const [count] = await tx.$queryRaw<{ n: bigint }[]>(Prisma.sql`SELECT count(*) AS n FROM (${history}) h`);
-      const rows = await tx.$queryRaw<HistoryRow[]>(Prisma.sql`SELECT * FROM (${history}) h ORDER BY "originSequence",id LIMIT 20 OFFSET ${(query.data.page - 1) * 20}`);
+      const rows = await tx.$queryRaw<HistoryRow[]>(Prisma.sql`SELECT * FROM (${history}) h ORDER BY "originSequence",id LIMIT ${LIST_PAGE_SIZE} OFFSET ${(query.data.page - 1) * LIST_PAGE_SIZE}`);
       const classificationIds = rows.filter(row => row.kind === 'REASON_RECONCILED').map(row => row.id);
       const classifications = classificationIds.length ? await tx.$queryRaw<{ id: string; reconciliationId: string; checkoutId: string; orderReference: string | null; reasonCode: string; reasonNote: string; managerRemarks: string }[]>(Prisma.sql`
         SELECT resolved.id,r.id AS "reconciliationId",resolved."checkoutId",x."orderReference",r."reasonCode",r."reasonNote",r.remarks AS "managerRemarks"
@@ -114,7 +114,7 @@ export class UnitTrackingService {
         ...(row.receiptId ? { receiptId: row.receiptId } : {}), ...(row.movementId ? { movementId: row.movementId } : {}),
         ...(row.labelJobId ? { labelJobId: row.labelJobId } : {}), ...(row.method ? { method: row.method } : {}),
       }));
-      const result: UnitTracking = { unit, timeline: { events, total: Number(count!.n), page: query.data.page, pageSize: 20 },
+      const result: UnitTracking = { unit, timeline: { events, total: Number(count!.n), page: query.data.page, pageSize:LIST_PAGE_SIZE },
         historyScope: operational ? 'OPERATIONAL' : ownIssue ? 'OWN_ACTIVITY' : 'OWN_QR_PRESENTATIONS', physicalVerification: 'NOT_ESTABLISHED_BY_THIS_VIEW' };
       if (operational) {
         const saved = await tx.stockUnit.findUniqueOrThrow({ where: { id: id.data } });
@@ -133,7 +133,7 @@ export class UnitTrackingService {
     await this.allow(user);
     if (this.mode !== 'SHOP') throw new ForbiddenException('QR history writes belong to the shop');
     const parsed = unitObservationSchema.safeParse(input), key = idempotencyKeySchema.safeParse(keyInput);
-    if (!parsed.success || !key.success) throw new BadRequestException('Invalid QR presentation or idempotency key');
+    if (!parsed.success || !key.success) throw new BadRequestException('That scan could not be saved. Try again.');
     let identity: ReturnType<typeof decodeInventoryQr>;
     try { identity = decodeInventoryQr(parsed.data.payload); }
     catch { throw new BadRequestException('Malformed individual-unit QR'); }

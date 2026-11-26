@@ -71,7 +71,7 @@ it('Admin reports pre-issue stock and Manager can report another worker issued u
 });
 it('Manager Held/Reworked reviews change metadata only, while terminal disposition moves exact damaged stock to Removed', async () => {
   const review = { unitIds: [usable[0]!.id], outcome: 'HELD', note: 'Held pending a documented disposition decision' }, key = randomUUID();
-  await post('damage-reviews', review, randomUUID(), admin).expect(403); await post('damage-reviews', review, randomUUID(), production).expect(403);
+  await post('damage-reviews', { ...review, outcome: 'NOT_AN_OUTCOME' }, randomUUID(), admin).expect(400); await post('damage-reviews', review, randomUUID(), production).expect(403);
   const before = await projection(), states = await db.unitState.findMany({ where: { originId }, orderBy: { unitId: 'asc' } });
   const held = (await post('damage-reviews', review, key).expect(201)).body; expect(held.transactionId).toBeNull(); expect(held.lines[0].movementId).toBeNull();
   expect((await post('damage-reviews', review, key).expect(201)).body).toEqual(held);

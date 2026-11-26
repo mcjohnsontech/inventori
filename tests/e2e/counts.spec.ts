@@ -17,7 +17,7 @@ test('Manager targeted counts preserve exact evidence, retry safely and resolve 
     await page.getByRole('button', { name: 'Sign out', exact: true }).click();
     await login('e2e-manager@dayari.test');
     await page.goto('/#counts');
-    await expect(page.getByRole('heading', { name: 'Targeted physical counts', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Stock counts', exact: true })).toBeVisible();
     await page.getByRole('button',{name:'Count stock',exact:true}).click();
     await choose(page, 'Delivery lot', { label: `${name} notebook / Default / ${product.skus[0].fullCode} / ${receipt.lines[0].lotCode}` });
     await page.getByLabel('Count purpose', { exact: true }).fill('Selected physical sample for browser acceptance');
@@ -29,7 +29,7 @@ test('Manager targeted counts preserve exact evidence, retry safely and resolve 
     await expect(page.getByLabel('Count explanation',{exact:true})).toHaveValue('Preserve this count draft when reopening its history row');
     await page.route('**/api/count-observations', async (route) => { await route.fetch(); await route.abort('failed'); }, { times: 1 });
     const failed = page.waitForEvent('requestfailed', r => r.url().endsWith('/api/count-observations'));
-    await page.getByLabel('Scan QR or enter Unit Code', { exact: true }).fill(units[0].unitCode);
+    await page.getByLabel('Scan a QR label or type an item code', { exact: true }).fill(units[0].unitCode);
     await page.getByRole('button', { name: 'Record observed item', exact: true }).click();
     await failed;
     await page.getByRole('button', { name: 'Retry saved count request', exact: true }).click();
@@ -38,17 +38,17 @@ test('Manager targeted counts preserve exact evidence, retry safely and resolve 
     await page.getByLabel('Count explanation', { exact: true }).fill('One label was initially overlooked in this synthetic count');
     await page.getByLabel('Supporting evidence', { exact: true }).fill('Synthetic evidence only; no operational count or physical stock changed');
     page.on('dialog', dialog => dialog.accept());
-    await page.getByRole('button', { name: 'Confirm count evidence', exact: true }).click();
+    await page.getByRole('button', { name: 'Save count', exact: true }).click();
     await expect(page.getByText('NATIVE / MISMATCH', { exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Start explicit recount', exact: true }).click();
     for (const unit of units) {
-        await page.getByLabel('Scan QR or enter Unit Code', { exact: true }).fill(unit.unitCode);
+        await page.getByLabel('Scan a QR label or type an item code', { exact: true }).fill(unit.unitCode);
         await page.getByRole('button', { name: 'Record observed item', exact: true }).click();
         await expect(page.getByRole('table', { name: 'Observed count items' })).toContainText(unit.unitCode);
     }
     await page.getByLabel('Count explanation', { exact: true }).fill('Both saved labels explicitly observed during matching recount');
     await page.getByLabel('Supporting evidence', { exact: true }).fill('Synthetic recount acceptance evidence retained');
-    await page.getByRole('button', { name: 'Confirm count evidence', exact: true }).click();
+    await page.getByRole('button', { name: 'Save count', exact: true }).click();
     await expect(page.getByText('NATIVE / MATCHED', { exact: true })).toBeVisible();
     page.removeAllListeners('dialog');
     page.once('dialog', dialog => dialog.accept('Earlier label was overlooked; matching recount confirms mistaken finding'));

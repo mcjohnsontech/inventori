@@ -2,6 +2,7 @@ import { Fragment, type ReactNode } from 'react';
 
 import { cn } from '../../lib/cn';
 import { Skeleton } from './skeleton';
+import { useCanSeeMoney, useShowCodes } from '../../lib/role';
 
 export type Column<T> = {
   key: string;
@@ -11,10 +12,14 @@ export type Column<T> = {
   /** Give long item descriptions the full mobile row while retaining labels for quantities. */
   mobileFullWidth?: boolean;
   align?: 'left' | 'right';
+  /** Supplier, lot or batch codes: hidden from Production Staff. */
+  codesOnly?: boolean;
+  /** Costs, prices or values: Admin-only (owner decision 26 Nov 2026). */
+  moneyOnly?: boolean;
 };
 
 export function DataTable<T>({
-  columns,
+  columns: allColumns,
   rows,
   rowKey,
   emptyMessage,
@@ -40,6 +45,8 @@ export function DataTable<T>({
   /** Render an expansion row directly beneath the row it belongs to. */
   subRow?: (row: T) => ReactNode | null;
 }) {
+  const showCodes = useShowCodes(), seeMoney = useCanSeeMoney();
+  const columns = allColumns.filter(column => (showCodes || !column.codesOnly) && (seeMoney || !column.moneyOnly));
   return (
     <div
       tabIndex={0}

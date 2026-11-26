@@ -34,6 +34,6 @@ export {
   StatSkeleton,
 } from './skeleton';
 export { Stat } from './stat';
-export { EmptyState, ErrorNotice, Footnote, SuccessNotice, WarningNotice } from './status';
-export { Tabs, type Tab } from './tabs';
+export { EmptyState, ErrorNotice, Footnote, InfoNotice, SuccessNotice, WarningNotice } from './status';
+export { SectionTabs, Tabs, type Tab } from './tabs';
 export { Tooltip, TooltipProvider } from './tooltip';

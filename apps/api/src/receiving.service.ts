@@ -6,10 +6,16 @@ import { randomUUID } from 'node:crypto';
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { Prisma, type PrismaClient, type User } from '@prisma/client';
 import { z, type ZodType } from 'zod';
-import { batchCode, idempotencyKeySchema, lagosDate, receiptSchema, receiptUnitsQuery, serializedReceiptLimit, type ReceiptUnitsPage, type ReceivedUnit, type AcceptedReceipt, type LotEvidence, type OperationalStock } from '@dayari/contracts';
+import { batchCode, idempotencyKeySchema, lagosDate, receiptSchema, receiptUnitsQuery, serializedReceiptLimit, type ReceiptUnitsPage, type ReceivedUnit, type AcceptedReceipt, type LotEvidence, type OperationalStock, LIST_PAGE_SIZE } from '@dayari/contracts';
 import { canonical, digest } from './security.js';
+import { can, type AppRole } from '@dayari/contracts';
 
 type Reader = Prisma.TransactionClient;
+/** Owner decision 26 Nov 2026: money is Admin-only, so other roles get receipts without purchase costs. */
+function withoutMoney(user: Pick<User, 'role'>, receipt: AcceptedReceipt): AcceptedReceipt {
+  if (can(user.role as AppRole, 'FINANCIAL_READ')) return receipt;
+  return { ...receipt, lines: receipt.lines.map(({ purchaseCost: _hidden, ...line }) => line) };
+}
 const commandType = 'receiving.receipts.create';
 function parse<T>(schema: ZodType<T>, value: unknown): T {
   const result = schema.safeParse(value);
@@ -35,7 +41,20 @@ export class ReceivingService {
     this.allow(user);
     const batches = await this.db.deliveryBatch.findMany({ where: { originId: this.originId }, orderBy: { acceptedAt: 'desc' }, take: 100 });
     const receipts = await this.db.receipt.findMany({ where: { batchId: { in: batches.map(batch => batch.id) } } });
-    return batches.map(batch => ({ id: receipts.find(receipt => receipt.batchId === batch.id)!.id, batchId: batch.id, originId: batch.originId, publicCode: batch.publicCode, deliveredOn: batch.deliveredOn.toISOString().slice(0, 10), acceptedAt: batch.acceptedAt.toISOString(), supplierName: (batch.snapshot as { supplierName: string }).supplierName, sourceName: (batch.snapshot as { sourceName: string }).sourceName }));
+    const ids = receipts.map(receipt => receipt.id);
+    // Items received and label progress. "Printed" means the label job was sent to the printer;
+    // the app cannot observe the physical printer outcome.
+    const totals = ids.length ? await this.db.$queryRaw<{ receiptId: string; total: string }[]>`SELECT "receiptId", sum("totalQuantity")::text AS total FROM "ReceiptLine" WHERE "receiptId" IN (${Prisma.join(ids.map(id => Prisma.sql`${id}::uuid`))}) GROUP BY "receiptId"` : [];
+    const labels = ids.length && await hasUnitSchema(this.db) ? await this.db.$queryRaw<{ receiptId: string; units: number; printed: number }[]>`
+      WITH printed AS (SELECT DISTINCT "jobId" FROM "UnitLabelEvent" WHERE "originId"=${this.originId}::uuid AND kind='HANDOFF_REQUESTED')
+      SELECT x."receiptId", count(*)::int AS units, count(p."jobId")::int AS printed
+      FROM "StockUnit" u JOIN "ReceiptLine" x ON x.id=u."receiptLineId" LEFT JOIN "UnitLabelClaim" c ON c."unitId"=u.id LEFT JOIN printed p ON p."jobId"=c."jobId"
+      WHERE x."receiptId" IN (${Prisma.join(ids.map(id => Prisma.sql`${id}::uuid`))}) GROUP BY x."receiptId"` : [];
+    return batches.map(batch => {
+      const id = receipts.find(receipt => receipt.batchId === batch.id)!.id, label = labels.find(row => row.receiptId === id);
+      return { id, batchId: batch.id, originId: batch.originId, publicCode: batch.publicCode, deliveredOn: batch.deliveredOn.toISOString().slice(0, 10), acceptedAt: batch.acceptedAt.toISOString(), supplierName: (batch.snapshot as { supplierName: string }).supplierName, sourceName: (batch.snapshot as { sourceName: string }).sourceName,
+        totalItems: totals.find(row => row.receiptId === id)?.total ?? '0', labelledUnits: label?.units ?? 0, labelsPrinted: label?.printed ?? 0 };
+    });
   }
   async read(tx: Reader, id: string): Promise<AcceptedReceipt> {
     const receipt = await tx.receipt.findUnique({ where: { id } });
@@ -53,7 +72,7 @@ export class ReceivingService {
     const costs = await hasFinancialSchema(tx) ? await tx.$queryRaw<{receiptLineId:string;amount:string;zeroReason:string}[]>`SELECT c."receiptLineId",c.amount::text AS amount,c."zeroReason" FROM "PurchaseCost" c JOIN "ReceiptLine" rl ON rl.id=c."receiptLineId" WHERE rl."receiptId"=${id}::uuid` : [];
     return { ...(serialization ? { serialization } : {}), id, batch: { id: batch.id, originId: batch.originId, publicCode: batch.publicCode, deliveredOn: batch.deliveredOn.toISOString().slice(0, 10), acceptedAt: batch.acceptedAt.toISOString(), numberedOn: batch.numberedOn.toISOString().slice(0, 10), invoiceReference: batch.invoiceReference, supplierName: (batch.snapshot as { supplierName: string }).supplierName, sourceName: (batch.snapshot as { sourceName: string }).sourceName }, originSequence: transaction.originSequence.toString(), lines: lines.map(line => ({ ...(costs.find(c=>c.receiptLineId===line.id) ? {purchaseCost:{amount:costs.find(c=>c.receiptLineId===line.id)!.amount,currency:'NGN' as const,zeroReason:costs.find(c=>c.receiptLineId===line.id)!.zeroReason}} : {}), lotCode: lotIdentities.find(i => i.lotId === line.lotId)?.code ?? null, productCode: productIdentities.find(i => i.productId === (line.snapshot as {productId:string}).productId)?.code ?? null, id: line.id, skuId: line.skuId, lotId: line.lotId, usableQuantity: line.usableQuantity.toString(), damagedQuantity: line.damagedQuantity.toString(), totalQuantity: line.totalQuantity.toString(), damageReason: line.damageReason, fullCode: (line.snapshot as { fullCode: string }).fullCode, productId: (line.snapshot as { productId: string }).productId, productName: (line.snapshot as { productName: string }).productName, variantName: (line.snapshot as { variantName: string }).variantName })), totals: { usable: sum('usableQuantity'), damaged: sum('damagedQuantity'), delivered: sum('totalQuantity') } };
   }
-  async get(user: User, id: string) { this.allow(user); return this.read(this.db, parse(idempotencyKeySchema, id)); }
+  async get(user: User, id: string) { this.allow(user); return withoutMoney(user, await this.read(this.db, parse(idempotencyKeySchema, id))); }
   async units(user: User, idInput: unknown, input: unknown): Promise<ReceiptUnitsPage> {
     this.allow(user);
     const id = parse(idempotencyKeySchema, idInput), query = parse(receiptUnitsQuery, input);
@@ -63,9 +82,9 @@ export class ReceivingService {
       const lineIds = receipt.lines.filter(line => !query.lotId || line.lotId === query.lotId).map(line => line.id);
       const where = { originId: this.originId, receiptLineId: { in: lineIds } };
       const total = await tx.stockUnit.count({ where });
-      const saved = await tx.stockUnit.findMany({ where, orderBy: [{ receiptLineId: 'asc' }, { unitCode: 'asc' }], skip: (query.page - 1) * 20, take: 20 });
+      const saved = await tx.stockUnit.findMany({ where, orderBy: [{ receiptLineId: 'asc' }, { unitCode: 'asc' }], skip:(query.page-1)*LIST_PAGE_SIZE,take:LIST_PAGE_SIZE });
       const states = await tx.unitState.findMany({ where: { unitId: { in: saved.map(unit => unit.id) } }, select: { unitId: true, state: true } });
-      return { total, page: query.page, pageSize: 20, historicalUnassigned: !receipt.serialization,
+      return { total, page: query.page, pageSize:LIST_PAGE_SIZE, historicalUnassigned: !receipt.serialization,
         units: saved.map(unit => { const line = receipt.lines.find(line => line.id === unit.receiptLineId)!;
           return { id: unit.id, unitCode: unit.unitCode, lotId: unit.lotId, receiptLineId: unit.receiptLineId, initialState: unit.initialState as ReceivedUnit['initialState'], state: states.find(state => state.unitId === unit.id)!.state, fullSku: line.fullCode, productName: line.productName, variantName: line.variantName, recordedAt: unit.recordedAt.toISOString() };
         }) };
@@ -117,18 +136,24 @@ export class ReceivingService {
     }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
   }
   async create(user: User, keyInput: unknown, input: unknown): Promise<AcceptedReceipt> {
+    return withoutMoney(user, await this.accept(user, keyInput, input));
+  }
+  private async accept(user: User, keyInput: unknown, input: unknown): Promise<AcceptedReceipt> {
     this.allow(user);
     if (this.mode !== 'SHOP') throw new ForbiddenException('Only the shop may receive stock');
     const key = parse(idempotencyKeySchema, keyInput);
     const data = parse(receiptSchema, input);
+    // Owner decision 26 Nov 2026: only an Admin enters purchase costs.
+    const withCost = data.lines.some(line => line.purchaseCost != null);
+    if (withCost) requireCapability(user, 'PURCHASE_COST_WRITE');
     const requestHash = digest(canonical(data));
     for (let attempt = 0; ; attempt++) {
       try {
         return await this.db.$transaction(async tx => {
           const nodes = await tx.$queryRaw<{ mode: string }[]>`SELECT mode FROM "OriginNode" WHERE id=${this.originId}::uuid FOR UPDATE`;
-          if (nodes[0]?.mode !== 'SHOP') throw new ForbiddenException('Shop origin is not provisioned');
+          if (nodes[0]?.mode !== 'SHOP') throw new ForbiddenException('This shop server hasn’t been set up yet.');
           await tx.$queryRaw`SELECT id FROM "User" WHERE id=${user.id}::uuid FOR SHARE`;
-          const actor = await tx.user.findUniqueOrThrow({ where: { id: user.id } }); this.allow(actor); if(actor.authVersion!==user.authVersion||actor.mustChangePassword)throw new ForbiddenException('Session security state changed');
+          const actor = await tx.user.findUniqueOrThrow({ where: { id: user.id } }); this.allow(actor); if (withCost) requireCapability(actor, 'PURCHASE_COST_WRITE'); if(actor.authVersion!==user.authVersion||actor.mustChangePassword)throw new ForbiddenException('Session security state changed');
           const prior = await tx.commandResult.findUnique({ where: { originId_actorId_commandType_key: { originId: this.originId, actorId: user.id, commandType, key } } });
           if (prior) { if (prior.requestHash !== requestHash) throw new ConflictException('Idempotency key reused with different receipt'); return prior.response as unknown as AcceptedReceipt; }
           const financial = await hasFinancialSchema(tx);
@@ -143,7 +168,7 @@ export class ReceivingService {
           const source = await tx.supplierSource.findUnique({ where: { id: data.sourceId }, include: { supplier: true } });
           if (!source || source.originId !== this.originId) throw new BadRequestException('Choose a supplier source belonging to this shop');
           const skus = await tx.supplierVariantSku.findMany({ where: { id: { in: data.lines.map(line => line.skuId) } }, include: { sourcing: true, variant: { include: { product: true, selections: { include: { value: true } } } } } });
-          if (skus.length !== data.lines.length || skus.some(sku => sku.sourcing.sourceId !== source.id)) throw new BadRequestException('Every SKU must belong to the selected supplier source');
+          if (skus.length !== data.lines.length || skus.some(sku => sku.sourcing.sourceId !== source.id)) throw new BadRequestException('Every item must come from the selected supplier.');
           const numberedOn = new Date(`${date}T00:00:00Z`);
           const previous = await tx.deliveryBatch.aggregate({ where: { originId: this.originId, numberedOn }, _max: { dailyOrdinal: true } });
           const ordinal = (previous._max.dailyOrdinal ?? 0) + 1;

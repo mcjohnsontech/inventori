@@ -88,8 +88,9 @@ it('paginates intentional repeated presentations without inventing physical even
   for (let index=0;index<21;index++) { const start=performance.now();await post('unit-observations',{payload,method:'QR_INPUT'},randomUUID(),manager).expect(201);samples.push(performance.now()-start); }
   const first=(await get(`units/${unit.id}/tracking?page=1`,manager).expect(200)).body;
   const second=(await get(`units/${unit.id}/tracking?page=2`,manager).expect(200)).body;
-  expect(first.timeline.total).toBe(27); expect(first.timeline.events).toHaveLength(20); expect(second.timeline.events).toHaveLength(7);
-  expect(new Set([...first.timeline.events,...second.timeline.events].map((event:any)=>event.id)).size).toBe(27);
+  const third=(await get(`units/${unit.id}/tracking?page=3`,manager).expect(200)).body;
+  expect(first.timeline.total).toBe(27); expect(first.timeline.events).toHaveLength(10); expect(second.timeline.events).toHaveLength(10); expect(third.timeline.events).toHaveLength(7);
+  expect(new Set([...first.timeline.events,...second.timeline.events,...third.timeline.events].map((event:any)=>event.id)).size).toBe(27);
   expect(await immutableStock()).toEqual(before);
   await mkdir('artifacts/completion',{recursive:true});
   await writeFile('artifacts/completion/unit-observation-latency.json',JSON.stringify({syntheticOnly:true,recordedAt:new Date().toISOString(),node:process.version,samplesMs:samples,maxMs:Math.max(...samples),targetMs:2000,limitations:['Loopback API acceptance only; no camera, shop Wi-Fi or hardware certification','Single-worker isolated fixture, not a concurrency/load benchmark']},null,2));

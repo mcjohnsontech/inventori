@@ -29,3 +29,22 @@ export type AuthorizationRequestView = { id: string; originId: string; recordedA
   status: 'PENDING_CLOUD_AUTHORIZATION'; kind: 'RECOVERY' | 'CORRECTION'; manager: { id: string; name: string };
   reason: string; evidence: string; evidenceHash: string; requestedDelta: string | null; observedQuantity: string | null; preview: AuthorizationPreview;
   stockChanged: false; approvalDelivery: 'DEFERRED' };
+
+// Local Admin approval (owner decisions 24 Nov 2026; docs/local-admin-approval-design.md).
+export const decisionOutcomes = ['APPROVED', 'REJECTED', 'RECEIVE_AS_DELIVERY'] as const;
+export type DecisionOutcome = typeof decisionOutcomes[number];
+export const authorizationDecisionSchema = z.object({
+  outcome: z.enum(decisionOutcomes),
+  note: z.string().trim().min(10, 'Write at least ten characters explaining the decision').max(2000).refine(value => /\p{L}/u.test(value), 'Explain the decision in words'),
+  unitIds: z.array(id).max(500).refine(values => new Set(values).size === values.length, 'Select each item once').transform(values => [...values].sort()).default([]),
+}).strict();
+export type AuthorizationDecisionInput = z.infer<typeof authorizationDecisionSchema>;
+export type DecisionUnit = { unitId: string; unitCode: string; productName: string; variantName: string; fromState: 'U' | 'P' | 'D'; toState: 'U' | 'X' };
+export type AuthorizationDecisionView = { id: string; requestId: string; originId: string; recordedAt: string; originSequence: string;
+  outcome: DecisionOutcome; note: string; transactionId: string | null; admin: { id: string; name: string }; units: DecisionUnit[]; manifestHash: string };
+export type DecisionCandidate = { unitId: string; unitCode: string; productName: string; variantName: string; state: 'U' | 'P' | 'D' | 'C' | 'X';
+  unchanged: boolean; notInLatestCount: boolean };
+export type AuthorizationDecisionOptions = { requestId: string; kind: 'RECOVERY' | 'CORRECTION'; decision: AuthorizationDecisionView | null;
+  canDecide: boolean; blockedReason: string | null; outcomes: DecisionOutcome[]; shortfall: number; surplus: number; stale: boolean;
+  candidates: DecisionCandidate[] };
+export const decisionOutcomeLabels: Record<DecisionOutcome, string> = { APPROVED: 'Approved', REJECTED: 'Rejected', RECEIVE_AS_DELIVERY: 'Receive extra items as a new delivery' };

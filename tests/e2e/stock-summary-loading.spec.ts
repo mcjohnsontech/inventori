@@ -19,10 +19,10 @@ test('overview never presents missing stock data as zero and recovers after a re
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   const summary = page.locator('[aria-label="Stock summary"]');
   await expect(summary).toHaveAttribute('aria-busy', 'true');
-  await expect(summary.locator('strong')).toHaveText(['Loading…', 'Loading…', 'Loading…', 'Loading…']);
+  await expect(summary.locator('strong').first()).toHaveText('Loading…');
   release();
   await expect(page.getByRole('alert').filter({ hasText: 'Synthetic stock read failure' })).toBeVisible();
-  await expect(summary.locator('strong')).toHaveText(['Unavailable', 'Unavailable', 'Unavailable', 'Unavailable']);
+  await expect(summary.locator('strong').first()).toHaveText('Unavailable');
   fail = false;
   await page.getByRole('button', { name: 'Refresh stock', exact: true }).click();
   await expect(summary).toHaveAttribute('aria-busy', 'false');

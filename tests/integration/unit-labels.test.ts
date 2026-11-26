@@ -97,9 +97,9 @@ it('provides scoped paged configuration, preview and history reads without creat
  const config=(await get('unit-label-config',manager).expect(200)).body;expect(config.cartLimit).toBe(500);expect(config.originId).toBe(originId);
  await get('unit-label-config',production).expect(403);
  const options=(await get('unit-label-options?mode=REPRINT&receiptId='+receipt.id,manager).expect(200)).body;
- expect(options.total).toBe(65);expect(options.units).toHaveLength(50);
- const second=(await get('unit-label-options?mode=REPRINT&receiptId='+receipt.id+'&page=2').expect(200)).body;
- expect(second.units).toHaveLength(15);expect(new Set([...options.units,...second.units].map((unit:any)=>unit.unitId)).size).toBe(65);
+ expect(options.total).toBe(65);expect(options.units).toHaveLength(10);
+ const later:any[]=[];for(let page=2;page<=7;page++)later.push((await get('unit-label-options?mode=REPRINT&receiptId='+receipt.id+'&page='+page).expect(200)).body);
+ expect(later.at(-1).units).toHaveLength(5);expect(new Set([...options.units,...later.flatMap((body:any)=>body.units)].map((unit:any)=>unit.unitId)).size).toBe(65);
  const previews=(await post('unit-label-previews',{unitIds:[units[0].id]},randomUUID(),manager).expect(200)).body;
  expect(previews[0].payload).toBe(encodeUnitQr(originId,units[0].id));
  await post('unit-label-previews',{unitIds:[units[0].id]},randomUUID(),production).expect(403);

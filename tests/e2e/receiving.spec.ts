@@ -7,7 +7,7 @@ test('Manager receives a multi-product delivery, retries a lost response and see
  // Individual assertions and application transaction/request timeouts are unchanged.
  test.setTimeout(90_000);
  await page.goto('/');
- async function login(email: string) { await page.getByLabel('Email address').fill(email); await page.getByLabel('Password', { exact: true }).fill(process.env.E2E_PASSWORD!); await page.getByRole('button', { name: 'Sign in', exact: true }).click(); if (!email.includes('production')) await page.getByRole('button', { name: 'Catalogue', exact: true }).click(); await expect(page.getByRole('heading', { name: email.includes('production') ? 'Inventory' : 'Product catalogue' })).toBeVisible(); }
+ async function login(email: string) { await page.getByLabel('Email address').fill(email); await page.getByLabel('Password', { exact: true }).fill(process.env.E2E_PASSWORD!); await page.getByRole('button', { name: 'Sign in', exact: true }).click(); if (!email.includes('production')) await page.getByRole('navigation', { name: 'Workspace' }).getByRole('button', { name: 'Products', exact: true }).click(); await expect(page.getByRole('heading', { name: email.includes('production') ? 'Product checkout' : 'Products', exact: true })).toBeVisible(); }
  await login('e2e-admin@dayari.test');
  async function create(operation: string, body: unknown) { const response=await page.request.post(`/api/catalogue/${operation}`,{headers:{Origin:'http://127.0.0.1:3101','Idempotency-Key':randomUUID()},data:body});expect(response.ok(),await response.text()).toBe(true);return response.json(); }
  const catalogue=await (await page.request.get('/api/catalogue')).json();
@@ -37,11 +37,11 @@ test('Manager receives a multi-product delivery, retries a lost response and see
  const details=page.getByRole('region',{name:'Accepted receipt',exact:true});await expect(details.getByRole('heading',{level:2,name:/^B-/})).toContainText('B-');await expect(details.getByText('62',{exact:true})).toBeVisible();await expect(details.getByText('65',{exact:true})).toBeVisible();
  const accepted=await (await page.request.get(`/api/receipts/${acceptedId}`)).json();expect(accepted.lines).toHaveLength(3);expect(accepted.totals).toEqual({usable:'62',damaged:'3',delivered:'65'});
  expect(accepted.serialization.unitCount).toBe('65');
- await details.getByText('View received Unit Codes',{exact:true}).click();
+ await details.getByText('View item codes',{exact:true}).click();
  const unitTable=details.getByRole('table',{name:'Received physical units'});
- await expect(unitTable.getByRole('row')).toHaveCount(21);
+ await expect(unitTable.getByRole('row')).toHaveCount(11);
  const unitPage=await (await page.request.get(`/api/receipts/${acceptedId}/units`)).json();
- expect(unitPage.total).toBe(65);expect(new Set(unitPage.units.map((unit:any)=>unit.unitCode)).size).toBe(20);
+ expect(unitPage.total).toBe(65);expect(new Set(unitPage.units.map((unit:any)=>unit.unitCode)).size).toBe(10);
  await expect(unitTable).toContainText(unitPage.units[0].unitCode);
  const unitPanel=unitTable.locator('..').locator('..');
  await unitPanel.getByRole('button',{name:'Next page',exact:true}).click();
@@ -53,14 +53,14 @@ test('Manager receives a multi-product delivery, retries a lost response and see
  await expect(page.getByRole('region',{name:'Accepted batch balances'})).toContainText('30 usable');await page.setViewportSize({width:1280,height:900});await page.screenshot({path:'test-results/receiving-accepted.png'});
  await page.getByRole('button',{name:'Back to receipt history',exact:true}).click();
  await page.getByLabel('Search receipts',{exact:true}).fill(accepted.batch.publicCode);
- await page.getByRole('button').filter({hasText:accepted.batch.publicCode}).filter({hasText:'View receipt'}).click();
+ await page.getByRole('button',{name:`View receipt ${accepted.batch.publicCode}`,exact:true}).click();
  await expect(page.getByRole('region',{name:'Accepted receipt',exact:true})).toContainText(skus[0].fullCode);
  await page.getByRole('button',{name:'Inspect stock lots',exact:true}).first().click();
- await expect(page.getByRole('heading',{name:'Inventory',exact:true})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'All stock',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Delivery lots',exact:true}).click();await page.getByRole('row').filter({hasText:accepted.lines[0].lotCode}).getByRole('button',{name:/Details/}).click();
- const provenance=page.getByRole('region',{name:'Lot provenance',exact:true});
+ const provenance=page.getByRole('region',{name:'Where this lot came from',exact:true});
  await expect(provenance).toContainText('External arrival → Usable');
  const receiptResponse=page.waitForResponse(r=>r.url().endsWith(`/api/receipts/${accepted.id}`)&&r.request().method()==='GET');await provenance.getByRole('button',{name:'View accepted receipt',exact:true}).click();expect((await receiptResponse).status()).toBe(200);
  await expect(page.getByRole('region',{name:'Accepted receipt',exact:true})).toContainText(accepted.batch.publicCode);
- await page.getByRole('button',{name:'Close receipt details',exact:true}).click();await page.getByRole('button',{name:'Sign out'}).click();await login('e2e-production@dayari.test');await expect(page.getByRole('button',{name:'Receiving',exact:true})).toHaveCount(0);expect((await page.request.get('/api/receiving/options')).status()).toBe(403);expect((await page.request.get('/api/stock')).status()).toBe(403);
+ await page.getByRole('button',{name:'Close receipt details',exact:true}).click();await page.getByRole('button',{name:'Sign out'}).click();await login('e2e-production@dayari.test');await expect(page.getByRole('button',{name:'Deliveries',exact:true})).toHaveCount(0);expect((await page.request.get('/api/receiving/options')).status()).toBe(403);expect((await page.request.get('/api/stock')).status()).toBe(403);
 });

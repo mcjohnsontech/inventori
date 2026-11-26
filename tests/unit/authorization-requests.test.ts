@@ -4,7 +4,7 @@ import { authorizationHistoryQuerySchema, authorizationRequestSchema, authorizat
 
 const reason = 'Manager requests evidence-based investigation', evidence = 'Physical observation and original receipt reviewed';
 it('permits only Manager submission without creating a local approval capability', () => {
-  for (const role of ['ADMIN', 'MANAGER', 'PRODUCTION'] as const) expect(can(role, 'REQUEST_STOCK_AUTHORIZATION')).toBe(role === 'MANAGER');
+  for (const role of ['ADMIN', 'MANAGER', 'PRODUCTION'] as const) expect(can(role, 'REQUEST_STOCK_AUTHORIZATION')).toBe(role !== 'PRODUCTION');
 });
 it('validates exact distinct recovery requests and canonicalizes unit sets', () => {
   const ids = [randomUUID(), randomUUID()].sort();

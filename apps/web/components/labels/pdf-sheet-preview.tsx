@@ -232,7 +232,7 @@ export function PdfSheetPreview({
             <h4 className="text-sm font-semibold">Selected label · 100% layout size</h4>
             {selected && (
               <Badge tone={selected.line.purpose === 'USABLE' ? 'usable' : 'damaged'}>
-                {selected.line.purpose === 'USABLE' ? 'Usable' : 'Damaged intake'}
+                {selected.line.purpose === 'USABLE' ? 'Usable' : 'Damaged on arrival'}
               </Badge>
             )}
           </div>
@@ -260,7 +260,7 @@ export function PdfSheetPreview({
           {rendered === page + 1 && (
             <ul className="space-y-1 text-xs leading-5">
               <li>✓ Preview and inspector use the generated PDF.</li>
-              <li>✓ Full SKU and batch passed renderer fit checks.</li>
+              <li>✓ Full supplier code and batch passed renderer fit checks.</li>
               <li>QR sizing is checked; confirm scans on physical output.</li>
               {placement.edgeLabels > 0 && (
                 <li className="text-damaged">

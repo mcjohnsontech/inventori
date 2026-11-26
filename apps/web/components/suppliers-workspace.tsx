@@ -50,11 +50,11 @@ export function SuppliersWorkspace({
     <Page>
       <PageHeader
         eyebrow="Where your stock comes from"
-        title="Suppliers & sources"
+        title="Suppliers"
         description={
           role === 'ADMIN'
             ? 'Register suppliers once. Saved source prefixes connect every sourced product to its supplier and location.'
-            : 'Inspect approved suppliers, saved source prefixes and sourced SKUs. Ask Admin to register or configure missing entries.'
+            : 'See suppliers, their code prefixes and the products they supply. Ask an Admin to add or change them.'
         }
         actions={
           role === 'ADMIN' ? (
@@ -108,18 +108,18 @@ export function SuppliersWorkspace({
         </div>
       )}
 
-      {chosen?<DetailsDrawer wide title={chosen.name} eyebrow="Supplier details" closeLabel="Close supplier details" onClose={()=>setSelected('')}><Code>{chosen.code}</Code>              <PagedItems items={chosen.sources} size={5}>{sources => <div className="mt-2 space-y-2">{sources.map(source => {
+      {chosen?<DetailsDrawer wide title={chosen.name} eyebrow="Supplier details" closeLabel="Close supplier details" onClose={()=>setSelected('')}><Code>{chosen.code}</Code>              <PagedItems items={chosen.sources}>{sources => <div className="mt-2 space-y-2">{sources.map(source => {
                 const skus = catalogue.skus.filter(sku => sku.sourcing.source.id === source.id);
                 const products = catalogue.products.filter(product => catalogue.sourcings.some(row => row.sourceId === source.id && row.productId === product.id));
                 return <div key={source.id} className="text-sm">
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-grey-2"><span>{source.name}</span><Code>{source.skuPrefix?.code ?? source.code}</Code><span>{products.length} products · {skus.length} SKUs</span></div>
-                  {products.length ? <Disclosure summary="Products and saved SKUs" className="mt-2"><PagedItems items={products} size={6}>{entries => <ul className="mt-2 space-y-3">{entries.map(product => <li key={product.id}><span className="font-medium">{product.name}</span> <Code>{product.productCode ?? 'Code not assigned'}</Code><PagedItems items={skus.filter(sku => product.variants.some(variant => variant.id === sku.variantId))} size={6}>{rows => <div className="mt-1 flex flex-wrap gap-2">{rows.map(sku => <Code key={sku.id}>{sku.fullCode}</Code>)}</div>}</PagedItems></li>)}</ul>}</PagedItems></Disclosure> : null}
+                  {products.length ? <Disclosure summary="Products and supplier codes" className="mt-2"><PagedItems items={products}>{entries => <ul className="mt-2 space-y-3">{entries.map(product => <li key={product.id}><span className="font-medium">{product.name}</span> <Code>{product.productCode ?? '—'}</Code><PagedItems items={skus.filter(sku => product.variants.some(variant => variant.id === sku.variantId))}>{rows => <div className="mt-1 flex flex-wrap gap-2">{rows.map(sku => <Code key={sku.id}>{sku.fullCode}</Code>)}</div>}</PagedItems></li>)}</ul>}</PagedItems></Disclosure> : null}
                 </div>;
               })}</div>}</PagedItems>
 </DetailsDrawer>:null}
       <Footnote className="mt-5">
-        Supplier codes and allocated SKU prefixes are stable identities. Supplier financial
-        accounts, purchasing, renaming and deletion are not supported in this slice.
+        Supplier codes and prefixes never change once saved. Supplier
+        accounts, purchasing, renaming and deleting aren't available yet.
       </Footnote>
     </Page>
   );

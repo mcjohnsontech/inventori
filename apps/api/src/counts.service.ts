@@ -1,16 +1,17 @@
 import { randomUUID } from 'node:crypto';
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { Prisma, type PrismaClient, type User } from '@prisma/client';
-import { countSessionSchema, countAttemptSchema, countObservationSchema, countResultSchema, countResolutionSchema, countQuerySchema, idempotencyKeySchema, type CountSnapshot } from '@dayari/contracts';
+import { countSessionSchema, countAttemptSchema, countObservationSchema, countResultSchema, countResolutionSchema, countQuerySchema, idempotencyKeySchema, type CountSnapshot, LIST_PAGE_SIZE } from '@dayari/contracts';
 import { requireCapability } from './permissions.js';
+import { canDoManagerWork, managerOrAdmin, requireAdminParity } from './admin-parity.js';
 import { canonical, digest } from './security.js';
 const json = (v: unknown): Prisma.InputJsonValue => JSON.parse(JSON.stringify(v));
 const schemas = { CountSession: countSessionSchema, CountAttempt: countAttemptSchema, CountObservation: countObservationSchema, CountResult: countResultSchema, CountResolution: countResolutionSchema };
 type Kind = keyof typeof schemas;
 export class CountsService {
     constructor(readonly db: PrismaClient, readonly originId: string, readonly mode: string) { }
-    private async allow(user: User, write = false) { requireCapability(user, 'OPERATIONAL_STOCK'); if (write && (user.role !== 'MANAGER' || this.mode !== 'SHOP'))
-        throw new ForbiddenException('Only the shop Inventory Manager records counts.'); const [r] = await this.db.$queryRaw<{
+    private async allow(user: User, write = false) { requireCapability(user, 'OPERATIONAL_STOCK'); if (write && (!managerOrAdmin(user.role) || this.mode !== 'SHOP'))
+        throw new ForbiddenException('Only a shop Admin or Inventory Manager records counts.'); if (write) await requireAdminParity(this.db, user); const [r] = await this.db.$queryRaw<{
         ready: boolean;
     }[]> `SELECT to_regclass('"CountSession"') IS NOT NULL AS ready`; if (!r?.ready)
         throw new ServiceUnavailableException('Physical counts require the separately approved database upgrade.'); }
@@ -19,9 +20,9 @@ export class CountsService {
         const rows=await tx.$queryRaw<({lotId:string}&Record<string,unknown>)[]>(Prisma.sql`SELECT l.id AS "lotId",li.code AS "lotCode",sku."fullCode" AS "fullSku",p.name AS "productName",v.name AS "variantName",b."publicCode" AS "publicBatchCode" FROM "StockLot" l JOIN "SupplierVariantSku" sku ON sku.id=l."skuId" JOIN "Product" p ON p.id=sku."productId" JOIN "Variant" v ON v.id=sku."variantId" JOIN "DeliveryBatch" b ON b.id=l."batchId" LEFT JOIN "LotPublicIdentity" li ON li."lotId"=l.id WHERE l."originId"=${this.originId}::uuid AND l.id IN (${Prisma.join(ids.map(id=>Prisma.sql`${id}::uuid`))})`);
         return new Map(rows.map(row=>[row.lotId,row]));
     }
-    async configuration(user: User) { await this.allow(user); return { originId: this.originId, canCount: user.role === 'MANAGER' && this.mode === 'SHOP', chunkSize: 500 }; }
+    async configuration(user: User) { await this.allow(user); return { originId: this.originId, canCount: this.mode === 'SHOP' && await canDoManagerWork(this.db, user), chunkSize: 500 }; }
     async list(user: User, input: unknown) { await this.allow(user); const q = countQuerySchema.safeParse(input); if (!q.success)
-        throw new BadRequestException('Invalid count filters'); const where = { originId: this.originId, ...(q.data.lotId ? { lotId: q.data.lotId } : {}) }; const [total, rows] = await this.db.$transaction([this.db.countSession.count({ where }), this.db.countSession.findMany({ where, orderBy: [{ recordedAt: 'desc' }, { id: 'asc' }], take: 20, skip: (q.data.page - 1) * 20 })]); const metadata=await this.descriptions(this.db,rows.map(r=>r.lotId));return { total, rows:rows.map(row=>({...row,...metadata.get(row.lotId)})), page: q.data.page, pageSize: 20 }; }
+        throw new BadRequestException('Invalid count filters'); const where = { originId: this.originId, ...(q.data.lotId ? { lotId: q.data.lotId } : {}) }; const [total, rows] = await this.db.$transaction([this.db.countSession.count({ where }), this.db.countSession.findMany({ where, orderBy: [{ recordedAt: 'desc' }, { id: 'asc' }], take:LIST_PAGE_SIZE,skip:(q.data.page-1)*LIST_PAGE_SIZE })]); const metadata=await this.descriptions(this.db,rows.map(r=>r.lotId));return { total, rows:rows.map(row=>({...row,...metadata.get(row.lotId)})), page: q.data.page, pageSize:LIST_PAGE_SIZE }; }
     async get(user: User, input: unknown) {
         await this.allow(user);
         const parsed = idempotencyKeySchema.safeParse(input);
@@ -49,7 +50,7 @@ export class CountsService {
         await this.allow(user, true);
         const p = schemas[kind].safeParse(input), k = idempotencyKeySchema.safeParse(keyInput);
         if (!p.success || !k.success)
-            throw new BadRequestException('Check count evidence and idempotency key');
+            throw new BadRequestException('Check the count details and try again.');
         const body = p.data, hash = digest(canonical(body)), type = 'inventory.count.' + kind.toLowerCase();
         for (let attempt = 0;; attempt++)
             try {
@@ -62,12 +63,12 @@ export class CountsService {
                     await tx.$queryRaw `SELECT id FROM "User" WHERE id=${user.id}::uuid FOR SHARE`;
                     const actor = await tx.user.findUniqueOrThrow({ where: { id: user.id } });
                     requireCapability(actor, 'OPERATIONAL_STOCK');
-                    if (actor.role !== 'MANAGER' || actor.authVersion !== user.authVersion || !await tx.shopMembership.findUnique({ where: { userId_originId: { userId: actor.id, originId: this.originId } } }))
+                    if (!managerOrAdmin(actor.role) || actor.role !== user.role || actor.authVersion !== user.authVersion || !await tx.shopMembership.findUnique({ where: { userId_originId: { userId: actor.id, originId: this.originId } } }))
                         throw new ForbiddenException('Account or shop access changed');
                     const prior = await tx.commandResult.findUnique({ where: { originId_actorId_commandType_key: { originId: this.originId, actorId: actor.id, commandType: type, key: k.data } } });
                     if (prior) {
                         if (prior.requestHash !== hash)
-                            throw new ConflictException('Key reused with different count evidence');
+                            throw new ConflictException('This count was already sent with different details. Refresh and try again.');
                         return prior.response;
                     }
                     const id = randomUUID(), commandId = randomUUID(), base = { id, originId: this.originId, actorId: actor.id, commandId };
@@ -95,7 +96,7 @@ export class CountsService {
                     else if (kind === 'CountResolution') {
                         const data = countResolutionSchema.parse(body), r = await tx.countResult.findFirst({ where: { id: data.resultId, originId: this.originId } }), m = await tx.countResult.findFirst({ where: { id: data.matchingResultId, originId: this.originId } });
                         if (!r || !m)
-                            throw new NotFoundException('Count evidence unavailable');
+                            throw new NotFoundException('This count could not be found.');
                         const a = await tx.countAttempt.findUniqueOrThrow({ where: { id: r.attemptId } }), b = await tx.countAttempt.findUniqueOrThrow({ where: { id: m.attemptId } }), scope = await tx.countSession.findUniqueOrThrow({ where: { id: a.sessionId } });
                         const [snap] = await tx.$queryRaw<{
                             snapshot: CountSnapshot;

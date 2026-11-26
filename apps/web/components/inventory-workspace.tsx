@@ -1,5 +1,7 @@
 'use client';
+import { LIST_PAGE_SIZE } from '@dayari/contracts';
 import { FinancialSummary } from './financial';
+import { MoneyOnly } from '../lib/role';
 import {
   ArrowLeft01Icon,
   ArrowRight01Icon,
@@ -11,12 +13,12 @@ import type { Catalogue, LotEvidence, OperationalStock } from '@dayari/contracts
 
 import { cn } from '../lib/cn';
 import { useApiRead } from '../lib/api';
-import { formatDateTime, formatTime, isPositive } from '../lib/format';
+import { formatDate, formatDateTime, formatTime, isPositive, plural, sumQuantities } from '../lib/format';
 import {
   Badge,
   Breadcrumb,
   Button,
-  CardGridSkeleton,
+  ListSkeleton,
   Code,
   type Column,
   CopyButton,
@@ -40,11 +42,10 @@ import {
   card,
 } from './ui';
 import { PagedItems } from './ui/paged-items';
-import { IdentityLookup } from './identity-lookup';
 import { ExactUnitMatch } from './exact-unit-match';
 import { UnitTrackingDrawer } from './unit-tracking-drawer';
 
-const PER_PAGE = 18;
+const PER_PAGE = LIST_PAGE_SIZE;
 
 type Group = 'products' | 'lots' | 'sku';
 
@@ -129,21 +130,23 @@ export function InventoryWorkspace({
         <>
           <span className="block font-medium">{row.productName}</span>
           <span className="mt-0.5 block font-sans text-xs text-grey-3">{row.variantName}</span>
-          <Code tone="brand" className="mt-0.5 block">
-            {row.productCode ?? 'Code not assigned'}
-          </Code>
+          {row.productCode ? (
+            <Code tone="brand" className="mt-0.5 block">
+              {row.productCode}
+            </Code>
+          ) : null}
         </>
       ),
     },
     {
       key: 'sku',
-      label: 'Supplier SKU / source',
+      label: 'Supplier code / source',
       wide: true,
       cell: (row) => (
         <>
           <span className="flex items-start gap-2">
             <Code>{row.fullCode}</Code>
-            <CopyButton value={row.fullCode} label="supplier SKU" />
+            <CopyButton value={row.fullCode} label="supplier code" />
           </span>
           <span className="mt-0.5 block font-sans text-xs text-grey-3">
             {row.supplierName} · {row.sourceName}
@@ -156,9 +159,11 @@ export function InventoryWorkspace({
       label: 'Lot / batch',
       cell: (row) => (
         <>
-          <Code tone="brand" className="block">
-            {row.lotCode ?? 'Code not assigned'}
-          </Code>
+          {row.lotCode ? (
+            <Code tone="brand" className="block">
+              {row.lotCode}
+            </Code>
+          ) : null}
           <Code tone="muted" className="mt-0.5 block">
             {row.publicCode}
           </Code>
@@ -195,7 +200,7 @@ export function InventoryWorkspace({
   const skuColumns: Column<(typeof skus)[number]>[] = [
     {
       key: 'sku',
-      label: 'Supplier SKU / variant',
+      label: 'Supplier code / variant',
       wide: true,
       cell: (row) => {
         const source = stock.data!.lots.find((item) => item.skuId === row.skuId)!;
@@ -207,7 +212,7 @@ export function InventoryWorkspace({
             </span>
             <span className="mt-1 flex items-start gap-2">
               <Code tone="brand">{row.fullCode}</Code>
-              <CopyButton value={row.fullCode} label="supplier SKU" />
+              <CopyButton value={row.fullCode} label="supplier code" />
             </span>
           </>
         );
@@ -227,7 +232,7 @@ export function InventoryWorkspace({
     },
     {
       key: 'batches',
-      label: 'Batch provenance',
+      label: 'Delivery lots',
       cell: (row) => (
         <LinkButton
           onClick={() => {
@@ -246,8 +251,8 @@ export function InventoryWorkspace({
     <Page>
       <PageHeader
         eyebrow="Authoritative shop stock"
-        title="Inventory"
-        description="Find products, compare saved SKUs and inspect each delivery lot."
+        title="All stock"
+        description="Find products, compare supplier codes and check each delivery lot."
         actions={
           <Button variant="secondary" onClick={stock.refresh}>
             <Icon icon={RefreshIcon} size={15} />
@@ -256,7 +261,6 @@ export function InventoryWorkspace({
         }
       />
 
-      <div className="mt-5"><IdentityLookup /></div>
       <ExactUnitMatch query={search} onOpen={setUnitSelected} />
 
       {productId ? (
@@ -274,7 +278,7 @@ export function InventoryWorkspace({
           <SearchInput
             label="Search inventory"
             value={search}
-            placeholder="Product, variant, SKU, Unit Code, lot or batch…"
+            placeholder="Product, variant, supplier code, item code, lot or batch…"
             onChange={(value) => {
               setSearch(value);
               reset();
@@ -376,23 +380,23 @@ export function InventoryWorkspace({
             tabs={[
               { value: 'products', label: 'Products' },
               { value: 'lots', label: 'Delivery lots' },
-              { value: 'sku', label: 'SKU balances' },
+              { value: 'sku', label: 'By supplier code' },
             ]}
           />
           <span className="font-sans text-xs tracking-[-0.02em] text-grey-3">
-            {stock.data ? `As of ${formatTime(stock.data.asOf)}` : 'Loading local projection…'}
+            {stock.data ? `As of ${formatTime(stock.data.asOf)}` : 'Loading…'}
           </span>
         </div>
 
         {group === 'sku' ? (
           <Footnote className="border-b border-black/[0.06] px-5 py-3">
-            SKU balances include all delivery batches for the selected product and source. Text and
-            availability filters choose matching SKUs, not partial quantities.
+            Totals include every delivery lot for each supplier code. Search and
+            availability filters pick whole supplier codes, not part quantities.
           </Footnote>
         ) : null}
 
         {stock.loading ? (
-          <CardGridSkeleton />
+          <div className="p-5"><ListSkeleton rows={6} /></div>
         ) : stock.error ? (
           <div className="p-5">
             <ErrorNotice message={stock.error} onRetry={stock.refresh} />
@@ -402,7 +406,28 @@ export function InventoryWorkspace({
             Try another filter. Registered catalogue variants appear here after an accepted
             delivery.
           </EmptyState>
-        ) : group === 'products' ? <div className="divide-y divide-black/5">{products.slice(start,start+PER_PAGE).map(product=><details key={product.id} className="p-4 sm:p-5"><summary className="cursor-pointer rounded-lg font-semibold focus-visible:outline-2 focus-visible:outline-brand">{product.name} {product.code?<Code className="ml-2 text-xs">{product.code}</Code>:null}<span className="ml-3 text-xs font-normal text-grey-2">View variants and lots</span></summary><div className="mt-4"><PagedItems items={lots.filter(lot=>lot.productId===product.id)} size={12}>{items=><DataTable label={`Variants and lots for ${product.name}`} columns={lotColumns} rows={[...items]} rowKey={lot=>lot.lotId} mobileStack emptyMessage="No matching lots."/>}</PagedItems></div></details>)}</div> : group === 'lots' ? (
+        ) : group === 'products' ? <div className="divide-y divide-black/5">{products.slice(start,start+PER_PAGE).map(product=>{
+            const productLots=lots.filter(lot=>lot.productId===product.id);
+            const usable=sumQuantities(productLots.map(lot=>lot.usable));
+            const damaged=sumQuantities(productLots.map(lot=>lot.damaged));
+            const variants=new Set(productLots.map(lot=>lot.skuId)).size;
+            return <details key={product.id} className="group [&[open]_summary_.chevron]:rotate-90">
+              <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-4 gap-y-2 px-4 py-4 transition-colors hover:bg-surface-muted focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand sm:px-5 [&::-webkit-details-marker]:hidden">
+                <Icon icon={ArrowRight01Icon} size={16} strokeWidth={2} className="chevron text-grey-3 transition-transform" />
+                <span className="min-w-0 flex-1">
+                  <span className="flex flex-wrap items-baseline gap-x-2">
+                    <span className="font-sans text-[15px] font-semibold tracking-[-0.02em] text-ink">{product.name}</span>
+                    {product.code?<Code tone="muted" className="text-xs">{product.code}</Code>:null}
+                  </span>
+                  <span className="mt-0.5 block font-sans text-xs text-grey-3">{plural(variants,'Supplier code')} · {plural(productLots.length,'delivery lot')}</span>
+                </span>
+                <span className="ml-8 flex flex-wrap items-center gap-2 sm:ml-0">
+                  {isPositive(usable)?<Badge tone="usable">{usable} usable</Badge>:<Badge tone="danger">Out of stock</Badge>}
+                  {isPositive(damaged)?<Badge tone="damaged">{damaged} damaged</Badge>:null}
+                </span>
+              </summary>
+              <div className="px-4 pb-5 sm:px-5"><PagedItems items={productLots}>{items=><DataTable label={`Variants and lots for ${product.name}`} columns={lotColumns} rows={[...items]} rowKey={lot=>lot.lotId} mobileStack emptyMessage="No matching lots."/>}</PagedItems></div>
+            </details>;})}</div> : group === 'lots' ? (
           <DataTable
             bare
             label="Inventory delivery lots"
@@ -415,12 +440,12 @@ export function InventoryWorkspace({
         ) : (
           <DataTable
             bare
-            label="Inventory SKU balances"
+            label="Totals by supplier code"
             mobileStack
             columns={skuColumns}
             rows={skus.slice(start, start + PER_PAGE)}
             rowKey={(row) => row.skuId}
-            emptyMessage="No SKU balances match this view."
+            emptyMessage="No supplier code totals match this view."
           />
         )}
 
@@ -432,20 +457,20 @@ export function InventoryWorkspace({
           title={`${lot.productName} · ${lot.variantName}`}
           onClose={() => setSelected('')}
         >
-          <FinancialSummary key={lot.lotId} lotId={lot.lotId}/>
-          <section aria-label="Lot provenance">
+          <MoneyOnly><FinancialSummary key={lot.lotId} lotId={lot.lotId}/></MoneyOnly>
+          <section aria-label="Where this lot came from">
             <p className="font-sans text-sm tracking-[-0.02em] text-grey-2">
               {lot.supplierName} · {lot.sourceName}
             </p>
             <p className="mt-2 font-sans text-sm tracking-[-0.02em] text-ink">
-              Product {lot.productCode ?? 'Code not assigned'} · Lot{' '}
-              {lot.lotCode ?? 'Code not assigned'} · Batch {lot.publicCode}
+              Product {lot.productCode ?? '—'} · Lot{' '}
+              {lot.lotCode ?? '—'} · Batch {lot.publicCode}
             </p>
             <div className="mt-4">
             <Stack gap="tight">
               <span className="flex items-start gap-2">
                 <Code className="text-sm">{lot.fullCode}</Code>
-                <CopyButton value={lot.fullCode} label="supplier SKU" />
+                <CopyButton value={lot.fullCode} label="supplier code" />
               </span>
               <div className="flex flex-wrap gap-2">
                 <Badge tone="usable">{lot.usable} usable</Badge>
@@ -459,7 +484,7 @@ export function InventoryWorkspace({
               ) : evidence.data ? (
                 <>
                   <Footnote>
-                    Delivered {evidence.data.deliveredOn} · Accepted{' '}
+                    Delivered {formatDate(evidence.data.deliveredOn)} · Accepted{' '}
                     {formatDateTime(evidence.data.acceptedAt)} · Sequence{' '}
                     {evidence.data.originSequence}
                   </Footnote>
@@ -483,7 +508,7 @@ export function InventoryWorkspace({
                 </>
               ) : null}
 
-              <Disclosure summary="Immutable identity details" className="border-t border-black/[0.06] pt-4">
+              <Disclosure summary="Technical identifiers" className="border-t border-black/[0.06] pt-4">
                 <Footnote className="mt-3">
                   <Code tone="muted" className="block">
                     Lot {lot.lotId}
@@ -505,8 +530,8 @@ export function InventoryWorkspace({
 
 
       <Footnote className="mt-5">
-        Balances are server projections of the immutable movement ledger. Printing and
-        identification never change stock.
+        Quantities update automatically from every receipt, checkout and report. Printing labels
+        or looking up a code never changes stock.
       </Footnote>
       {unitSelected ? <UnitTrackingDrawer key={unitSelected} unitId={unitSelected} onClose={()=>setUnitSelected('')} /> : null}
     </Page>

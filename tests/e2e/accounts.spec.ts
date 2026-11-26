@@ -5,14 +5,14 @@ test('Admin can provision shop staff, inspect sessions and preserve directory fi
  await page.getByLabel('Email address').fill('e2e-admin@dayari.test');await page.getByLabel('Password',{exact:true}).fill(process.env.E2E_PASSWORD!);
  await page.getByRole('button',{name:'Sign in',exact:true}).click();
  await openWorkspace(page, 'Users & access');
- await expect(page.getByRole('heading',{name:'Users & access'})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Staff',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Create staff account'}).click();
  const email=`browser-${Date.now()}@staff.test`,initialPassword=crypto.randomUUID(),newPassword=crypto.randomUUID();
  await page.getByLabel('Full name').fill('Browser Staff');await page.getByLabel('Email address',{exact:true}).fill(email);
  await page.getByLabel('Initial password',{exact:true}).fill(initialPassword);await page.getByLabel('Your current password',{exact:true}).fill(process.env.E2E_PASSWORD!);
  const created=page.waitForResponse(response=>response.url().endsWith('/api/admin/users')&&response.request().method()==='POST');
  await page.getByRole('button',{name:'Create account',exact:true}).click();expect((await created).status()).toBe(201);
- await expect(page.getByRole('status')).toContainText('Account saved');
+ await expect(page.getByRole('status').filter({ hasText: 'Account saved' })).toContainText('Account saved');
  await page.getByRole('searchbox',{name:'Search staff'}).fill(email);
  await page.getByRole('button').filter({hasText:email}).click();
  await expect(page.getByRole('heading',{name:'Account details'})).toBeVisible();
@@ -27,5 +27,5 @@ test('Admin can provision shop staff, inspect sessions and preserve directory fi
  await page.getByRole('button',{name:'Update password and sign out'}).click();
  await expect(page.getByRole('heading',{name:'Sign in to your shop'})).toBeVisible();
  await page.getByLabel('Email address').fill(email);await page.getByLabel('Password',{exact:true}).fill(newPassword);await page.getByRole('button',{name:'Sign in',exact:true}).click();
- await expect(page.getByRole('heading',{name:'Inventory',exact:true})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Product checkout',exact:true})).toBeVisible();
 });

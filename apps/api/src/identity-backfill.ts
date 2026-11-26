@@ -15,7 +15,7 @@ export function isolatedBackfillUrl(input: string | undefined) {
 export async function planIdentityBackfill(db: PrismaClient, database: string, originId: string, actorId: string, kind: 'PRODUCT'|'LOT', limit = 100, after: string | null = null) {
   z.object({ originId:z.uuid(),actorId:z.uuid(),kind:z.enum(['PRODUCT','LOT']),limit:z.number().int().min(1).max(500),after:z.uuid().nullable() }).parse({originId,actorId,kind,limit,after});
   const node = await db.originNode.findUnique({where:{id:originId}}), actor=await db.user.findUnique({where:{id:actorId}});
-  if(node?.mode!=='SHOP'||!actor?.active||actor.role!=='ADMIN')throw new ForbiddenException('Active Admin and shop origin required');
+  if(node?.mode!=='SHOP'||!actor?.active||actor.role!=='ADMIN')throw new ForbiddenException('Only an active Admin of this shop can do this.');
   const rows = kind==='PRODUCT'
     ? await db.product.findMany({where:{originId,publicIdentity:null,...(after?{id:{gt:after}}:{})},orderBy:{id:'asc'},take:limit+1,select:{id:true}})
     : await db.stockLot.findMany({where:{originId,publicIdentity:null,...(after?{id:{gt:after}}:{})},orderBy:{id:'asc'},take:limit+1,select:{id:true}});

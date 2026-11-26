@@ -9,6 +9,7 @@ import { LoginPage } from '../components/login-page';
 import { WorkspaceRouter } from '../components/workspace-router';
 import { ProductWizard, SupplierWizard } from '../components/catalogue/setup-wizards';
 import { ReceiveWizard } from '../components/receiving/receive-wizard';
+import { RoleProvider } from '../lib/role';
 import { PasswordForm } from '../components/account-security';
 import { Button, ErrorNotice, SuccessNotice } from '../components/ui';
 
@@ -23,6 +24,16 @@ const EMPTY_CATALOGUE: Catalogue = {
 };
 
 const UUID = /^[0-9a-f-]{36}$/i;
+
+/** Scan & find carries the searched code in the address, URL-encoded. */
+function decodeSearch(value: string) {
+  try {
+    const decoded = decodeURIComponent(value);
+    return decoded.length <= 128 ? decoded : '';
+  } catch {
+    return '';
+  }
+}
 
 const PRODUCTION_WORKSPACES: Workspace[] = ['inventory', 'availability', 'checkout', 'damage', 'qr', 'settings', 'help'];
 
@@ -79,7 +90,7 @@ export default function DayariInventory() {
       ...(key === 'inventory' ? { stock: id, lot: lotId } : {}),
       ...(key === 'receipts' ? { receipt: id } : {}),
       ...(key === 'labels' ? { labelJob: id, labelReceipt: lotId } : {}),
-      ...(key === 'qr' ? { qrCode: id } : {}),
+      ...(key === 'qr' ? { qrCode: decodeSearch(id) } : {}),
     }));
   }, []);
 
@@ -101,9 +112,7 @@ export default function DayariInventory() {
         // QR takes a printed code; everything else takes a record id.
         const id =
           workspaceKey === 'qr'
-            ? /^[PL][A-Z0-9]{5}$/.test(detailId)
-              ? detailId
-              : ''
+            ? detailId
             : UUID.test(detailId)
               ? detailId
               : '';
@@ -127,7 +136,7 @@ export default function DayariInventory() {
     api<Actor>('me')
       .then(async (actor) => {
         setUser(actor);
-        if (actor.role === 'PRODUCTION' && !location.hash) setWorkspace('inventory');
+        if (actor.role === 'PRODUCTION' && !location.hash) setWorkspace('checkout');
         try {
           await load(actor);
         } catch (failure) {
@@ -159,7 +168,7 @@ export default function DayariInventory() {
 
     setReceiptToOpen('');
     navigate('receipts', receiptToOpen);
-    setNotice('Delivery accepted. Receipt evidence and stock projections are updating.');
+    setNotice('Delivery accepted. Stock totals are updating.');
     // navigate is declared below and is not a dependency of this one-shot handoff.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [receiptToOpen]);
@@ -190,7 +199,7 @@ export default function DayariInventory() {
         body: JSON.stringify(data),
       });
       setUser(result.user);
-      if (result.user.role === 'PRODUCTION') navigate('inventory');
+      if (result.user.role === 'PRODUCTION') navigate('checkout');
       await load(result.user);
     } catch (failure) {
       setError((failure as Error).message);
@@ -259,13 +268,11 @@ export default function DayariInventory() {
 
     try {
       const options = await api<ReceivingOptions>('receiving/options');
-      if (!options.suppliers.length) {
-        if (user?.role === 'ADMIN') {
-          receiveAfterSupplier.current = true;
-          openSupplier();
-        } else {
-          setNotice('No receiving suppliers are configured yet. Ask an Admin to register a supplier and its location prefix.');
-        }
+      // Admins register the first supplier in the full setup wizard. Managers may add one
+      // inside the receive wizard (owner decision 26 Nov 2026), so they go straight in.
+      if (!options.suppliers.length && user?.role === 'ADMIN') {
+        receiveAfterSupplier.current = true;
+        openSupplier();
         return;
       }
       setReceiveOptions(options);
@@ -388,7 +395,7 @@ export default function DayariInventory() {
       ) : null}
 
       {receiveOpen && receiveOptions ? (
-        <ReceiveWizard
+        <RoleProvider role={user.role}><ReceiveWizard
           options={receiveOptions}
           onCatalogueChanged={setCatalogue}
           onClose={() => setReceiveOpen(false)}
@@ -398,7 +405,7 @@ export default function DayariInventory() {
             setReceiptToOpen(receipt.id);
             setDataVersion((version) => version + 1);
           }}
-        />
+        /></RoleProvider>
       ) : null}
     </AppShell>
   );

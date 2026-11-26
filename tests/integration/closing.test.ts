@@ -24,9 +24,11 @@ beforeAll(async()=>{
 });
 afterAll(async()=>{await app?.close();await db.$disconnect();});
 it('enforces Manager confirmation, Admin review, Production denial and actual Lagos dates',async()=>{
- expect((await get('closing-config',admin).expect(200)).body.canConfirm).toBe(false);
+ expect((await get('closing-config',admin).expect(200)).body.canConfirm).toBe(true);
  expect((await get('closing-config').expect(200)).body.today).toBe(day);
- for(const token of [admin,production])await post('daily-closings',{businessDate:day},randomUUID(),token).expect(403);
+ await post('daily-closings',{businessDate:day},randomUUID(),production).expect(403);
+ // Owner decision 24 Nov 2026: Admin may confirm closing; an invalid date proves the role gate is passed without closing.
+ await post('daily-closings',{businessDate:'not-a-date'},randomUUID(),admin).expect(400);
  for(const path of ['closing-config','daily-closings','daily-closings/preview?businessDate='+day])await get(path,production).expect(403);
  await request(app.getHttpServer()).get('/v1/daily-closings').expect(401);
  for(const businessDate of ['2025-02-29','0000-01-01','2999-01-01'])await post('daily-closings',{businessDate}).expect(400);
@@ -130,7 +132,7 @@ it('later same-day transactions and reused Order IDs never rewrite closing or co
 });
 it('scopes reports by origin and denies cloud confirmation',async()=>{
  const otherId=randomUUID();await db.originNode.create({data:{id:otherId,mode:'SHOP'}});const other=await createApp(db,otherId,'SHOP');try{const token=await shopToken(db,other,otherId,'MANAGER');await request(other.getHttpServer()).get('/v1/daily-closings/'+close.id).set('Authorization','Bearer '+token).expect(404);}finally{await other.close();}
- const actor=await db.user.findFirstOrThrow({where:{role:'MANAGER',membership:{originId}}});await expect(new ClosingService(db,originId,'CLOUD').confirm(actor,randomUUID(),{businessDate:day})).rejects.toThrow('Only the shop Inventory Manager');
+ const actor=await db.user.findFirstOrThrow({where:{role:'MANAGER',membership:{originId}}});await expect(new ClosingService(db,originId,'CLOUD').confirm(actor,randomUUID(),{businessDate:day})).rejects.toThrow('Only a shop Admin or Inventory Manager');
 });
 it('pending correction approval blocks certification while remaining stock-neutral',async()=>{
  const before=await quantities();await post('authorization-requests',{kind:'CORRECTION',lotId,state:'U',observedQuantity:'3',reviewedLedgerQuantity:'4',reviewedProjectionQuantity:'4',reason:'Physical discrepancy needs approved correction',evidence:'Actual count evidence for deferred authorization'}).expect(201);

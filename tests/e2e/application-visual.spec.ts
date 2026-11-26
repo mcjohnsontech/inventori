@@ -5,7 +5,7 @@ test('new application screens have accessible controls and responsive loaded lay
  test.setTimeout(240000);await mkdir('test-results/consolidation/ui-refinement',{recursive:true});
  await page.goto('/');await page.getByLabel('Email address').fill('e2e-admin@dayari.test');await page.getByLabel('Password',{exact:true}).fill(process.env.E2E_PASSWORD!);const login=page.waitForResponse(r=>r.url().endsWith('/api/sessions')&&r.request().method()==='POST');await page.getByRole('button',{name:'Sign in',exact:true}).click();expect((await login).status()).toBe(200);
  async function navigate(name:string){await openWorkspace(page,name);}
- for(const [route,title] of [['Users & access','Users & access'],['Account & shop','Account & shop'],['Help & guide','Help & operating guide'],['Reports & history','Reports & history']]){
+ for(const [route,title] of [['Users & access','Staff'],['Account & shop','My account'],['Help & guide','Help'],['Reports & history','Reports']]){
   await navigate(route!);await expect(page.getByRole('heading',{name:title!,exact:true})).toBeVisible();await expect(page.getByRole('status',{name:'Loading workspace'})).toHaveCount(0);
   const workspaceUrl=page.url();await page.getByRole('link',{name:'Skip to content'}).focus();await page.keyboard.press('Enter');await expect(page.locator('#workspace-content')).toBeFocused();await expect(page).toHaveURL(workspaceUrl);await expect(page.getByRole('heading',{name:title!,exact:true})).toBeVisible();
   expect(await page.locator('main').evaluate(main=>[...main.querySelectorAll('input:not([type=hidden]),select,textarea,[role=combobox]')].filter(el=>!el.closest('[hidden],[aria-hidden=true]')&&el.getClientRects().length>0&&getComputedStyle(el).visibility!=='hidden').filter(el=>!el.getAttribute('aria-label')?.trim()&&!el.getAttribute('aria-labelledby')?.trim()&&!(el as HTMLInputElement).labels?.length).length)).toBe(0);
@@ -14,5 +14,5 @@ test('new application screens have accessible controls and responsive loaded lay
  await navigate('Users & access');await page.getByRole('button',{name:'Create staff account'}).click();await page.getByLabel('Full name').fill('Unsaved synthetic staff');expect((await page.getByLabel('Full name').boundingBox())!.height).toBeGreaterThanOrEqual(40);
  await page.setViewportSize({width:320,height:900});await page.screenshot({path:'test-results/consolidation/ui-refinement/user-form-320.png'});
  page.once('dialog',dialog=>dialog.dismiss());await page.getByRole('button',{name:'Close account details',exact:true}).click();await expect(page.getByLabel('Full name')).toHaveValue('Unsaved synthetic staff');
- page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'Close account details',exact:true}).click();await navigate('Help & guide');await expect(page.getByRole('heading',{name:'Help & operating guide'})).toBeVisible();
+ page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'Close account details',exact:true}).click();await navigate('Help & guide');await expect(page.getByRole('heading',{name:'Help'})).toBeVisible();
 });

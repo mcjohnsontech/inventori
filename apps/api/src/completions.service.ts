@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { Prisma, type PrismaClient, type User } from '@prisma/client';
-import { completionSchema, completionQuerySchema, completionOptionsQuerySchema, idempotencyKeySchema, type CompletionView, type CompletionCandidate } from '@dayari/contracts';
+import { completionSchema, completionQuerySchema, completionOptionsQuerySchema, idempotencyKeySchema, type CompletionView, type CompletionCandidate, LIST_PAGE_SIZE } from '@dayari/contracts';
 import { DamageService, type DamageSelection } from './damage.service.js';
 import { requireCapability } from './permissions.js';
 import { canonical, digest } from './security.js';
@@ -24,14 +24,14 @@ export class CompletionsService {
         return this.db.$transaction(async tx=>{
             const from=Prisma.sql`FROM "Checkout" c JOIN "User" employee ON employee.id=c."actorId" JOIN "CheckoutLine" x ON x."checkoutId"=c.id JOIN "StockUnit" u ON u.id=x."unitId" JOIN "UnitState" s ON s."unitId"=u.id JOIN "SupplierVariantSku" sku ON sku.id=x."skuId" JOIN "Product" p ON p.id=sku."productId" JOIN "Variant" v ON v.id=sku."variantId" WHERE c."originId"=${this.originId}::uuid AND s."originId"=${this.originId}::uuid AND s.state='P' AND s."lastEventId"=x."eventId" AND (${text}='' OR position(lower(${text}) in lower(concat_ws(' ',c.id::text,employee.name,x."orderReference",u."unitCode",p.name,v.name,sku."fullCode")))>0)`;
             const [count]=await tx.$queryRaw<{n:bigint}[]>(Prisma.sql`SELECT count(DISTINCT c.id) n ${from}`);
-            const rows=await tx.$queryRaw<{id:string;acceptedAt:Date;employeeName:string;remaining:bigint;orderReferences:string[]}[]>(Prisma.sql`SELECT c.id,c."acceptedAt",employee.name AS "employeeName",count(*) AS remaining,COALESCE(array_agg(DISTINCT x."orderReference") FILTER(WHERE x."orderReference" IS NOT NULL),ARRAY[]::text[]) AS "orderReferences" ${from} GROUP BY c.id,employee.name ORDER BY c."acceptedAt" DESC,c.id DESC LIMIT 20 OFFSET ${(page-1)*20}`);
-            return {page,pageSize:20,total:Number(count!.n),rows:rows.map(row=>({...row,acceptedAt:row.acceptedAt.toISOString(),remaining:Number(row.remaining)}))};
+            const rows=await tx.$queryRaw<{id:string;acceptedAt:Date;employeeName:string;remaining:bigint;orderReferences:string[]}[]>(Prisma.sql`SELECT c.id,c."acceptedAt",employee.name AS "employeeName",count(*) AS remaining,COALESCE(array_agg(DISTINCT x."orderReference") FILTER(WHERE x."orderReference" IS NOT NULL),ARRAY[]::text[]) AS "orderReferences" ${from} GROUP BY c.id,employee.name ORDER BY c."acceptedAt" DESC,c.id DESC LIMIT ${LIST_PAGE_SIZE} OFFSET ${(page - 1) * LIST_PAGE_SIZE}`);
+            return {page,pageSize:LIST_PAGE_SIZE,total:Number(count!.n),rows:rows.map(row=>({...row,acceptedAt:row.acceptedAt.toISOString(),remaining:Number(row.remaining)}))};
         },{isolationLevel:Prisma.TransactionIsolationLevel.RepeatableRead});
     }
     private candidate(row: DamageSelection): CompletionCandidate { return { unit: this.damage.identity(row), state: row.state as CompletionCandidate['state'], checkoutId: row.checkoutId, checkoutLineId: row.checkoutLineId, orderReference: row.orderReference, holder: row.holderId ? { id: row.holderId, name: row.holderName! } : null, receiptId: row.receiptId, damageLineId: row.damageLineId, eligible: row.state === 'P' && !!row.checkoutLineId }; }
     private async resolve(tx: Prisma.TransactionClient, user: User, ids: string[]) { const rows = await this.damage.selection(tx, user, ids); if (rows.length !== ids.length)
         throw new NotFoundException('One or more units are not available in this shop.'); if (rows.some(row => row.state !== 'P' || !row.checkoutLineId || !row.holderId))
-        throw new ConflictException('Select only currently In Production units. Nothing completed.'); return rows; }
+        throw new ConflictException('Only checked-out items can be marked finished. Nothing was saved.'); return rows; }
     async preview(user: User, input: unknown) { await this.allow(user); const parsed = completionSchema.safeParse(input); if (!parsed.success)
         throw new BadRequestException('Select distinct exact issued units, at most 500.'); return this.db.$transaction(async (tx) => ({ units: (await this.resolve(tx, user, parsed.data.unitIds)).map(row => this.candidate(row)) })); }
     async options(user: User, input: unknown) {
@@ -48,8 +48,8 @@ export class CompletionsService {
             }[]>(Prisma.sql `SELECT count(*) n ${from}`);
             const selected = await tx.$queryRaw<{
                 id: string;
-            }[]>(Prisma.sql `SELECT u.id ${from} ORDER BY u."unitCode",u.id LIMIT 20 OFFSET ${(page - 1) * 20}`);
-            return { page, pageSize: 20, total: Number(count!.n), units: selected.length ? (await this.damage.selection(tx, user, selected.map(row => row.id))).map(row => this.candidate(row)) : [] };
+            }[]>(Prisma.sql `SELECT u.id ${from} ORDER BY u."unitCode",u.id LIMIT ${LIST_PAGE_SIZE} OFFSET ${(page - 1) * LIST_PAGE_SIZE}`);
+            return { page, pageSize:LIST_PAGE_SIZE, total: Number(count!.n), units: selected.length ? (await this.damage.selection(tx, user, selected.map(row => row.id))).map(row => this.candidate(row)) : [] };
         }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
     }
     async get(user: User, input: unknown): Promise<CompletionView> { await this.allow(user); const id = idempotencyKeySchema.safeParse(input); if (!id.success)
@@ -66,8 +66,8 @@ export class CompletionsService {
             const [count] = await tx.$queryRaw<{
                 n: bigint;
             }[]>(Prisma.sql `SELECT count(*) n FROM "ProductionCompletion" c WHERE ${filter}`);
-            const rows = await tx.$queryRaw(Prisma.sql `SELECT c.id,c."recordedAt",c."unitCount",u.name AS "managerName" FROM "ProductionCompletion" c JOIN "User" u ON u.id=c."actorId" WHERE ${filter} ORDER BY c."recordedAt" DESC,c.id DESC LIMIT 20 OFFSET ${(page - 1) * 20}`);
-            return { page, pageSize: 20, total: Number(count!.n), rows };
+            const rows = await tx.$queryRaw(Prisma.sql `SELECT c.id,c."recordedAt",c."unitCount",u.name AS "managerName" FROM "ProductionCompletion" c JOIN "User" u ON u.id=c."actorId" WHERE ${filter} ORDER BY c."recordedAt" DESC,c.id DESC LIMIT ${LIST_PAGE_SIZE} OFFSET ${(page - 1) * LIST_PAGE_SIZE}`);
+            return { page, pageSize:LIST_PAGE_SIZE, total: Number(count!.n), rows };
         }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
     }
     async create(user: User, keyInput: unknown, input: unknown): Promise<CompletionView> {
@@ -78,7 +78,7 @@ export class CompletionsService {
             throw new ForbiddenException('Confirm at the shop.');
         const parsed = completionSchema.safeParse(input), key = idempotencyKeySchema.safeParse(keyInput);
         if (!parsed.success || !key.success)
-            throw new BadRequestException('Select distinct units and supply an idempotency key.');
+            throw new BadRequestException('Select each item only once and try again.');
         const body = parsed.data, requestHash = digest(canonical(body)), commandType = 'production.complete', eventType = 'production.completed';
         for (let attempt = 0;; attempt++)
             try {
@@ -121,7 +121,7 @@ export class CompletionsService {
                         const n = BigInt(rows.filter(row => row.lotId === lotId).length);
                         const changed = await tx.$executeRaw `UPDATE "StockBalance" SET quantity=quantity-${n},version=version+1,"lastTransactionId"=${transactionId}::uuid WHERE "lotId"=${lotId}::uuid AND state='P' AND quantity>=${n}`;
                         if (changed !== 1)
-                            throw new ConflictException('In Production balance is inconsistent.');
+                            throw new ConflictException('The checked-out stock totals don’t add up. Ask an Admin to check.');
                         await tx.$executeRaw `INSERT INTO "StockBalance"("lotId",state,quantity,version,"lastTransactionId") VALUES(${lotId}::uuid,'C',${n},1,${transactionId}::uuid) ON CONFLICT("lotId",state) DO UPDATE SET quantity="StockBalance".quantity+EXCLUDED.quantity,version="StockBalance".version+1,"lastTransactionId"=EXCLUDED."lastTransactionId"`;
                     }
                     const response: CompletionView = { id, originId: this.originId, recordedAt: now.toISOString(), originSequence: node.nextSequence.toString(), transactionId, manager: { id: actor.id, name: actor.name }, manifestHash, lines: lines.map(({ previousEventId, ...line }) => line) };

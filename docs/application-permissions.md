@@ -17,8 +17,9 @@ CONFIRMED existing policies plus Phase B authorization, 2026-11-03. Backend enfo
 | Operational reporting administration | Yes | Yes | Denied |
 | Usable availability discovery | Yes | Yes | Minimal scoped DTO |
 | Unrestricted audit/security metadata | Unavailable | Unavailable | Unavailable |
-| Purchase costs and scoped financial valuation/history (17 November extension) | Read / receive | Read / receive | Denied |
-| Current selling-price append-only change | Yes, explicit confirmation | Denied | Denied |
+| Purchase costs and scoped financial valuation/history (17 November extension; Admin-only from 26 November owner decision) | Read / enter | Denied (receives stock without costs; never sees costs, prices or values) | Denied |
+| Product selling price; option's own price (set or remove) — append-only (26 November) | Yes, explicit confirmation | Denied | Denied |
+| Add a missing purchase cost to a received delivery line, once (26 November) | Yes, explicit confirmation | Denied | Denied |
 | Receiving-specific vendor onboarding | Yes | Yes, approved location registry only | Denied |
 | Exact-unit checkout | Yes | Yes | Yes, own records |
 | Missing-reason reconciliation | Confirm classifications (12 November approval) | Confirm classifications | Denied |

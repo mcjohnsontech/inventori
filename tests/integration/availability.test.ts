@@ -18,7 +18,7 @@ beforeAll(async()=>{
 afterAll(async()=>{await app?.close();await other?.close();await db.$disconnect();});
 it('returns bounded usable-only identities without sensitive rows or fields for every role',async()=>{
  for(const token of [admin,production,await shopToken(db,app,originId,'MANAGER')]){
-  const r=(await get('',token).expect(200)).body;expect(r.total).toBe(1);expect(r.pageSize).toBe(20);expect(r.lots[0].usable).toBe('8');
+  const r=(await get('',token).expect(200)).body;expect(r.total).toBe(1);expect(r.pageSize).toBe(10);expect(r.lots[0].usable).toBe('8');
   expect(Object.keys(r.lots[0]).sort()).toEqual(['lotId','lotCode','productId','productCode','productName','variantId','variantName','skuId','fullSku','batchId','publicBatchCode','usable'].sort());
   expect(JSON.stringify(r)).not.toMatch(/damaged|invoice|PRIVATE|damageReason|supplier|actorId|commandId|password|print/i);
  }

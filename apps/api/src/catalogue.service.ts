@@ -96,7 +96,7 @@ export class CatalogueService {
     requireCapability(user,capability);
     // Separate command namespace: a receipt registration cannot replay a catalogue command.
     const commandType = receiving ? `receiving.${type}` : type;
-    if (this.mode !== 'SHOP') throw new ForbiddenException('Catalogue writes belong to the shop authority');
+    if (this.mode !== 'SHOP') throw new ForbiddenException('Products can only be changed on the shop server.');
     const key = parse(idempotencyKeySchema, keyInput);
     const schemas: Record<string, ZodType> = { products: productSchema, suppliers: supplierSchema, sources: sourceSchema, attributes: attributeSchema, values: valueSchema, variants: variantSchema, skus: skuSchema, 'supplier-setups': supplierSetupSchema, 'product-setups': productSetupSchema };
     const schema = schemas[type];
@@ -107,7 +107,7 @@ export class CatalogueService {
       return await this.db.$transaction(async tx => {
         // First lock serializes this origin's commits and keeps the sync cursor contiguous.
         const nodes = await tx.$queryRaw<{ mode: string }[]>`SELECT "mode" FROM "OriginNode" WHERE "id" = ${this.originId}::uuid FOR UPDATE`;
-        if (nodes[0]?.mode !== 'SHOP') throw new ForbiddenException('Shop origin is not provisioned');
+        if (nodes[0]?.mode !== 'SHOP') throw new ForbiddenException('This shop server hasn’t been set up yet.');
         // Recheck active role under lock; a previously authenticated request cannot bypass deactivation.
         await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${user.id}::uuid FOR SHARE`;
         const current = await tx.user.findUnique({ where: { id: user.id } });
@@ -167,7 +167,7 @@ export class CatalogueService {
       case 'attributes': {
         const data = parse(attributeSchema, input);
         const defaultAllocation = await tx.supplierVariantSku.count({ where: { productId: data.productId, variant: { combinationKey: '' } } });
-        if (defaultAllocation) throw new ConflictException('This product already has a default-variant SKU. Identity supersession is required before adding options.');
+        if (defaultAllocation) throw new ConflictException('This product was saved without options, so options can’t be added to it yet.');
         return tx.attribute.create({ data: { ...data, originId } });
       }
       case 'values': return tx.attributeValue.create({ data: { ...parse(valueSchema, input), originId } });

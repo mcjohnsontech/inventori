@@ -29,7 +29,7 @@ type ShopInfo = {
 
 const descriptions: Record<Role, string> = {
   ADMIN:
-    'Manage your account and sessions. Shop staff administration is available in Users & access.',
+    'Manage your account and sessions. Manage staff accounts under Settings › Staff.',
   MANAGER:
     'Your account supports receiving, operational stock, receipts and lot labels. Catalogue registration remains Admin-only.',
   PRODUCTION:
@@ -58,7 +58,7 @@ export function SettingsWorkspace({
     <Page>
       <PageHeader
         eyebrow="Your workspace"
-        title="Account & shop"
+        title="My account"
         description={descriptions[user.role]}
         actions={<Badge tone="brand">{roleLabel(user.role)}</Badge>}
       />
@@ -81,14 +81,14 @@ export function SettingsWorkspace({
             </p>
             <Footnote>
               Change your password above or use Sign out in the navigation. Admins manage staff roles
-              and access in Users & access.
+              and access under Settings › Staff.
             </Footnote>
           </Stack>
         </Panel>
 
         {user.role === 'ADMIN' ? (
           <Panel
-            title="Shop authority"
+            title="Shop server"
             description="Where this workspace's data comes from."
             action={
               <span className="grid size-9 place-items-center rounded-xl bg-brand-tint text-brand">
@@ -103,17 +103,17 @@ export function SettingsWorkspace({
             ) : shop.data ? (
               <DetailList
                 rows={[
-                  { label: 'Authority mode', value: shop.data.authority },
-                  { label: 'Shop origin', value: <Code>{shop.data.originId}</Code> },
+                  { label: 'Server type', value: shop.data.authority },
+                  { label: 'Shop ID', value: <Code>{shop.data.originId}</Code> },
                   { label: 'Business timezone', value: shop.data.timeZone },
                   {
-                    label: 'Cloud synchronization',
+                    label: 'Cloud sync',
                     value:
                       shop.data.cloudSync === 'not-configured'
                         ? 'Not configured'
                         : shop.data.cloudSync,
                   },
-                  { label: 'Observed at', value: formatDateTime(shop.data.observedAt) },
+                  { label: 'Checked at', value: formatDateTime(shop.data.observedAt) },
                 ]}
               />
             ) : null}

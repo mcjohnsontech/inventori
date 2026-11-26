@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { Prisma, type PrismaClient, type User } from '@prisma/client';
-import { checkoutHistoryQuerySchema, checkoutSchema, checkoutSelectionSchema, idempotencyKeySchema, resolveCheckoutLines, type CheckoutCandidate, type CheckoutItemIdentity, type CheckoutReason, type CheckoutView } from '@dayari/contracts';
+import { checkoutHistoryQuerySchema, checkoutSchema, checkoutSelectionSchema, idempotencyKeySchema, resolveCheckoutLines, type CheckoutCandidate, type CheckoutItemIdentity, type CheckoutReason, type CheckoutView, LIST_PAGE_SIZE } from '@dayari/contracts';
 import { requireCapability } from './permissions.js';
 import { canonical, digest } from './security.js';
 
@@ -83,8 +83,8 @@ export class CheckoutsService {
         SELECT c.id,c."acceptedAt",u.name AS "actorName",c."unitCount",
         (SELECT count(*) FROM "CheckoutException" e WHERE e."checkoutId"=c.id ${unresolved}) AS missing
         FROM "Checkout" c JOIN "User" u ON u.id=c."actorId" WHERE ${filter}
-        ORDER BY c."acceptedAt" DESC,c.id DESC LIMIT 20 OFFSET ${(query.page - 1) * 20}`);
-      return { page: query.page, pageSize: 20, total: Number(count!.total),
+        ORDER BY c."acceptedAt" DESC,c.id DESC LIMIT ${LIST_PAGE_SIZE} OFFSET ${(query.page - 1) * LIST_PAGE_SIZE}`);
+      return { page: query.page, pageSize:LIST_PAGE_SIZE, total: Number(count!.total),
         checkouts: rows.map(row => ({ id: row.id, acceptedAt: row.acceptedAt.toISOString(), actorName: row.actorName,
           totalUnits: row.unitCount, outstandingReasonCount: Number(row.missing) })) };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
@@ -106,7 +106,7 @@ export class CheckoutsService {
     if (this.mode !== 'SHOP') throw new ForbiddenException('Stock writes belong to the shop.');
     const parsed = checkoutSchema.safeParse(input), key = idempotencyKeySchema.safeParse(keyInput);
     if (!parsed.success) throw new BadRequestException(parsed.error.issues.map(issue => issue.message).join('. '));
-    if (!key.success) throw new BadRequestException('A valid idempotency key is required.');
+    if (!key.success) throw new BadRequestException('This request is missing its safety key. Refresh the page and try again.');
     const body = parsed.data, requestHash = digest(canonical(body));
     for (let attempt = 0; ; attempt++) try {
       return await this.db.$transaction(async tx => {

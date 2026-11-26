@@ -132,7 +132,7 @@ export function SupplierWizard({
 
   return (
     <WizardShell
-      title={initialSupplierId ? 'Set up supplier location' : receiving ? 'Add Vendor' : 'Add supplier'}
+      title={initialSupplierId ? 'Set up supplier location' : 'Add supplier'}
       subtitle="Set up a supplier and location once. Select them whenever you add a product."
       steps={['Supplier', 'Location', 'Review prefix']}
       step={step}
@@ -323,7 +323,7 @@ export function SupplierWizard({
 
           <div className={cn(card, 'border-brand/20 bg-brand-tint p-5')}>
             <p className="font-sans text-xs font-semibold tracking-[0.1em] text-brand uppercase">
-              Supplier SKU prefix
+              Supplier code prefix
             </p>
             <p className="mt-2 font-mono text-3xl font-medium tracking-[-0.02em] break-all text-brand-deep">
               {prefix}
@@ -517,7 +517,7 @@ export function ProductWizard({
     },
     {
       key: 'sku',
-      label: 'SKU preview',
+      label: 'Code preview',
       cell: (row) => (
         <Code tone="brand">
           {base ?? `${source?.skuPrefix?.code}•••••`}-{row.suffix}
@@ -529,7 +529,7 @@ export function ProductWizard({
   return (
     <WizardShell
       title="Add product"
-      subtitle="Choose the supplier once, add product details, then review its generated SKUs."
+      subtitle="Choose the supplier, add the product details, then check the codes it will get."
       steps={['Supplier', 'Product', 'Variants', 'Review']}
       step={step}
       setStep={changeStep}
@@ -637,7 +637,7 @@ export function ProductWizard({
                 value={productId || 'new'}
                 onChange={(value) => chooseProduct(value === 'new' ? '' : value)}
                 options={[
-                  { value: 'new', label: 'Create a new parent product' },
+                  { value: 'new', label: 'Create a new product' },
                   ...catalogue.products.map((row) => ({ value: row.id, label: row.name })),
                 ]}
               />
@@ -674,7 +674,7 @@ export function ProductWizard({
 
           <Footnote>
             Choose the existing parent product when sourcing the same product from another
-            supplier. Its variants stay shared; the supplier SKU is separate.
+            supplier. Its variants stay shared; each supplier gets its own code.
           </Footnote>
         </>
       ) : null}
@@ -724,7 +724,7 @@ export function ProductWizard({
             <div className={cn(card, 'border-brand/20 bg-brand-tint p-4')}>
               <p className="font-sans text-sm leading-[1.6] tracking-[-0.02em] text-brand-deep">
                 Add combinations for this product using its existing attributes. Existing variants
-                and SKUs stay unchanged. New SKUs are allocated for the selected supplier location
+                and supplier codes stay unchanged. New codes are created for the selected supplier location
                 only.
               </p>
             </div>
@@ -905,7 +905,7 @@ export function ProductWizard({
               { label: 'Location', value: source?.name ?? '' },
               { label: 'Product', value: product?.name ?? name },
               {
-                label: 'Product base',
+                label: 'Base code',
                 value: base ? (
                   <Code tone="brand">{base}</Code>
                 ) : (
@@ -924,7 +924,7 @@ export function ProductWizard({
 
           <Footnote>
             {base
-              ? 'The saved product base stays fixed. New suffixes add SKUs without changing existing identities.'
+              ? 'The product’s base code stays the same. New endings add codes without changing existing ones.'
               : 'The final unique number is assigned on save. All variants share this product base.'}{' '}
             Saving adds catalogue identities, not stock quantities.
           </Footnote>

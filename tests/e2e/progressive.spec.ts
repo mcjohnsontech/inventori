@@ -10,8 +10,8 @@ test('progressive setup retains drafts and reuses products across supplier prefi
   await page.getByLabel('Email address').fill('e2e-admin@dayari.test');
   await page.getByLabel('Password', { exact: true }).fill(process.env.E2E_PASSWORD!);
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.getByRole('button', { name: 'Catalogue', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Product catalogue' })).toBeVisible();
+  await page.getByRole('button', { name: 'Products', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Products' })).toBeVisible();
   // Bound visual evidence to the viewport; retained database fixtures must not create unbounded full-page bitmaps.
   const dialog = page.getByRole('dialog');
   const next = () => dialog.getByRole('button', { name: 'Continue', exact: true }).click();
@@ -142,8 +142,8 @@ test('existing product with attributes and no combinations can create its first 
   await page.getByLabel('Email address').fill('e2e-admin@dayari.test');
   await page.getByLabel('Password', { exact: true }).fill(process.env.E2E_PASSWORD!);
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.getByRole('button', { name: 'Catalogue', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Product catalogue' })).toBeVisible();
+  await page.getByRole('button', { name: 'Products', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Products' })).toBeVisible();
   async function create(operation: string, data: unknown) {
     const response = await page.request.post(`/api/catalogue/${operation}`, {
       headers: { Origin: 'http://127.0.0.1:3101', 'Idempotency-Key': randomUUID() }, data,

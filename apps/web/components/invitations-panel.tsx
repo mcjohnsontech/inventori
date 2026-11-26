@@ -1,4 +1,5 @@
 'use client';
+import { formatDateTime } from '../lib/format';
 import { PagedItems } from './ui/paged-items';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { InvitationSummary } from '@dayari/contracts';
@@ -7,6 +8,7 @@ import { Button } from './ui/button';
 import { Badge } from './ui/workspace';
 import { TaskModal } from './ui/task-modal';
 import { Disclosure } from './ui/disclosure';
+import { Select } from './ui/select';
 export function InvitationsPanel() {
   type Directory = { mode: 'isolated' | 'smtp'; invitations: InvitationSummary[] };
   const list = useApiRead<Directory>('admin/invitations');
@@ -75,6 +77,16 @@ export function InvitationsPanel() {
       latch.current = false;
     }
   }
+  // When the email service is off, say so once in plain words instead of a disabled button and a retry.
+  if (list.error && !directory) {
+    return (
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-black/[0.08] bg-surface-muted px-4 py-3 text-sm text-grey-2">
+        <p>Email invitations aren't set up on this shop server. Use <strong className="text-ink">Create staff account</strong> to add someone with a temporary password.</p>
+        <Button type="button" variant="ghost" size="compact" onClick={list.refresh}>Check again</Button>
+      </div>
+    );
+  }
+
   return (
     <section className="surface mb-5 p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -123,11 +135,7 @@ export function InvitationsPanel() {
           </label>
           <label>
             Invited role
-            <select name="role" defaultValue="PRODUCTION">
-              <option value="PRODUCTION">Production Staff</option>
-              <option value="MANAGER">Inventory Manager</option>
-              <option value="ADMIN">Admin</option>
-            </select>
+            <Select name="role" label="Invited role" defaultValue="PRODUCTION" options={[{value:'PRODUCTION',label:'Production Staff'},{value:'MANAGER',label:'Inventory Manager'},{value:'ADMIN',label:'Admin'}]} />
           </label>
           <label>
             Your password
@@ -169,7 +177,7 @@ export function InvitationsPanel() {
           className="mt-4"
         >
           <div className="max-h-96 divide-y overflow-y-auto">
-            <PagedItems items={directory.invitations} size={10}>{pageItems => <>{pageItems.map((i) => (
+            <PagedItems items={directory.invitations}>{pageItems => <>{pageItems.map((i) => (
               <div key={i.id} className="py-3">
                 <div className="flex flex-wrap justify-between gap-2">
                   <span>
@@ -182,7 +190,7 @@ export function InvitationsPanel() {
                   </span>
                 </div>
                 <p className="mt-1 text-xs text-stone-500">
-                  {i.role} · Expires {new Date(i.expiresAt).toLocaleString()}
+                  {i.role} · Expires {formatDateTime(i.expiresAt)}
                 </p>
                 {(i.status === 'PENDING' || i.status === 'EXPIRED') && (
                   <form
@@ -204,11 +212,7 @@ export function InvitationsPanel() {
                   >
                     <label className="text-xs">
                       Role for replacement
-                      <select name="role" defaultValue={i.role}>
-                        <option value="PRODUCTION">Production Staff</option>
-                        <option value="MANAGER">Inventory Manager</option>
-                        <option value="ADMIN">Admin</option>
-                      </select>
+                      <Select name="role" label="Role for replacement" size="compact" defaultValue={i.role} options={[{value:'PRODUCTION',label:'Production Staff'},{value:'MANAGER',label:'Inventory Manager'},{value:'ADMIN',label:'Admin'}]} />
                     </label>
                     <label className="text-xs">
                       Your password

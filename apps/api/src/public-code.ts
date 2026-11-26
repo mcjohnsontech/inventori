@@ -13,7 +13,7 @@ export async function reservePublicCode(kind: 'PRODUCT' | 'LOT', reserve: (code:
 export async function allocatePublicIdentity(tx: Prisma.TransactionClient, kind: 'PRODUCT' | 'LOT', subjectId: string, originId: string, commandId: string, draw?: () => string) {
   const product = kind === 'PRODUCT';
   const prior = product ? await tx.productPublicIdentity.findUnique({ where: { productId: subjectId } }) : await tx.lotPublicIdentity.findUnique({ where: { lotId: subjectId } });
-  if (prior) { if (prior.originId !== originId) throw new ConflictException('Identity origin mismatch'); return prior.code; }
+  if (prior) { if (prior.originId !== originId) throw new ConflictException('This code belongs to a different shop.'); return prior.code; }
   return reservePublicCode(kind, async code => {
     // A conflicting candidate does not abort PostgreSQL's current transaction.
     const rows = product

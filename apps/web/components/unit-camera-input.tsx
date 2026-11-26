@@ -12,7 +12,7 @@ export function UnitCameraInput({ onRead, onClose }: { onRead: (payload: string)
     const stop = () => { active = false; controls?.stop(); stream?.getTracks().forEach(track => track.stop()); if (video.current) video.current.srcObject = null; };
     void (async () => {
       try {
-        if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) throw Error('Camera requires a trusted HTTPS address or localhost. Use the scanner field or Unit Code instead.');
+        if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) throw Error('The camera needs a secure (HTTPS) address. Use a scanner or type the item code instead.');
         stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: 'environment' } } });
         if (!active) { stream.getTracks().forEach(track => track.stop()); return; }
         const { BrowserQRCodeReader } = await import('@zxing/browser');
@@ -23,7 +23,7 @@ export function UnitCameraInput({ onRead, onClose }: { onRead: (payload: string)
         if (!active) controls.stop();
       } catch (failure) {
         const wasActive = active; stop();
-        if (wasActive) setError((failure as Error).name === 'NotAllowedError' ? 'Camera permission denied. Use a connected scanner or enter the Unit Code.' : (failure as Error).message);
+        if (wasActive) setError((failure as Error).name === 'NotAllowedError' ? 'Camera permission denied. Use a scanner or type the item code.' : (failure as Error).message);
       }
     })();
     return stop;

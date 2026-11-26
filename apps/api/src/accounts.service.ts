@@ -4,7 +4,7 @@ import { accountProof } from './account-proof.js';
 import { createHmac, randomUUID } from 'node:crypto';
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Prisma, type PrismaClient, type User } from '@prisma/client';
-import { idempotencyKeySchema, staffCreate, staffQuery, staffUpdate, sessionRevoke, passwordChange, type StaffSummary } from '@dayari/contracts';
+import { idempotencyKeySchema, staffCreate, staffQuery, staffUpdate, sessionRevoke, passwordChange, type StaffSummary, LIST_PAGE_SIZE } from '@dayari/contracts';
 import { canonical, digest, passwordHash, verifyPassword } from './security.js';
 import type { ZodType } from 'zod';
 function parse<T>(schema:ZodType<T>,input:unknown):T{const result=schema.safeParse(input);if(!result.success)throw new BadRequestException('Check account fields and password requirements');return result.data;}
@@ -15,8 +15,8 @@ export class AccountsService {
  async list(user:User,input:unknown){
   this.admin(user);const q=parse(staffQuery,input);
   const where:Prisma.UserWhereInput={membership:{originId:this.originId},...(q.role?{role:q.role}:{}),...(q.active?{active:q.active==='true'}:{}),...(q.q?{OR:[{name:{contains:q.q,mode:'insensitive'}},{email:{contains:q.q,mode:'insensitive'}}]}:{})};
-  const [total,users]=await this.db.$transaction([this.db.user.count({where}),this.db.user.findMany({where,orderBy:[{createdAt:'desc'},{id:'asc'}],skip:(q.page-1)*20,take:20})]);
-  return {users:users.map(staffDto),total,page:q.page,pageSize:20};
+  const [total,users]=await this.db.$transaction([this.db.user.count({where}),this.db.user.findMany({where,orderBy:[{createdAt:'desc'},{id:'asc'}],skip:(q.page-1)*LIST_PAGE_SIZE,take:LIST_PAGE_SIZE})]);
+  return {users:users.map(staffDto),total,page:q.page,pageSize:LIST_PAGE_SIZE};
  }
  async detail(user:User,idInput:unknown){
   this.admin(user);const id=parse(idempotencyKeySchema,idInput);

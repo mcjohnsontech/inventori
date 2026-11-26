@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { Prisma, type PrismaClient, type User } from '@prisma/client';
-import { idempotencyKeySchema, reasonQueueQuerySchema, reasonSelectionSchema, reconcileReasonsSchema, type CheckoutItemIdentity, type CheckoutReason, type ReasonQueue, type ReasonResolutionView } from '@dayari/contracts';
+import { idempotencyKeySchema, reasonQueueQuerySchema, reasonSelectionSchema, reconcileReasonsSchema, type CheckoutItemIdentity, type CheckoutReason, type ReasonQueue, type ReasonResolutionView, LIST_PAGE_SIZE } from '@dayari/contracts';
 import { requireCapability } from './permissions.js';
 import { canonical, digest } from './security.js';
 
@@ -71,8 +71,8 @@ export class ReconciliationService {
       const rows = await tx.$queryRaw<QueueRow[]>(Prisma.sql`SELECT e.id AS "exceptionId",x.id AS "checkoutLineId",c.id AS "checkoutId",c."acceptedAt",
         employee.id AS "employeeId",employee.name AS "employeeName",x."orderReference",x.snapshot,r.id AS "resolutionId",
         manager.id AS "managerId",manager.name AS "managerName",r."recordedAt",o."originSequence",r."reasonCode",r."reasonNote",r.remarks,r."manifestHash"
-        ${from} ORDER BY c."acceptedAt",c.id,x.ordinal LIMIT ${exceptionIds?.length ?? 20} OFFSET ${exceptionIds ? 0 : (query.page - 1) * 20}`);
-      return { page: query.page, pageSize: exceptionIds?.length ?? 20, total: Number(count!.n), rows: rows.map(row => ({
+        ${from} ORDER BY c."acceptedAt",c.id,x.ordinal LIMIT ${exceptionIds?.length ?? LIST_PAGE_SIZE} OFFSET ${exceptionIds ? 0 : (query.page - 1) * LIST_PAGE_SIZE}`);
+      return { page: query.page, pageSize: exceptionIds?.length ?? LIST_PAGE_SIZE, total: Number(count!.n), rows: rows.map(row => ({
         exceptionId: row.exceptionId, checkoutLineId: row.checkoutLineId, checkoutId: row.checkoutId, acceptedAt: row.acceptedAt.toISOString(),
         employee: { id: row.employeeId, name: row.employeeName }, orderReference: row.orderReference, unit: row.snapshot,
         status: row.resolutionId ? 'RESOLVED' as const : 'UNRESOLVED' as const, resolution: row.resolutionId ? {
@@ -86,9 +86,9 @@ export class ReconciliationService {
   async get(user: User, input: unknown): Promise<ReasonResolutionView> {
     await this.allow(user);
     const id = idempotencyKeySchema.safeParse(input);
-    if (!id.success) throw new BadRequestException('Invalid reconciliation identity.');
+    if (!id.success) throw new BadRequestException('That missing reason could not be found.');
     const record = await this.db.reasonReconciliation.findFirst({ where: { id: id.data, originId: this.originId } });
-    if (!record) throw new NotFoundException('Reconciliation not available.');
+    if (!record) throw new NotFoundException('Adding missing reasons isn’t available.');
     const command = await this.db.commandResult.findUniqueOrThrow({ where: { id: record.commandId } });
     return command.response as unknown as ReasonResolutionView;
   }
@@ -99,7 +99,7 @@ export class ReconciliationService {
     if (this.mode !== 'SHOP') throw new ForbiddenException('Classification writes belong to the shop.');
     const parsed = reconcileReasonsSchema.safeParse(input), key = idempotencyKeySchema.safeParse(keyInput);
     if (!parsed.success) throw new BadRequestException(parsed.error.issues.map(issue => issue.message).join('. '));
-    if (!key.success) throw new BadRequestException('A valid idempotency key is required.');
+    if (!key.success) throw new BadRequestException('This request is missing its safety key. Refresh the page and try again.');
     const body = parsed.data, requestHash = digest(canonical(body));
     for (let attempt = 0; ; attempt++) try {
       return await this.db.$transaction(async tx => {
@@ -121,7 +121,7 @@ export class ReconciliationService {
           FROM "CheckoutException" e JOIN "CheckoutLine" x ON x.id=e."lineId" LEFT JOIN "CheckoutReasonResolution" r ON r."exceptionId"=e.id
           WHERE e."originId"=${this.originId}::uuid AND e.id IN (${ids}) ORDER BY e.id`);
         if (targets.length !== body.exceptionIds.length) throw new NotFoundException('One or more exceptions are not available in this shop.');
-        if (targets.some(target => target.resolutionId || target.reasonCode !== null)) throw new ConflictException('One or more exceptions are already classified. No partial reconciliation was recorded.');
+        if (targets.some(target => target.resolutionId || target.reasonCode !== null)) throw new ConflictException('Some of these items already have a reason. Nothing was saved; remove them and try again.');
         const id = randomUUID(), commandId = randomUUID(), now = new Date();
         const manifest = targets.map(target => ({ id: randomUUID(), exceptionId: target.exceptionId, checkoutId: target.checkoutId, checkoutLineId: target.checkoutLineId, unitId: target.unitId }));
         const canonicalManifest = canonical(manifest), manifestHash = digest(canonicalManifest);

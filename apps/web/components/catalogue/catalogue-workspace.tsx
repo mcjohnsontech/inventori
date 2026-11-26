@@ -1,5 +1,8 @@
 'use client';
+import { LIST_PAGE_SIZE } from '@dayari/contracts';
+import { plural } from '../../lib/format';
 import { ProductPricing } from '../financial';
+import { MoneyOnly } from '../../lib/role';
 import { PagedItems } from '../ui/paged-items';
 import { ArrowLeft01Icon, ArrowRight01Icon, Building03Icon, PlusSignIcon } from '@hugeicons/core-free-icons';
 import { useEffect, useMemo, useState } from 'react';
@@ -32,9 +35,8 @@ import {
   card,
   cardInteractive,
 } from '../ui';
-import { IdentityLookup } from '../identity-lookup';
 
-const PER_PAGE = 18;
+const PER_PAGE = LIST_PAGE_SIZE;
 
 type Tab = 'products' | 'suppliers' | 'skus';
 
@@ -111,11 +113,11 @@ export function CatalogueWorkspace({
     const sourcingColumns: Column<(typeof savedSkus)[number]>[] = [
       {
         key: 'sku',
-        label: 'Saved SKU',
+        label: 'Supplier code',
         cell: (row) => (
           <span className="flex items-start gap-2">
             <Code tone="brand">{row.fullCode}</Code>
-            <CopyButton value={row.fullCode} label="saved SKU" />
+            <CopyButton value={row.fullCode} label="supplier code" />
           </span>
         ),
       },
@@ -143,17 +145,16 @@ export function CatalogueWorkspace({
           </LinkButton>
         </Breadcrumb>
 
-        <div className="flex flex-wrap items-center gap-3"><Code>{product.productCode??'Code not assigned'}</Code>{role==='ADMIN'?<Button onClick={()=>onProduct(product.id)}>Add variants or source</Button>:null}<Button variant="secondary" onClick={()=>onStock(product.id)}>View stock lots</Button></div>
+        <div className="flex flex-wrap items-center gap-3">{product.productCode?<Code>{product.productCode}</Code>:null}{role==='ADMIN'?<Button onClick={()=>onProduct(product.id)}>Add variants or source</Button>:null}<Button variant="secondary" onClick={()=>onStock(product.id)}>View stock lots</Button></div>
 
-      <div className="mt-5"><ProductPricing product={product} role={role}/></div>
-      <div className="mt-5"><IdentityLookup /></div>
+      <MoneyOnly><div className="mt-5"><ProductPricing product={product} role={role}/></div></MoneyOnly>
 
         <div className="mt-6 flex flex-wrap items-center gap-2.5">
           <Badge tone="brand">Product</Badge>
           <Icon icon={ArrowRight01Icon} size={14} className="text-grey-3" />
-          <Badge>{variants.length} variants</Badge>
+          <Badge>{plural(variants.length, 'variant')}</Badge>
           <Icon icon={ArrowRight01Icon} size={14} className="text-grey-3" />
-          <Badge>{savedSkus.length} supplier SKUs</Badge>
+          <Badge>{plural(savedSkus.length, 'supplier code')}</Badge>
           <Icon icon={ArrowRight01Icon} size={14} className="text-grey-3" />
           <LinkButton onClick={() => onStock(product.id)}>Stock lots</LinkButton>
         </div>
@@ -168,11 +169,11 @@ export function CatalogueWorkspace({
             {!variants.length ? (
               <EmptyState title="Configure the first variant">
                 {role === 'ADMIN'
-                  ? 'Use Add variants or source to set up attribute combinations and explicit SKU suffixes.'
-                  : 'Ask Admin to configure missing variant combinations and saved supplier SKUs.'}
+                  ? 'Use Add variants or source to set up options such as colour and size.'
+                  : 'Ask an Admin to add any missing variants or supplier codes.'}
               </EmptyState>
             ) : (
-              <PagedItems items={variants} size={10} key={product.id}>{pageItems => <ul className="divide-y divide-black/[0.06]">{pageItems.map((variant) => {
+              <PagedItems items={variants} key={product.id}>{pageItems => <ul className="divide-y divide-black/[0.06]">{pageItems.map((variant) => {
                   const variantSkus = savedSkus.filter((sku) => sku.variantId === variant.id);
 
                   return (
@@ -221,25 +222,25 @@ export function CatalogueWorkspace({
                 </p>
               )}
               <Footnote>
-                Extension adds combinations through the existing reviewed command. Existing
-                variants, attributes and saved SKUs are not renamed.
+                New combinations are added alongside what already exists. Existing
+                variants, options and supplier codes keep their names.
               </Footnote>
             </Stack>
           </Panel>
         </div>
 
         <div className="mt-4">
-          <Panel title="Supplier sourcing" description="Every saved SKU for this product." flush>
+          <Panel title="Supplier sourcing" description="Every supplier code for this product." flush>
             {savedSkus.length ? (
 <PagedItems items={savedSkus}>{pageItems =>               <DataTable
                 bare
                 columns={sourcingColumns}
                 rows={[...pageItems]}
                 rowKey={(row) => row.id}
-                emptyMessage="No saved supplier SKUs."
+                emptyMessage="No supplier codes."
               />}</PagedItems>
             ) : (
-              <EmptyState title="No saved supplier SKUs" icon={Building03Icon}>
+              <EmptyState title="No supplier codes" icon={Building03Icon}>
                 Connect this parent product to an existing supplier source.
               </EmptyState>
             )}
@@ -291,11 +292,11 @@ export function CatalogueWorkspace({
   const skuColumns: Column<(typeof skus)[number]>[] = [
     {
       key: 'sku',
-      label: 'Saved SKU',
+      label: 'Supplier code',
       cell: (row) => (
         <span className="flex items-start gap-2">
           <Code tone="brand">{row.fullCode}</Code>
-          <CopyButton value={row.fullCode} label="saved SKU" />
+          <CopyButton value={row.fullCode} label="supplier code" />
         </span>
       ),
     },
@@ -338,8 +339,8 @@ export function CatalogueWorkspace({
     <Page>
       <PageHeader
         eyebrow="Inventory foundation"
-        title="Product catalogue"
-        description="Register once. Keep variants, supplier SKUs and stock lots connected."
+        title="Products"
+        description="Every product, its variants and the suppliers that sell it."
         actions={
           <>
             {tab === 'suppliers' ? (
@@ -365,7 +366,6 @@ export function CatalogueWorkspace({
       />
 
 
-      <div className="mt-5"><IdentityLookup /></div>
 
       <section className={cn(card, 'mt-8 overflow-hidden')}>
         <div className="flex flex-col gap-3 border-b border-black/[0.06] px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
@@ -376,7 +376,7 @@ export function CatalogueWorkspace({
             tabs={[
               { value: 'products', label: 'Products', count: catalogue.products.length },
               { value: 'suppliers', label: 'Suppliers', count: catalogue.suppliers.length },
-              { value: 'skus', label: 'Supplier SKUs', count: catalogue.skus.length },
+              { value: 'skus', label: 'Supplier codes', count: catalogue.skus.length },
             ]}
           />
           <SearchInput
@@ -387,7 +387,7 @@ export function CatalogueWorkspace({
                 ? 'Product name or Product Code…'
                 : tab === 'suppliers'
                   ? 'Supplier name or code…'
-                  : 'Saved SKU, product or supplier…'
+                  : 'Supplier code, product or supplier…'
             }
             className="w-full lg:w-[320px]"
             onChange={(value) => {
@@ -404,8 +404,8 @@ export function CatalogueWorkspace({
             {search
               ? tab === 'products'
                 ? `No product matches “${search.trim()}”. Try its name or Product Code.`
-                : 'Try a product name, Product Code, variant or saved SKU.'
-              : 'Create a shared parent product and its supplier-specific variants.'}
+                : 'Try a product name, Product Code, variant or supplier code.'
+              : 'Add a product once, then its variants and the suppliers that sell it.'}
           </EmptyState>
         ) : tab === 'products' ? (
           <CardGrid>
@@ -416,24 +416,26 @@ export function CatalogueWorkspace({
                 onClick={() => selectProduct(item.id)}
                 className={cn(card, cardInteractive, 'flex flex-col p-5')}
               >
-                <Code tone="brand">{item.productCode ?? 'Code not assigned'}</Code>
-                <h2 className="mt-2.5 font-sans text-[15px] leading-snug font-semibold tracking-[-0.03em] break-words text-ink">
-                  {item.name}
-                </h2>
-                <span className="mt-1.5 line-clamp-2 block font-sans text-xs leading-[1.6] tracking-[-0.02em] text-grey-3">
-                  {item.description || 'Shared parent product'}
+                <span className="flex items-start justify-between gap-3">
+                  <h2 className="font-sans text-[15px] leading-snug font-semibold tracking-[-0.03em] break-words text-ink">
+                    {item.name}
+                  </h2>
+                  {item.productCode ? <Code tone="muted" className="shrink-0 text-xs">{item.productCode}</Code> : null}
                 </span>
+                {item.description ? (
+                  <span className="mt-1.5 line-clamp-2 block font-sans text-xs leading-[1.6] tracking-[-0.02em] text-grey-3">
+                    {item.description}
+                  </span>
+                ) : null}
                 <span className="mt-4 flex flex-wrap items-center gap-2">
-                  <Badge tone="brand">
-                    {
-                      item.variants.filter(
-                        (variant) => !item.attributes.length || variant.combinationKey,
-                      ).length
-                    }{' '}
-                    variants
-                  </Badge>
+                  {(() => {
+                    const count = item.variants.filter(
+                      (variant) => !item.attributes.length || variant.combinationKey,
+                    ).length;
+                    return count ? <Badge tone="brand">{plural(count, 'variant')}</Badge> : <Badge tone="damaged">No variants yet</Badge>;
+                  })()}
                   <span className="font-sans text-xs tracking-[-0.02em] text-grey-3">
-                    {item.attributes.map((attribute) => attribute.name).join(' · ') || 'Standard'}
+                    {item.attributes.length ? `Options: ${item.attributes.map((attribute) => attribute.name).join(', ')}` : 'No options'}
                   </span>
                 </span>
                 <span className="mt-4 flex items-center gap-1.5 font-sans text-[13px] font-semibold tracking-[-0.02em] text-brand">
@@ -457,7 +459,7 @@ export function CatalogueWorkspace({
             columns={skuColumns}
             rows={skus.slice(start, start + PER_PAGE)}
             rowKey={(row) => row.id}
-            emptyMessage="No supplier SKUs match this search."
+            emptyMessage="No supplier codes match this search."
           />
         )}
 
@@ -467,8 +469,7 @@ export function CatalogueWorkspace({
 
 
       <Footnote className="mt-5">
-        Catalogue registration does not add stock. Receive an accepted delivery to create stock
-        lots.
+        Adding a product doesn't add stock. Stock appears after you receive a delivery.
       </Footnote>
       {product && productDetail ? <DetailsDrawer active={active} wide title={product.name} closeLabel="Close product details" onClose={()=>selectProduct('')}>{productDetail}</DetailsDrawer>:null}
     </Page>

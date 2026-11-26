@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { BadRequestException,ConflictException,ForbiddenException,NotFoundException,ServiceUnavailableException,UnprocessableEntityException } from '@nestjs/common';
 import { Prisma,type PrismaClient,type User } from '@prisma/client';
 import { z,type ZodType } from 'zod';
-import { encodeUnitQr,idempotencyKeySchema,sheetStartSchema,unitLabelHandoffSchema,unitLabelJobSchema,unitLabelOptionsSchema,unitLabelPreviewSchema,unitLabelProfiles,type LabelProfile,type UnitLabelContent,type UnitLabelJob,type UnitLabelLine,type UnitLabelOptions,type UnitLabelPreview } from '@dayari/contracts';
+import { encodeUnitQr,idempotencyKeySchema,sheetStartSchema,unitLabelHandoffSchema,unitLabelJobSchema,unitLabelOptionsSchema,unitLabelPreviewSchema,unitLabelProfiles,type LabelProfile,type UnitLabelContent,type UnitLabelJob,type UnitLabelLine,type UnitLabelOptions,type UnitLabelPreview, LIST_PAGE_SIZE } from '@dayari/contracts';
 import { requireCapability } from './permissions.js';
 import { canonical,digest } from './security.js';
 import { preflightUnitLabels,renderUnitLabels,unitArtifactCsp,unitRendererVersion } from './unit-label-render.js';
@@ -33,8 +33,19 @@ export class UnitLabelsService {
     AND (${query.mode}='INITIAL' AND c."unitId" IS NULL OR ${query.mode}='REPRINT' AND c."unitId" IS NOT NULL)
     AND (u."unitCode" ILIKE ${pattern} OR r.snapshot->>'productName' ILIKE ${pattern} OR r.snapshot->>'variantName' ILIKE ${pattern} OR r.snapshot->>'fullCode' ILIKE ${pattern} OR li.code ILIKE ${pattern} OR b."publicCode" ILIKE ${pattern})`;
    const [count]=await tx.$queryRaw<{n:bigint}[]>(Prisma.sql`SELECT count(*) AS n ${from}`);
-   const rows=await tx.$queryRaw<Source[]>(Prisma.sql`SELECT ${this.sourceFields()} ${from} ORDER BY u."recordedAt" DESC,u."unitCode" LIMIT 50 OFFSET ${(query.page-1)*50}`);
-   return {originId:this.originId,total:Number(count!.n),page:query.page,pageSize:50,profiles:unitLabelProfiles,units:rows.map(row=>({unitId:row.unitId,unitCode:row.content.unitCode,lotId:row.lotId,lotCode:row.content.lotCode,receiptId:row.receiptId,productName:row.content.productName,variantName:row.content.variantName,fullSku:row.content.fullSku,publicBatchCode:row.content.publicBatchCode,initialPurpose:purpose(row.initialState),currentState:row.currentState,claimedLineId:row.claimedLineId,claimedJobId:row.claimedJobId}))};
+   const rows=await tx.$queryRaw<Source[]>(Prisma.sql`SELECT ${this.sourceFields()} ${from} ORDER BY u."recordedAt" DESC,u."unitCode" LIMIT ${LIST_PAGE_SIZE} OFFSET ${(query.page - 1) * LIST_PAGE_SIZE}`);
+   return {originId:this.originId,total:Number(count!.n),page:query.page,pageSize:LIST_PAGE_SIZE,profiles:unitLabelProfiles,units:rows.map(row=>({unitId:row.unitId,unitCode:row.content.unitCode,lotId:row.lotId,lotCode:row.content.lotCode,receiptId:row.receiptId,productName:row.content.productName,variantName:row.content.variantName,fullSku:row.content.fullSku,publicBatchCode:row.content.publicBatchCode,initialPurpose:purpose(row.initialState),currentState:row.currentState,claimedLineId:row.claimedLineId,claimedJobId:row.claimedJobId}))};
+  },{isolationLevel:Prisma.TransactionIsolationLevel.RepeatableRead});
+ }
+ /** Every item of one delivery that has no label yet (up to one print job), for "print this delivery". */
+ async deliveryUnits(user:User,input:unknown){
+  await this.allow(user);const {receiptId}=parse(z.object({receiptId:z.uuid()}).strict(),input);
+  return this.db.$transaction(async tx=>{
+   const [receipt]=await tx.$queryRaw<{batchCode:string}[]>`SELECT b."publicCode" AS "batchCode" FROM "Receipt" r JOIN "DeliveryBatch" b ON b.id=r."batchId" WHERE r.id=${receiptId}::uuid AND b."originId"=${this.originId}::uuid`;
+   if(!receipt)throw new NotFoundException('Delivery not found');
+   const [count]=await tx.$queryRaw<{units:number;unlabelled:number}[]>`SELECT count(*)::int AS units,count(*) FILTER (WHERE c."unitId" IS NULL)::int AS unlabelled FROM "StockUnit" u JOIN "ReceiptLine" r ON r.id=u."receiptLineId" LEFT JOIN "UnitLabelClaim" c ON c."unitId"=u.id WHERE r."receiptId"=${receiptId}::uuid AND u."originId"=${this.originId}::uuid`;
+   const rows=await tx.$queryRaw<{id:string}[]>`SELECT u.id FROM "StockUnit" u JOIN "ReceiptLine" r ON r.id=u."receiptLineId" LEFT JOIN "UnitLabelClaim" c ON c."unitId"=u.id WHERE r."receiptId"=${receiptId}::uuid AND u."originId"=${this.originId}::uuid AND c."unitId" IS NULL ORDER BY r."lineNumber",u."unitCode" LIMIT 500`;
+   return {receiptId,batchCode:receipt.batchCode,units:count!.units,unlabelled:count!.unlabelled,unitIds:rows.map(row=>row.id)};
   },{isolationLevel:Prisma.TransactionIsolationLevel.RepeatableRead});
  }
  async readJob(tx:Tx,id:string):Promise<UnitLabelJob>{
@@ -52,15 +63,15 @@ export class UnitLabelsService {
  }
  async requests(user:User,idInput:unknown,input:unknown){
   await this.allow(user);const id=parse(idempotencyKeySchema,idInput),{page}=parse(z.object({page:z.coerce.number().int().min(1).max(1_000_000).default(1)}).strict(),input);await this.readJob(this.db,id);
-  const where={jobId:id,kind:'HANDOFF_REQUESTED'},[total,events]=await this.db.$transaction([this.db.unitLabelEvent.count({where}),this.db.unitLabelEvent.findMany({where,orderBy:[{recordedAt:'desc'},{id:'asc'}],skip:(page-1)*20,take:20,select:{id:true,attemptId:true,recordedAt:true}})]);
-  return {total,page,pageSize:20,events:events.map(event=>({...event,recordedAt:event.recordedAt.toISOString()}))};
+  const where={jobId:id,kind:'HANDOFF_REQUESTED'},[total,events]=await this.db.$transaction([this.db.unitLabelEvent.count({where}),this.db.unitLabelEvent.findMany({where,orderBy:[{recordedAt:'desc'},{id:'asc'}],skip:(page-1)*LIST_PAGE_SIZE,take:LIST_PAGE_SIZE,select:{id:true,attemptId:true,recordedAt:true}})]);
+  return {total,page,pageSize:LIST_PAGE_SIZE,events:events.map(event=>({...event,recordedAt:event.recordedAt.toISOString()}))};
  }
  async list(user:User,input:unknown){
   await this.allow(user);const {page,receiptId}=parse(z.object({page:z.coerce.number().int().min(1).max(1_000_000).default(1),receiptId:z.uuid().optional()}).strict(),input);
   const from=Prisma.sql`FROM "UnitLabelJob" j WHERE j."originId"=${this.originId}::uuid AND (${receiptId??null}::uuid IS NULL OR EXISTS(SELECT 1 FROM "UnitLabelLine" l JOIN "ReceiptLine" r ON r.id=l."receiptLineId" WHERE l."jobId"=j.id AND r."receiptId"=${receiptId??null}::uuid))`;
   const [count]=await this.db.$queryRaw<{n:bigint}[]>(Prisma.sql`SELECT count(*) AS n ${from}`);
-  const jobs=await this.db.$queryRaw<{id:string;kind:string;totalLabels:number;reason:string;createdAt:Date}[]>(Prisma.sql`SELECT j.id,j.kind,j."totalLabels",j.reason,j."createdAt" ${from} ORDER BY j."createdAt" DESC,j.id LIMIT 20 OFFSET ${(page-1)*20}`);
-  return {total:Number(count!.n),page,pageSize:20,jobs:jobs.map(job=>({...job,createdAt:job.createdAt.toISOString()}))};
+  const jobs=await this.db.$queryRaw<{id:string;kind:string;totalLabels:number;reason:string;createdAt:Date}[]>(Prisma.sql`SELECT j.id,j.kind,j."totalLabels",j.reason,j."createdAt" ${from} ORDER BY j."createdAt" DESC,j.id LIMIT ${LIST_PAGE_SIZE} OFFSET ${(page - 1) * LIST_PAGE_SIZE}`);
+  return {total:Number(count!.n),page,pageSize:LIST_PAGE_SIZE,jobs:jobs.map(job=>({...job,createdAt:job.createdAt.toISOString()}))};
  }
  private async command<T extends {id:string}>(user:User,keyInput:unknown,type:string,input:unknown,work:(tx:Tx,commandId:string,actor:User)=>Promise<T>):Promise<T>{
   await this.allow(user);if(this.mode!=='SHOP')throw new ForbiddenException('Print metadata writes belong to the shop');
@@ -87,7 +98,7 @@ export class UnitLabelsService {
   }else{
    const original=await this.readJob(this.db,body.originalJobId);profile=original.profile;originalJobId=original.id;reason=body.reason;
    if(original.rendererVersion!==unitRendererVersion)throw new ConflictException('The retained unit-label renderer is unavailable');
-   lines=body.lineIds.map(lineId=>{const line=original.lines.find(line=>line.id===lineId);if(!line)throw new BadRequestException('Reprints must select exact lines in the original job');return {...line,id:randomUUID(),originalLineId:line.id};});
+   lines=body.lineIds.map(lineId=>{const line=original.lines.find(line=>line.id===lineId);if(!line)throw new BadRequestException('Choose labels from the original print to reprint.');return {...line,id:randomUUID(),originalLineId:line.id};});
   }
   lines.sort((a,b)=>Number(a.purpose==='DAMAGED_INTAKE')-Number(b.purpose==='DAMAGED_INTAKE'));lines=lines.map((line,index)=>({...line,ordinal:index+1}));
   try{preflightUnitLabels({profile,lines});}catch(error){throw new UnprocessableEntityException((error as Error).message);}
