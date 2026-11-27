@@ -32,7 +32,7 @@ describe('shop staff administration',()=>{
  });
  it('creates one mapped account under concurrent replay; rejects conflicting key and duplicate email',async()=>{
   const key=randomUUID(),body={name:'Staff member',email:`${randomUUID()}@staff.test`,role:'MANAGER',initialPassword,currentPassword:password};
-  const [a,b]=await Promise.all([post('admin/users',body,key).expect(201),post('admin/users',body,key).expect(201)]);expect(a.body).toEqual(b.body);expect(a.body.mustChangePassword).toBe(true);
+  const [a,b]=await Promise.all([post('admin/users',body,key).expect(201),post('admin/users',body,key).expect(201)]);const {welcomeEmail:first,...accountA}=a.body,{welcomeEmail:second,...accountB}=b.body;expect(accountA).toEqual(accountB);expect([first,second].filter(Boolean)).toEqual(['off']);expect(a.body.mustChangePassword).toBe(true);
   await post('admin/users',{...body,name:'Other'},key).expect(409);await post('admin/users',body).expect(409);
   const evidence=await db.commandResult.findFirstOrThrow({where:{originId,key}});expect(JSON.stringify(evidence)).not.toContain(initialPassword);expect(JSON.stringify(evidence)).not.toContain(password);
   const login=await request(app.getHttpServer()).post('/v1/sessions').send({email:body.email,password:initialPassword}).expect(200);

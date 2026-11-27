@@ -64,6 +64,22 @@ describe('real SMTP exchange against loopback TLS fixtures only', () => {
       expect(decoded).toContain('24 hours');expect(decoded).not.toContain(password);
     }
   });
+  // Owner decision 27 Nov 2026: a new account's welcome email carries the assigned password and sign-in link.
+  it('sends the welcome email with the assigned password and sign-in link over TLS, escaping the name',async()=>{
+    const server=await fixture(),assigned='Start&<123>';
+    await server.transport.sendWelcome({to:'colleague@fixture.test',name:'<b>New & starter</b>',password:assigned,signInUrl:`${publicUrl}/`});
+    expect(server.received).toHaveLength(1);const decoded=server.received[0]!.replace(/=\r?\n/g,'').replace(/=3D/g,'=');
+    expect(decoded).toContain('Subject: Your Dayari Inventory account');expect(decoded).toContain(`Password: ${assigned}`);expect(decoded).toContain('Start&amp;&lt;123&gt;');
+    expect(decoded).toContain(`${publicUrl}/`);expect(decoded).toContain('&lt;b&gt;New &amp; starter&lt;/b&gt;');expect(decoded).toContain('choose your own password');expect(decoded).not.toContain(password);
+  });
+  it('will not send a welcome email with a foreign or deep sign-in link, or to a rejected recipient',async()=>{
+    const server=await fixture();
+    for(const signInUrl of ['https://foreign.fixture.example/',`${publicUrl}/accept-invitation`,`${publicUrl}/?next=x`])
+      await expect(server.transport.sendWelcome({to:'colleague@fixture.test',name:'A',password:'x1y2z3',signInUrl})).rejects.toThrow('Invalid welcome');
+    expect(server.received).toEqual([]);
+    const rejecting=await fixture({rejectRecipient:true});
+    await expect(rejecting.transport.sendWelcome({to:'colleague@fixture.test',name:'A',password:'x1y2z3',signInUrl:`${publicUrl}/`})).rejects.toThrow('Welcome email could not be accepted');
+  });
   it('refuses plaintext downgrade before sending credentials',async()=>{
     const server=await fixture({noTls:true});await expect(server.transport.send(message())).rejects.toThrow('could not be accepted');expect(server.secure).toEqual([]);expect(server.received).toEqual([]);
   });

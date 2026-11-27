@@ -2,12 +2,16 @@ import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import { SmtpInvitationTransport } from './smtp-invitation-transport.js';
 export type InvitationMessage = {to:string;name:string;url:string;invitationId?:string;deliveryMode?:'isolated'|'smtp'};
-export interface InvitationTransport { readonly mode:'isolated'|'smtp'; send(message:InvitationMessage):Promise<void> }
+/** Sent once when an Admin creates an account. The password is never stored or logged. */
+export type WelcomeMessage = {to:string;name:string;password:string;signInUrl:string};
+export interface InvitationTransport { readonly mode:'isolated'|'smtp'; send(message:InvitationMessage):Promise<void>; sendWelcome(message:WelcomeMessage):Promise<void> }
 /** Test-only transport. It never delivers to external recipients. */
 export class IsolatedInvitationTransport implements InvitationTransport {
  readonly mode='isolated' as const;
  readonly messages:InvitationMessage[]=[];
  async send(message:InvitationMessage){this.messages.push(message);if(this.messages.length>100)this.messages.shift();}
+ readonly welcomes:WelcomeMessage[]=[];
+ async sendWelcome(message:WelcomeMessage){this.welcomes.push(message);if(this.welcomes.length>100)this.welcomes.shift();}
 }
 export type InvitationConfig = {publicUrl:string;key:Buffer;transport:InvitationTransport;worker?:boolean};
 export function invitationConfig(env:NodeJS.ProcessEnv=process.env):InvitationConfig|undefined{

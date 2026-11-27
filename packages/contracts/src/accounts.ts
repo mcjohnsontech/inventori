@@ -7,5 +7,7 @@ export const staffUpdate = z.object({ name: z.string().trim().min(1).max(160), r
 export const sessionRevoke = z.object({ currentPassword: z.string().min(1).max(256) }).strict();
 export const passwordChange = z.object({ currentPassword: z.string().min(1).max(256), newPassword: strongPassword }).strict();
 export type StaffSummary = { id: string; name: string; email: string; role: z.infer<typeof staffRole>; active: boolean; mustChangePassword: boolean; createdAt: string };
+/** Result of creating an account: whether the welcome email (password + sign-in link) went out. */
+export type StaffCreated = StaffSummary & { welcomeEmail?: 'sent' | 'failed' | 'off' };
 export type StaffDirectory = { users: StaffSummary[]; total: number; page: number; pageSize: number };
 export type StaffDetail = StaffSummary & { sessions: { id: string; createdAt: string; expiresAt: string; revokedAt: string | null }[] };

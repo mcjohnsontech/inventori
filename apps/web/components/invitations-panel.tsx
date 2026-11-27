@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { InvitationSummary } from '@dayari/contracts';
 import { api, useApiRead } from '../lib/api';
 import { Button } from './ui/button';
+import { PasswordInput } from './ui/field';
 import { Badge } from './ui/workspace';
 import { TaskModal } from './ui/task-modal';
 import { Disclosure } from './ui/disclosure';
@@ -139,9 +140,9 @@ export function InvitationsPanel() {
           </label>
           <label>
             Your password
-            <input
+            <PasswordInput
+              aria-label="Your password"
               name="currentPassword"
-              type="password"
               autoComplete="current-password"
               maxLength={256}
               required
@@ -216,9 +217,9 @@ export function InvitationsPanel() {
                     </label>
                     <label className="text-xs">
                       Your password
-                      <input
+                      <PasswordInput
+                        aria-label="Your password"
                         name="currentPassword"
-                        type="password"
                         autoComplete="current-password"
                         required
                         maxLength={256}

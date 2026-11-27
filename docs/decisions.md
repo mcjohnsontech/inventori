@@ -320,3 +320,14 @@ As built (development only, 26 Nov 2026):
 - Valuation uses the variant's own price, falling back to the product price. A later cost counts from the moment it was entered, so earlier reports reproduce.
 - UI: "Needing a cost" list on Deliveries, plus an Overview attention item (Admin only); product price with per-option "own price" in Products and in receiving.
 - Applied to the development database after a backup (`dayari_dev_backup_20261126` plus a JSON snapshot); the 72 pre-existing tables were verified unchanged.
+
+## 27 November 2026 — Password visibility and welcome email (CONFIRMED)
+Owner requests and answers, 27 Nov 2026:
+1. CONFIRMED: every password box (sign-in, account setup, change password, invitations, staff creation and Admin proof) has a show/hide control.
+2. CONFIRMED (owner choice over the recommended setup-link-only option): when an Admin creates a staff account, the person is emailed the assigned password and a link to sign in. First sign-in still forces a password change. Accepted risk: the password stays in their inbox until they change it; the email asks them to change it straight away and delete the email.
+3. CONFIRMED (owner choice): staging should send real email using the production mail-server settings (same sender).
+As built (development only, 27 Nov 2026):
+- Sent directly after the account commits, outside the transaction. The password is never stored, queued or logged, not even encrypted. An idempotent replay returns the saved account and does not email again. A delivery failure never undoes the account.
+- `POST /admin/users` responses add `welcomeEmail: 'sent' | 'failed' | 'off'`; the Staff page tells the Admin which happened, so a failed or disabled email can be handed over privately.
+- Uses the existing verified SMTP transport (STARTTLS, verified sender, sign-in link pinned to `APP_PUBLIC_URL`). No migration.
+- Operational note: the Heroku app named `dayari-inventory-staging-api` is configured as production (`DAYARI_DEPLOYMENT=production`, serving infentri.dayari.ng). Staging is Render + Vercel on the `staging` branch.

@@ -7,10 +7,18 @@ import { Prisma, type PrismaClient, type User } from '@prisma/client';
 import { idempotencyKeySchema, staffCreate, staffQuery, staffUpdate, sessionRevoke, passwordChange, type StaffSummary, LIST_PAGE_SIZE } from '@dayari/contracts';
 import { canonical, digest, passwordHash, verifyPassword } from './security.js';
 import type { ZodType } from 'zod';
+import type { InvitationConfig } from './invitation-mail.js';
 function parse<T>(schema:ZodType<T>,input:unknown):T{const result=schema.safeParse(input);if(!result.success)throw new BadRequestException('Check account fields and password requirements');return result.data;}
 export function staffDto(user:User):StaffSummary{return {id:user.id,name:user.name,email:user.email,role:user.role,active:user.active,mustChangePassword:user.mustChangePassword,createdAt:user.createdAt.toISOString()};}
 export class AccountsService {
- constructor(readonly db:PrismaClient,readonly originId:string,readonly mode:string){}
+ constructor(readonly db:PrismaClient,readonly originId:string,readonly mode:string,readonly mail?:InvitationConfig){}
+ /** Owner decision 27 Nov 2026: a new account's assigned password and sign-in link are emailed.
+  * Sent after the account commits; the password is never stored. A failure never undoes the account. */
+ private async welcome(user:StaffSummary,password:string):Promise<'sent'|'failed'|'off'>{
+  if(!this.mail)return 'off';
+  try{await this.mail.transport.sendWelcome({to:user.email,name:user.name,password,signInUrl:new URL('/',this.mail.publicUrl).toString()});return 'sent';}
+  catch{/* Never log: transport errors can contain the recipient or credentials. */return 'failed';}
+ }
  private admin(user:User){requireCapability(user,'STAFF_ADMIN');}
  async list(user:User,input:unknown){
   this.admin(user);const q=parse(staffQuery,input);
@@ -61,14 +69,15 @@ export class AccountsService {
   const {currentPassword,initialPassword,...publicInput}=data;
   await accountProof(this.db,user,String(currentPassword));
   const requestHash=digest(canonical({id,...publicInput,...(initialPassword?{passwordFingerprint:createHmac('sha256',user.passwordHash).update(String(initialPassword)).digest('hex')}:{})}));
-  try{return await this.db.$transaction(async tx=>{
+  let replay=false;
+  try{const saved=await this.db.$transaction(async tx=>{
    const origins=await tx.$queryRaw<{mode:string}[]>`SELECT mode FROM "OriginNode" WHERE id=${this.originId}::uuid FOR UPDATE`;
    if(origins[0]?.mode!=='SHOP')throw new ForbiddenException();
    for(const lockId of [...new Set([user.id,...(id?[id]:[])])].sort())await tx.$queryRaw`SELECT id FROM "User" WHERE id=${lockId}::uuid FOR UPDATE`;
    const actor=await tx.user.findFirst({where:{id:user.id,membership:{originId:this.originId}}});if(!actor)throw new ForbiddenException();this.admin(actor);if(actor.authVersion!==user.authVersion)throw new ForbiddenException('Session security state changed');
    if(!verifyPassword(String(currentPassword),actor.passwordHash))throw new ForbiddenException('Current password was not accepted');
    const commandType=`accounts.${type}`,prior=await tx.commandResult.findUnique({where:{originId_actorId_commandType_key:{originId:this.originId,actorId:user.id,commandType,key}}});
-   if(prior){if(prior.requestHash!==requestHash)throw new ConflictException('Idempotency key reused with different input');return prior.response;}
+   if(prior){if(prior.requestHash!==requestHash)throw new ConflictException('Idempotency key reused with different input');replay=true;return prior.response;}
    const commandId=randomUUID();
    let subject:User;
    if(type==='create')subject=await tx.user.create({data:{name:String(data.name),email:String(data.email),role:data.role as User['role'],passwordHash:passwordHash(String(initialPassword)),mustChangePassword:true,membership:{create:{originId:this.originId}}}});
@@ -87,6 +96,9 @@ export class AccountsService {
    await tx.auditEvent.create({data:{originId:this.originId,actorId:user.id,actorRole:actor.role,commandId,action:commandType,subjectId:subject.id,snapshot:evidence}});
    await tx.outboxEvent.create({data:{originId:this.originId,originSequence:node.nextSequence,eventType:commandType,aggregateId:subject.id,commandId,actorId:user.id,payload:evidence,payloadHash:digest(canonical(evidence))}});
    await tx.commandResult.create({data:{id:commandId,originId:this.originId,actorId:user.id,commandType,key,requestHash,response}});return response;
-  },{timeout:15000,maxWait:10000});}catch(error){if(error instanceof Prisma.PrismaClientKnownRequestError&&error.code==='P2002')throw new ConflictException('An account with this email already exists');throw error;}
+  },{timeout:15000,maxWait:10000});
+  // A retried request returns the saved account without emailing the password again.
+  if(type!=='create'||replay)return saved;
+  return {...(saved as StaffSummary),welcomeEmail:await this.welcome(saved as StaffSummary,String(initialPassword))};}catch(error){if(error instanceof Prisma.PrismaClientKnownRequestError&&error.code==='P2002')throw new ConflictException('An account with this email already exists');throw error;}
  }
 }
